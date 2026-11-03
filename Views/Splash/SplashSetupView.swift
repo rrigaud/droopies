@@ -3,10 +3,11 @@
 //  Dropies
 //
 //  Écran de démarrage et assistant de configuration initiale (Splash & Cloud Setup).
-//  Vérifie les 3 piliers essentiels :
-//  1. Connexion au compte Cloud (Dropbox)
-//  2. Sélection et validation du dossier Source (/Droopy)
-//  3. Chargement de l'environnement (eleves.json, classes, scans et backups)
+//  Permet de :
+//  1. Choisir son Cloud (Dropbox, Nextcloud, OneDrive, Google Drive)
+//  2. Connecter son compte Cloud
+//  3. Sélectionner ou créer son dossier Source librement via l'explorateur
+//  4. Charger et synchroniser l'environnement scolaire
 //
 
 import SwiftUI
@@ -15,10 +16,14 @@ public struct SplashSetupView: View {
     @Bindable public var appState: AppState
     public var onFinish: () -> Void
 
+    @State private var selectedProviderType: AppSettings.StorageProviderType = .dropbox
     @State private var dropboxToken: String = ""
-    @State private var rootFolder: String = "/Droopy"
+    @State private var rootFolder: String = ""
 
-    // États de progression des 3 étapes
+    // Boîte de dialogue de sélection du dossier
+    @State private var showFolderPicker: Bool = false
+
+    // États de progression
     @State private var isCheckingCloud: Bool = false
     @State private var cloudStatusMessage: String? = nil
     @State private var isCloudConnected: Bool = false
@@ -48,10 +53,10 @@ public struct SplashSetupView: View {
             LiquidGlassBackground()
 
             ScrollView {
-                VStack(spacing: 28) {
+                VStack(spacing: 24) {
                     // MARK: - En-tête avec Mascotte Officielle Droopy v5
                     VStack(spacing: 12) {
-                        DropiesMascotView(size: 88, hasShadow: true, isAnimated: true)
+                        DropiesMascotView(size: 84, hasShadow: true, isAnimated: true)
                             .padding(.top, 16)
 
                         VStack(spacing: 4) {
@@ -65,22 +70,25 @@ public struct SplashSetupView: View {
                     }
 
                     // MARK: - Carte Principale de Configuration & Diagnostic
-                    VStack(alignment: .leading, spacing: 20) {
-                        Text("Vérification de l'environnement")
-                            .font(.headline)
-                            .foregroundColor(.primary)
+                    VStack(alignment: .leading, spacing: 22) {
+                        // 1. Choix du Cloud
+                        cloudProviderSelectorSection
 
-                        // --- ÉTAPE 1 : Compte Cloud Dropbox ---
-                        step1CloudAccountCard
+                        Divider()
 
-                        // --- ÉTAPE 2 : Dossier Source Dropbox ---
+                        // 2. Connexion au compte Cloud sélectionné
+                        cloudAccountConnectionSection
+
+                        // 3. Choix du dossier Source (Explorateur de dossiers)
                         if isCloudConnected {
-                            step2SourceFolderCard
+                            Divider()
+                            sourceFolderPickerSection
                         }
 
-                        // --- ÉTAPE 3 : Chargement des Données ---
+                        // 4. Chargement des données
                         if isFolderValidated {
-                            step3DataLoadingCard
+                            Divider()
+                            dataLoadingStatusSection
                         }
 
                         if let error = errorMessage {
@@ -98,7 +106,7 @@ public struct SplashSetupView: View {
                     }
                     .padding(24)
                     .glassCard(cornerRadius: 22, strokeOpacity: 0.45)
-                    .frame(maxWidth: 580)
+                    .frame(maxWidth: 600)
 
                     // MARK: - Bouton d'entrée dans l'application
                     VStack(spacing: 12) {
@@ -137,26 +145,99 @@ public struct SplashSetupView: View {
                 .padding(.horizontal, 20)
             }
         }
+        .sheet(isPresented: $showFolderPicker) {
+            CloudFolderPickerSheet(
+                provider: appState.storageManager.activeProvider,
+                initialPath: rootFolder
+            ) { chosenPath in
+                self.rootFolder = chosenPath
+                Task {
+                    await applyAndValidateSourceFolder(chosenPath)
+                }
+            }
+        }
         .task {
             await autoDetectExistingConnection()
         }
     }
 
-    // MARK: - Étape 1 : Compte Cloud Dropbox
+    // MARK: - Section 1 : Sélecteur de Cloud
 
-    private var step1CloudAccountCard: some View {
+    private var cloudProviderSelectorSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("1. Sélectionnez votre Cloud de stockage :")
+                .font(.subheadline.bold())
+                .foregroundColor(.primary)
+
+            HStack(spacing: 8) {
+                cloudOptionChip(type: .dropbox, label: "Dropbox", icon: "shippingbox.fill", color: .blue)
+                cloudOptionChip(type: .nextcloud, label: "Nextcloud", icon: "cloud.fill", color: .cyan)
+                cloudOptionChip(type: .oneDrive, label: "OneDrive", icon: "server.rack", color: .indigo)
+                cloudOptionChip(type: .googleDrive, label: "Google Drive", icon: "triangle.fill", color: .orange)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func cloudOptionChip(type: AppSettings.StorageProviderType, label: String, icon: String, color: Color) -> some View {
+        let isSelected = selectedProviderType == type
+        Button {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                selectedProviderType = type
+                UserDefaults.standard.set(type.rawValue, forKey: "dropies_selected_provider")
+                if type != .dropbox {
+                    isCloudConnected = false
+                    cloudStatusMessage = "\(label) sera disponible très prochainement. Veuillez utiliser Dropbox pour le moment."
+                } else {
+                    Task { await autoDetectExistingConnection() }
+                }
+            }
+        } label: {
+            VStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(isSelected ? .white : color)
+                Text(label)
+                    .font(.system(size: 11, weight: isSelected ? .bold : .medium))
+                    .foregroundColor(isSelected ? .white : .primary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .background(
+                Group {
+                    if isSelected {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(LinearGradient(colors: [color, color.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                            .shadow(color: color.opacity(0.35), radius: 6, y: 2)
+                    } else {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(Color.primary.opacity(0.04))
+                    }
+                }
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(isSelected ? Color.white.opacity(0.3) : Color.primary.opacity(0.08), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Section 2 : Connexion Compte
+
+    private var cloudAccountConnectionSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 ZStack {
                     Circle()
                         .fill(isCloudConnected ? Color.green.opacity(0.15) : Color.blue.opacity(0.15))
                         .frame(width: 28, height: 28)
-                    Image(systemName: isCloudConnected ? "checkmark" : "shippingbox.fill")
+                    Image(systemName: isCloudConnected ? "checkmark" : selectedProviderType.iconName)
                         .font(.system(size: 13, weight: .bold))
                         .foregroundColor(isCloudConnected ? .green : .blue)
                 }
 
-                Text("1. Compte Cloud (Dropbox)")
+                Text("2. Connexion au compte \(selectedProviderType.displayName)")
                     .font(.subheadline.bold())
 
                 Spacer()
@@ -166,23 +247,40 @@ public struct SplashSetupView: View {
                 } else if isCloudConnected {
                     BadgeView("Connecté", style: .success)
                 } else {
-                    BadgeView("À configurer", style: .warning)
+                    BadgeView("Non connecté", style: .warning)
                 }
             }
 
-            if isCloudConnected {
-                Text(cloudStatusMessage ?? "Compte Dropbox actif")
+            if selectedProviderType != .dropbox {
+                Text("\(selectedProviderType.displayName) sera activé dans la prochaine mise à jour.")
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .padding(.leading, 36)
+            } else if isCloudConnected {
+                HStack {
+                    Text(cloudStatusMessage ?? "Compte Dropbox actif")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    Spacer()
+
+                    Button("Changer de compte...") {
+                        isCloudConnected = false
+                        isFolderValidated = false
+                        isDataLoaded = false
+                    }
+                    .font(.caption2)
+                    .foregroundColor(.blue)
+                }
+                .padding(.leading, 36)
             } else {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Collez votre Jeton d'accès Dropbox (Token Développeur ou OAuth) :")
+                    Text("Associez votre compte Dropbox pour permettre la synchronisation :")
                         .font(.caption)
                         .foregroundColor(.secondary)
 
                     HStack {
-                        SecureField("sl.u...", text: $dropboxToken)
+                        SecureField("Coller votre clé ou Token Dropbox", text: $dropboxToken)
                             .textFieldStyle(.roundedBorder)
 
                         Button {
@@ -200,7 +298,7 @@ public struct SplashSetupView: View {
                     } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "questionmark.circle")
-                            Text("Comment obtenir mon token Dropbox en 1 minute ?")
+                            Text("Aide : obtenir mon token Dropbox personnel")
                         }
                         .font(.caption2)
                         .foregroundColor(.blue)
@@ -212,7 +310,7 @@ public struct SplashSetupView: View {
                             Text("1. Rendez-vous sur dropbox.com/developers/apps")
                             Text("2. Cliquez sur votre application Droopy (Scoped App)")
                             Text("3. Onglet 'Settings' ➔ Bouton 'Generate' sous Generated access token")
-                            Text("4. Copiez et collez la clé ici.")
+                            Text("4. Copiez la clé et collez-la ci-dessus.")
                         }
                         .font(.caption2)
                         .foregroundColor(.secondary)
@@ -227,9 +325,9 @@ public struct SplashSetupView: View {
         }
     }
 
-    // MARK: - Étape 2 : Dossier Source
+    // MARK: - Section 3 : Sélecteur de Dossier Source
 
-    private var step2SourceFolderCard: some View {
+    private var sourceFolderPickerSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 ZStack {
@@ -241,7 +339,7 @@ public struct SplashSetupView: View {
                         .foregroundColor(isFolderValidated ? .green : .orange)
                 }
 
-                Text("2. Dossier Source Cloud")
+                Text("3. Dossier Source dans le Cloud")
                     .font(.subheadline.bold())
 
                 Spacer()
@@ -253,33 +351,54 @@ public struct SplashSetupView: View {
                 }
             }
 
-            HStack {
-                TextField("Ex: /Droopy", text: $rootFolder)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(maxWidth: 240)
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Choisissez librement le dossier qui contiendra vos évaluations et vos élèves :")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
 
-                Button {
-                    Task { await validateRootFolder() }
-                } label: {
-                    Text("Valider")
-                        .font(.caption.bold())
+                HStack {
+                    if rootFolder.isEmpty {
+                        Text("Aucun dossier sélectionné")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .italic()
+                    } else {
+                        HStack(spacing: 6) {
+                            Image(systemName: "folder.fill")
+                                .foregroundColor(.blue)
+                            Text(rootFolder)
+                                .font(.system(.subheadline, design: .monospaced, weight: .bold))
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color.blue.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
+
+                    Spacer()
+
+                    Button {
+                        showFolderPicker = true
+                    } label: {
+                        Label(rootFolder.isEmpty ? "Parcourir le Cloud..." : "Changer de dossier...", systemImage: "folder.badge.plus")
+                            .font(.caption.bold())
+                    }
+                    .buttonStyle(.borderedProminent)
                 }
-                .buttonStyle(.bordered)
+
+                if let msg = folderStatusMessage {
+                    Text(msg)
+                        .font(.caption)
+                        .foregroundColor(isFolderValidated ? .green : .secondary)
+                }
             }
             .padding(.leading, 36)
-
-            if let msg = folderStatusMessage {
-                Text(msg)
-                    .font(.caption)
-                    .foregroundColor(isFolderValidated ? .green : .secondary)
-                    .padding(.leading, 36)
-            }
         }
     }
 
-    // MARK: - Étape 3 : Chargement des Données
+    // MARK: - Section 4 : Chargement des données
 
-    private var step3DataLoadingCard: some View {
+    private var dataLoadingStatusSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 ZStack {
@@ -291,7 +410,7 @@ public struct SplashSetupView: View {
                         .foregroundColor(isDataLoaded ? .green : .purple)
                 }
 
-                Text("3. Chargement de l'environnement")
+                Text("4. Chargement de l'environnement")
                     .font(.subheadline.bold())
 
                 Spacer()
@@ -312,11 +431,17 @@ public struct SplashSetupView: View {
         }
     }
 
-    // MARK: - Logique d'initialisation & vérification
+    // MARK: - Logique d'initialisation & actions
 
     private func autoDetectExistingConnection() async {
         isCheckingCloud = true
         defer { isCheckingCloud = false }
+
+        // Récupérer le type de cloud mémorisé
+        if let savedType = UserDefaults.standard.string(forKey: "dropies_selected_provider"),
+           let prov = AppSettings.StorageProviderType(rawValue: savedType) {
+            self.selectedProviderType = prov
+        }
 
         let provider = DropboxStorageProvider()
         if provider.isConnected {
@@ -328,7 +453,9 @@ public struct SplashSetupView: View {
                     self.cloudStatusMessage = "Connecté : \(info.name) (\(info.email))"
                     self.rootFolder = provider.rootFolderPath
                 }
-                await validateRootFolder()
+                if !provider.rootFolderPath.isEmpty {
+                    await applyAndValidateSourceFolder(provider.rootFolderPath)
+                }
             } catch {
                 await MainActor.run {
                     self.isCloudConnected = false
@@ -356,51 +483,45 @@ public struct SplashSetupView: View {
                     self.cloudStatusMessage = "Connecté : \(info.name) (\(info.email))"
                     self.isCheckingCloud = false
                 }
-                await validateRootFolder()
+                if !rootFolder.isEmpty {
+                    await applyAndValidateSourceFolder(rootFolder)
+                } else {
+                    // Ouvrir automatiquement l'explorateur de dossiers
+                    await MainActor.run {
+                        self.showFolderPicker = true
+                    }
+                }
             } catch {
                 await MainActor.run {
                     self.isCheckingCloud = false
-                    self.errorMessage = "Échec de connexion Dropbox : vérifiez votre jeton."
+                    self.errorMessage = "Échec de connexion Dropbox : vérifiez votre clé ou jeton."
                 }
             }
         }
     }
 
-    private func validateRootFolder() async {
+    private func applyAndValidateSourceFolder(_ folderPath: String) async {
         isCheckingFolder = true
         defer { isCheckingFolder = false }
 
-        let cleanRoot = rootFolder.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanPath = folderPath.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let dropbox = appState.storageManager.activeProvider as? DropboxStorageProvider else { return }
 
         dropbox.configure(
             appKey: dropbox.appKey,
             refreshToken: dropbox.refreshToken,
             accessToken: dropbox.accessToken,
-            rootFolderPath: cleanRoot
+            rootFolderPath: cleanPath
         )
 
         do {
-            // Vérifier si le dossier existe, sinon le créer
-            let exists = try await dropbox.itemExists(at: "")
-            if !exists {
-                try await dropbox.createDirectory(at: "")
-            }
-
-            // S'assurer que les sous-dossiers fondamentaux existent
-            if try await !dropbox.itemExists(at: "Classes") {
-                try? await dropbox.createDirectory(at: "Classes")
-            }
-            if try await !dropbox.itemExists(at: "Evaluations/A corriger") {
-                try? await dropbox.createDirectory(at: "Evaluations/A corriger")
-            }
-            if try await !dropbox.itemExists(at: "Evaluations/Backup") {
-                try? await dropbox.createDirectory(at: "Evaluations/Backup")
-            }
+            // S'assurer que les 4 dossiers obligatoires existent dans le dossier source
+            try await appState.storageManager.ensureSourceFolderStructure()
 
             await MainActor.run {
+                self.rootFolder = cleanPath
                 self.isFolderValidated = true
-                self.folderStatusMessage = "Dossier racine '\(cleanRoot)' validé sur Dropbox"
+                self.folderStatusMessage = "Dossier Source '\(cleanPath)' configuré avec succès"
             }
             await loadEnvironmentData()
         } catch {

@@ -36,18 +36,22 @@ public struct AppSettings: Codable, Hashable, Sendable {
         }
     }
 
-    public enum StorageProviderType: String, Codable, Sendable, CaseIterable {
+    public enum StorageProviderType: String, Codable, Sendable, CaseIterable, Identifiable {
         case dropbox = "dropbox"
         case nextcloud = "nextcloud"
+        case oneDrive = "oneDrive"
         case googleDrive = "googleDrive"
         case local = "local"
+
+        public var id: String { rawValue }
 
         public var displayName: String {
             switch self {
             case .dropbox: return "Dropbox"
             case .nextcloud: return "Nextcloud (Nuage Éducation)"
+            case .oneDrive: return "Microsoft OneDrive"
             case .googleDrive: return "Google Drive"
-            case .local: return "Dossier Local"
+            case .local: return "Dossier Local (Démo)"
             }
         }
 
@@ -55,7 +59,8 @@ public struct AppSettings: Codable, Hashable, Sendable {
             switch self {
             case .dropbox: return "shippingbox.fill"
             case .nextcloud: return "cloud.fill"
-            case .googleDrive: return "externaldrive.fill.badge.icloud"
+            case .oneDrive: return "server.rack"
+            case .googleDrive: return "triangle.fill"
             case .local: return "folder.fill"
             }
         }

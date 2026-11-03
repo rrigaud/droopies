@@ -3,7 +3,7 @@
 //  Dropies
 //
 //  Navigation principale adaptative iPadOS & macOS (NavigationSplitView).
-//  Sublimée avec le style Liquid Glass, barres translucides et icônes vibrantes.
+//  Sublimée avec le style Liquid Glass, barres translucides et sélecteur de Cloud actif.
 //
 
 import SwiftUI
@@ -37,8 +37,18 @@ public struct MainSplitView: View {
     @Bindable public var appState: AppState
     @State private var selectedTab: NavigationTab? = .correction
 
+    @State private var showFolderPicker: Bool = false
+    @State private var showCloudSetupSheet: Bool = false
+
     public init(appState: AppState) {
         self.appState = appState
+    }
+
+    private var activeRootPath: String {
+        if let dropbox = appState.storageManager.activeProvider as? DropboxStorageProvider {
+            return dropbox.rootFolderPath.isEmpty ? "/" : dropbox.rootFolderPath
+        }
+        return "Local"
     }
 
     public var body: some View {
@@ -67,6 +77,69 @@ public struct MainSplitView: View {
                             .clipShape(Capsule())
                     }
                     .padding(.vertical, 4)
+                }
+
+                // MARK: - Sélecteur de Compte & Dossier Cloud Actif (Menu Déroulant)
+                Section {
+                    Menu {
+                        Section("Stockage Actif") {
+                            Label(appState.storageManager.activeProvider.providerType.displayName, systemImage: appState.storageManager.activeProvider.providerType.iconName)
+                            Label("Dossier : \(activeRootPath)", systemImage: "folder")
+                        }
+
+                        Divider()
+
+                        Button {
+                            showFolderPicker = true
+                        } label: {
+                            Label("Changer de dossier Source...", systemImage: "folder.badge.gearshape")
+                        }
+
+                        Button {
+                            showCloudSetupSheet = true
+                        } label: {
+                            Label("Changer de compte ou de Cloud...", systemImage: "arrow.triangle.2.circlepath")
+                        }
+
+                        Divider()
+
+                        Button {
+                            Task { await appState.loadInitialData() }
+                        } label: {
+                            Label("Recharger les données", systemImage: "arrow.clockwise")
+                        }
+                    } label: {
+                        HStack(spacing: 8) {
+                            Circle()
+                                .fill(appState.storageManager.activeProvider.isConnected ? Color.green : Color.orange)
+                                .frame(width: 8, height: 8)
+
+                            Image(systemName: appState.storageManager.activeProvider.providerType.iconName)
+                                .foregroundColor(.blue)
+
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(appState.storageManager.activeProvider.providerType.displayName)
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundColor(.primary)
+
+                                Text(activeRootPath)
+                                    .font(.system(size: 10, design: .monospaced))
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                            }
+
+                            Spacer()
+
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(Color.primary.opacity(0.04))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                    }
+                    .buttonStyle(.plain)
                 }
 
                 Section("Flux de Correction") {
@@ -116,6 +189,31 @@ public struct MainSplitView: View {
                 case .none:
                     CorrectionWorkflowView(appState: appState)
                 }
+            }
+            .withLiquidGlassBackground()
+        }
+        .sheet(isPresented: $showFolderPicker) {
+            CloudFolderPickerSheet(
+                provider: appState.storageManager.activeProvider,
+                initialPath: (appState.storageManager.activeProvider as? DropboxStorageProvider)?.rootFolderPath ?? ""
+            ) { chosenPath in
+                if let dropbox = appState.storageManager.activeProvider as? DropboxStorageProvider {
+                    dropbox.configure(
+                        appKey: dropbox.appKey,
+                        refreshToken: dropbox.refreshToken,
+                        accessToken: dropbox.accessToken,
+                        rootFolderPath: chosenPath
+                    )
+                }
+                Task {
+                    try? await appState.storageManager.ensureSourceFolderStructure()
+                    await appState.loadInitialData()
+                }
+            }
+        }
+        .sheet(isPresented: $showCloudSetupSheet) {
+            SplashSetupView(appState: appState) {
+                showCloudSetupSheet = false
             }
         }
         .task {
