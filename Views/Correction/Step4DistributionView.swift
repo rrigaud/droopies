@@ -1,9 +1,9 @@
 //
-//  Step3DistributionView.swift
+//  Step4DistributionView.swift
 //  Dropies
 //
-//  Étape 3 : Synthèse des notes, calcul des moyennes, export pour Pronote / Excel
-//  et distribution des copies PDF vers les dossiers élèves et le Cloud.
+//  Étape 4 : Synthèse des notes, export pour Pronote / Excel,
+//  distribution des copies individuelles et fusion du backup (en mode rattrapage).
 //
 
 import SwiftUI
@@ -14,7 +14,7 @@ import AppKit
 import UIKit
 #endif
 
-public struct Step3DistributionView: View {
+public struct Step4DistributionView: View {
     @Bindable public var appState: AppState
     @Binding public var currentStep: Int
 
@@ -41,7 +41,7 @@ public struct Step3DistributionView: View {
             // MARK: - Barre supérieure de navigation
             HStack(spacing: 16) {
                 Button {
-                    currentStep = 2
+                    currentStep = 3
                 } label: {
                     Label("Identification", systemImage: "arrow.left")
                 }
@@ -50,6 +50,10 @@ public struct Step3DistributionView: View {
 
                 Text(evaluation?.title.isEmpty == false ? evaluation!.title : "Distribution du devoir")
                     .font(.headline)
+
+                if evaluation?.isCatchUp == true {
+                    BadgeView("Rattrapage d'absents", icon: "arrow.triangle.merge", style: .warning)
+                }
 
                 Spacer()
 
@@ -69,8 +73,11 @@ public struct Step3DistributionView: View {
                 Button {
                     distributeCopies()
                 } label: {
-                    Label("Distribuer les copies", systemImage: "icloud.and.arrow.up.fill")
-                        .fontWeight(.semibold)
+                    Label(
+                        evaluation?.isCatchUp == true ? "Distribuer & Fusionner Backup" : "Distribuer les copies",
+                        systemImage: "icloud.and.arrow.up.fill"
+                    )
+                    .fontWeight(.semibold)
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(.blue)
@@ -84,10 +91,29 @@ public struct Step3DistributionView: View {
 
             ScrollView {
                 VStack(spacing: 20) {
+                    // Bannière informative si mode fusion de backup
+                    if let eval = evaluation, eval.isCatchUp, let backupName = eval.existingBackupFileName {
+                        HStack(spacing: 10) {
+                            Image(systemName: "arrow.triangle.merge")
+                                .foregroundColor(.orange)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Fusion de sauvegarde automatique")
+                                    .font(.subheadline.bold())
+                                Text("Les copies de ce rattrapage seront ajoutées à la fin de l'archive existante : \(backupName)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                        }
+                        .padding(12)
+                        .background(Color.orange.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                    }
+
                     // MARK: - Cartes KPI Synthèse
                     HStack(spacing: 14) {
                         KPICard(
-                            title: "Copies identifiées",
+                            title: "Copies traitées",
                             value: "\(evaluation?.identifiedCount ?? 0) / \(evaluation?.totalCopies ?? 0)",
                             subtitle: "\(evaluation?.absentCount ?? 0) élève(s) absent(s)",
                             icon: "checkmark.seal.fill",
@@ -95,7 +121,7 @@ public struct Step3DistributionView: View {
                         )
 
                         KPICard(
-                            title: "Moyenne de la classe",
+                            title: "Moyenne calculée",
                             value: evaluation?.classAverage != nil ? String(format: "%.2f / %.0f", evaluation!.classAverage!, evaluation?.maxScore ?? 20) : "—",
                             subtitle: "Sur \(copies.filter { !$0.isAbsent && $0.grade != nil }.count) copie(s) notée(s)",
                             icon: "chart.bar.fill",
@@ -115,7 +141,7 @@ public struct Step3DistributionView: View {
                     if isDistributing {
                         VStack(alignment: .leading, spacing: 6) {
                             HStack {
-                                Text("Génération et téléversement des copies...")
+                                Text("Génération, fusion du backup et envoi Cloud...")
                                     .font(.subheadline.bold())
                                 Spacer()
                                 Text("\(Int(distributionProgress * 100)) %")
@@ -275,7 +301,7 @@ public struct Step3DistributionView: View {
         Task {
             let total = Double(eval.copies.count)
             for i in 0..<eval.copies.count {
-                try? await Task.sleep(nanoseconds: 150_000_000)
+                try? await Task.sleep(nanoseconds: 120_000_000)
                 await MainActor.run {
                     self.distributionProgress = Double(i + 1) / max(1.0, total)
                     eval.copies[i].cloudSyncStatus = .synced
@@ -285,7 +311,11 @@ public struct Step3DistributionView: View {
 
             await MainActor.run {
                 self.isDistributing = false
-                self.distributionSuccessMessage = "Toutes les copies ont été distribuées et synchronisées avec succès !"
+                if eval.isCatchUp {
+                    self.distributionSuccessMessage = "Rattrapage terminé ! Copies distribuées et backup fusionné avec succès."
+                } else {
+                    self.distributionSuccessMessage = "Toutes les copies ont été distribuées et synchronisées avec succès !"
+                }
             }
         }
     }

@@ -179,6 +179,45 @@ public final class DropboxStorageProvider: StorageProvider, @unchecked Sendable 
         }
     }
 
+    public func moveItem(from sourcePath: String, to destinationPath: String) async throws {
+        let token = try await getValidAccessToken()
+        let fromPath = normalizeRemotePath(sourcePath)
+        let toPath = normalizeRemotePath(destinationPath)
+
+        var request = URLRequest(url: URL(string: "https://api.dropboxapi.com/2/files/move_v2")!)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: [
+            "from_path": fromPath,
+            "to_path": toPath,
+            "autorename": false
+        ])
+
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            let msg = String(data: data, encoding: .utf8) ?? ""
+            throw StorageError.serverError(statusCode: (response as? HTTPURLResponse)?.statusCode ?? 500, message: msg)
+        }
+    }
+
+    public func deleteItem(at path: String) async throws {
+        let token = try await getValidAccessToken()
+        let remotePath = normalizeRemotePath(path)
+
+        var request = URLRequest(url: URL(string: "https://api.dropboxapi.com/2/files/delete_v2")!)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["path": remotePath])
+
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse, (httpResponse.statusCode == 200 || httpResponse.statusCode == 409) else {
+            let msg = String(data: data, encoding: .utf8) ?? ""
+            throw StorageError.serverError(statusCode: (response as? HTTPURLResponse)?.statusCode ?? 500, message: msg)
+        }
+    }
+
     public func readData(at path: String) async throws -> Data {
         let token = try await getValidAccessToken()
         let remotePath = normalizeRemotePath(path)

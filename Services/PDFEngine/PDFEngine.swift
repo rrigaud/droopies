@@ -133,6 +133,30 @@ public final class PDFEngine: @unchecked Sendable {
             throw PDFEngineError.writeFailed(url: destinationURL)
         }
     }
+
+    // MARK: - Concaténation & Fusion (Rattrapages d'élèves absents)
+
+    /// Ajoute toutes les pages de `source` à la fin de `destination`
+    public func appendPages(from source: PDFDocument, to destination: PDFDocument) {
+        let currentCount = destination.pageCount
+        for i in 0..<source.pageCount {
+            if let page = source.page(at: i) {
+                destination.insert(page, at: currentCount + i)
+            }
+        }
+    }
+
+    /// Fusionne un document source à la fin du document de sauvegarde existant sur disque
+    public func appendAndSave(from sourceURL: URL, to targetBackupURL: URL) throws {
+        guard let targetDoc = PDFDocument(url: targetBackupURL) else {
+            throw PDFEngineError.cannotOpenDocument(url: targetBackupURL)
+        }
+        guard let sourceDoc = PDFDocument(url: sourceURL) else {
+            throw PDFEngineError.cannotOpenDocument(url: sourceURL)
+        }
+        appendPages(from: sourceDoc, to: targetDoc)
+        try saveDocument(targetDoc, to: targetBackupURL)
+    }
 }
 
 public enum PDFEngineError: LocalizedError {

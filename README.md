@@ -20,17 +20,26 @@
 
 ```text
 ┌───────────────────────────────────────────────────────────────┐
-│              FLUX QUOTIDIEN DE CORRECTION DROPIES              │
+│         FLUX QUOTIDIEN DE CORRECTION DROPIES (4 ÉTAPES)       │
 └───────────────────────────────────────────────────────────────┘
   │
-  ├── 1️⃣ ÉTAPE 1 : ATELIER STYLET (Apple Pencil & Scan brut)
-  │   Importation du gros PDF photocopieur ➔ Correction au stylet plein écran
+  ├── 1️⃣ ÉTAPE 1 : ATELIER STYLET (Apple Pencil & Multitâche)
+  │   Correction asynchrone de plusieurs paquets dans `Evaluations/A corriger/`
+  │   Marquage d'un scan terminé avec le préfixe `CORRIGE_`
   │
-  ├── 2️⃣ ÉTAPE 2 : DÉCOUPAGE & IDENTIFICATION (Vision OCR)
-  │   Découpage 1 à 6 pages ➔ Lecture manuscrite du nom ➔ Saisie de note ultra-rapide au clavier
+  ├── 2️⃣ ÉTAPE 2 : CHARGEMENT DES COPIES & MODE RATTRAPAGE
+  │   Pré-sélection automatique des scans `CORRIGE_`
+  │   OU Sélection d'une évaluation déjà distribuée (`Evaluations/Backup/`) pour les absents
+  │   Auto-remplissage de la Classe, Date et Titre
   │
-  └── 3️⃣ ÉTAPE 3 : DISTRIBUTION & SYNTHÈSE (Cloud Background)
-      Moyenne de classe, min/max ➔ Export Pronote ➔ Envoi silencieux vers les dossiers élèves
+  ├── 3️⃣ ÉTAPE 3 : DÉCOUPAGE & IDENTIFICATION (Vision OCR)
+  │   Filtrage intelligent : ne propose que les élèves sans note/sans copie en mode rattrapage
+  │   Lecture manuscrite du nom (Apple Vision) + Saisie de note ultra-rapide au clavier
+  │
+  └── 4️⃣ ÉTAPE 4 : DISTRIBUTION & SYNTHÈSE (Cloud Background)
+      Moyenne de classe, min/max ➔ Export Pronote en 1 clic
+      Fusion automatique du PDF avec le Backup existant (ajout des copies des absents)
+      Envoi silencieux vers les dossiers élèves sur le Cloud
 ```
 
 ---

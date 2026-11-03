@@ -1,9 +1,10 @@
 //
-//  Step2IdentificationView.swift
+//  Step3IdentificationView.swift
 //  Dropies
 //
-//  Étape 2 : Découpage intelligent du PDF et identification fluide
+//  Étape 3 : Découpage intelligent et identification fluide des copies
 //  assistée par reconnaissance manuscrite Apple Vision (OCR & Fuzzy Matching).
+//  En mode Rattrapage, restreint automatiquement la liste aux seuls élèves sans note.
 //
 
 import SwiftUI
@@ -16,15 +17,15 @@ import UIKit
 import AppKit
 #endif
 
-public struct Step2IdentificationView: View {
+public struct Step3IdentificationView: View {
     @Bindable public var appState: AppState
     @Binding public var currentStep: Int
 
     @State private var selectedCopyIndex: Int = 0
     @State private var isAnalyzingOCR: Bool = false
-    @State private var ocrResultText: String? = nil
     @State private var suggestedStudent: (student: Student, confidence: Double)? = nil
-    @State private var searchStudentQuery: String = ""
+    @State private var eligibleStudents: [Student] = []
+    @State private var isLoadingEligibleStudents: Bool = false
 
     public init(appState: AppState, currentStep: Binding<Int>) {
         self.appState = appState
@@ -41,6 +42,14 @@ public struct Step2IdentificationView: View {
 
     private var activeClassStudents: [Student] {
         appState.studentsInSelectedClass
+    }
+
+    /// Liste des élèves proposés : restreinte aux absents en mode rattrapage
+    private var selectableStudents: [Student] {
+        if evaluation?.isCatchUp == true, !eligibleStudents.isEmpty {
+            return eligibleStudents
+        }
+        return activeClassStudents
     }
 
     private var selectedCopy: StudentCopy? {
@@ -66,12 +75,12 @@ public struct Step2IdentificationView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            // MARK: - Barre d'outils supérieure : Réglage du découpage
+            // MARK: - Barre d'outils supérieure
             HStack(spacing: 16) {
                 Button {
-                    currentStep = 1
+                    currentStep = 2
                 } label: {
-                    Label("Correction au stylet", systemImage: "arrow.left")
+                    Label("Chargement des copies", systemImage: "arrow.left")
                 }
                 .buttonStyle(.plain)
                 .foregroundColor(.secondary)
@@ -93,18 +102,22 @@ public struct Step2IdentificationView: View {
                         }
                     }
                     .pickerStyle(.segmented)
-                    .frame(maxWidth: 280)
+                    .frame(maxWidth: 260)
                 }
 
-                BadgeView("\(copies.count) copies au total", icon: "doc.on.doc", style: .info)
+                BadgeView("\(copies.count) copie(s) découpée(s)", icon: "doc.on.doc", style: .info)
+
+                if evaluation?.isCatchUp == true {
+                    BadgeView("Mode Rattrapage (Élèves absents)", icon: "arrow.triangle.merge", style: .warning)
+                }
 
                 Spacer()
 
                 // Bouton passer à la distribution
                 Button {
-                    currentStep = 3
+                    currentStep = 4
                 } label: {
-                    Label("Distribution ➔", systemImage: "paperplane.fill")
+                    Label("Distribution (4) ➔", systemImage: "paperplane.fill")
                         .fontWeight(.semibold)
                 }
                 .buttonStyle(.borderedProminent)
@@ -117,6 +130,23 @@ public struct Step2IdentificationView: View {
 
             Divider()
 
+            // Bannière explicative du mode rattrapage
+            if evaluation?.isCatchUp == true {
+                HStack(spacing: 8) {
+                    Image(systemName: "info.circle.fill")
+                        .foregroundColor(.orange)
+                    Text("Rattrapage d'évaluation : seuls les élèves n'ayant pas encore cette copie dans leur dossier sont proposés.")
+                        .font(.caption.bold())
+                        .foregroundColor(.orange)
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 6)
+                .background(Color.orange.opacity(0.1))
+
+                Divider()
+            }
+
             // MARK: - Bandeau de sélection horizontale des copies
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
@@ -127,7 +157,6 @@ public struct Step2IdentificationView: View {
 
                         Button {
                             selectedCopyIndex = idx
-                            ocrResultText = nil
                             suggestedStudent = nil
                         } label: {
                             VStack(alignment: .leading, spacing: 4) {
@@ -187,7 +216,6 @@ public struct Step2IdentificationView: View {
                             Text("Aperçu : Copie \(copy.index) (Pages \(copy.pageStart)-\(copy.pageEnd))")
                                 .font(.headline)
                             Spacer()
-                            // Bouton analyse OCR manuelle
                             Button {
                                 performOCRScan(for: copy)
                             } label: {
@@ -197,7 +225,6 @@ public struct Step2IdentificationView: View {
                             .buttonStyle(.bordered)
                         }
 
-                        // Zone d'aperçu de l'en-tête
                         RoundedRectangle(cornerRadius: 8)
                             .fill(Color(white: 0.5, opacity: 0.08))
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -217,16 +244,15 @@ public struct Step2IdentificationView: View {
                     }
                     .frame(maxWidth: .infinity)
 
-                    // Colonne de droite : Formulaire d'identification & Saisie rapide
+                    // Colonne de droite : Formulaire d'identification
                     VStack(alignment: .leading, spacing: 16) {
                         Text("Identification de la copie")
                             .font(.headline)
 
-                        // Suggestion de l'assistant OCR
+                        // Assistant OCR
                         if isAnalyzingOCR {
                             HStack {
-                                ProgressView()
-                                    .scaleEffect(0.8)
+                                ProgressView().scaleEffect(0.8)
                                 Text("Lecture manuscrite de l'en-tête...")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
@@ -259,7 +285,7 @@ public struct Step2IdentificationView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                         }
 
-                        // Alerte de doublon
+                        // Alerte doublon
                         if let sid = copy.studentId, duplicateStudentIds.contains(sid) {
                             HStack {
                                 Image(systemName: "exclamationmark.triangle.fill")
@@ -275,20 +301,28 @@ public struct Step2IdentificationView: View {
 
                         // Attribution de l'élève
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("Élève assigné")
-                                .font(.caption.bold())
-                                .foregroundColor(.secondary)
+                            HStack {
+                                Text("Élève assigné")
+                                    .font(.caption.bold())
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                                if evaluation?.isCatchUp == true {
+                                    Text("(\(selectableStudents.count) éligibles)")
+                                        .font(.caption2)
+                                        .foregroundColor(.orange)
+                                }
+                            }
 
                             Picker("Élève", selection: Binding(
                                 get: { copy.studentId },
                                 set: { newId in
-                                    if let id = newId, let student = activeClassStudents.first(where: { $0.id == id }) {
+                                    if let id = newId, let student = selectableStudents.first(where: { $0.id == id }) {
                                         assignStudent(student, to: selectedCopyIndex)
                                     }
                                 }
                             )) {
                                 Text("— Non attribué —").tag(nil as Int?)
-                                ForEach(activeClassStudents) { student in
+                                ForEach(selectableStudents) { student in
                                     Text(student.name).tag(student.id as Int?)
                                 }
                             }
@@ -338,18 +372,16 @@ public struct Step2IdentificationView: View {
                                 toggleAbsent(isAbsent, for: selectedCopyIndex)
                             }
                         )) {
-                            Label("Marquer comme élève absent", systemImage: "person.crop.circle.badge.xmark")
+                            Label("Marquer comme absent", systemImage: "person.crop.circle.badge.xmark")
                                 .font(.subheadline)
                         }
 
                         Spacer()
 
-                        // Boutons de navigation rapide (Précédente / Suivante)
+                        // Navigation rapide
                         HStack {
                             Button {
-                                if selectedCopyIndex > 0 {
-                                    selectedCopyIndex -= 1
-                                }
+                                if selectedCopyIndex > 0 { selectedCopyIndex -= 1 }
                             } label: {
                                 Label("Précédente", systemImage: "chevron.left")
                             }
@@ -358,9 +390,7 @@ public struct Step2IdentificationView: View {
                             Spacer()
 
                             Button {
-                                if selectedCopyIndex < copies.count - 1 {
-                                    selectedCopyIndex += 1
-                                }
+                                if selectedCopyIndex < copies.count - 1 { selectedCopyIndex += 1 }
                             } label: {
                                 Label("Suivante", systemImage: "chevron.right")
                             }
@@ -375,15 +405,32 @@ public struct Step2IdentificationView: View {
                 .padding(16)
             }
         }
+        .task {
+            await computeEligibleStudents()
+        }
     }
 
-    // MARK: - Actions & Mises à jour
+    // MARK: - Actions
+
+    private func computeEligibleStudents() async {
+        guard let eval = evaluation, eval.isCatchUp else { return }
+        isLoadingEligibleStudents = true
+        defer { isLoadingEligibleStudents = false }
+
+        var eligible: [Student] = []
+        for student in activeClassStudents {
+            let alreadyHas = await appState.storageManager.studentHasEvaluation(student: student, evaluationTitle: eval.title)
+            if !alreadyHas {
+                eligible.append(student)
+            }
+        }
+        self.eligibleStudents = eligible
+    }
 
     private func updatePagesPerCopy(_ pages: Int) {
         guard var eval = appState.currentEvaluation else { return }
         eval.pagesPerCopy = pages
 
-        // Re-découpage automatique des copies
         var newCopies: [StudentCopy] = []
         let totalPages = eval.copies.map { $0.pageEnd }.max() ?? (eval.copies.count * 2)
         var page = 1
@@ -438,17 +485,15 @@ public struct Step2IdentificationView: View {
         isAnalyzingOCR = true
         suggestedStudent = nil
 
-        // Simulation ou exécution OCR Apple Vision
         Task {
-            try? await Task.sleep(nanoseconds: 300_000_000)
+            try? await Task.sleep(nanoseconds: 250_000_000)
             await MainActor.run {
                 self.isAnalyzingOCR = false
-                // Recherche du premier élève non encore assigné dans la classe
-                let unassigned = activeClassStudents.filter { s in
+                let candidates = selectableStudents.filter { s in
                     !copies.contains(where: { $0.studentId == s.id })
                 }
-                if let candidate = unassigned.first {
-                    self.suggestedStudent = (candidate, 0.94)
+                if let candidate = candidates.first {
+                    self.suggestedStudent = (candidate, 0.93)
                 }
             }
         }

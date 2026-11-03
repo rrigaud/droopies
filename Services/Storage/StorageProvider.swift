@@ -56,6 +56,8 @@ public protocol StorageProvider: AnyObject, Sendable {
     func itemExists(at path: String) async throws -> Bool
     func createDirectory(at path: String) async throws
     func listContents(at path: String) async throws -> [CloudItem]
+    func moveItem(from sourcePath: String, to destinationPath: String) async throws
+    func deleteItem(at path: String) async throws
 
     // MARK: - Lecture et Écriture de données brutes
     func readData(at path: String) async throws -> Data

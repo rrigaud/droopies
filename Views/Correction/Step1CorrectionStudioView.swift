@@ -2,8 +2,9 @@
 //  Step1CorrectionStudioView.swift
 //  Dropies
 //
-//  Étape 1 : Atelier de correction au stylet (Apple Pencil + PencilKit)
-//  et préparation de l'évaluation (Scan brut, classe, titre, barème).
+//  Étape 1 : Atelier de correction au stylet (Apple Pencil + PencilKit).
+//  Permet de corriger plusieurs paquets de copies en parallèle dans `Evaluations/A corriger/`
+//  et de marquer un paquet comme terminé avec le préfixe `CORRIGE_`.
 //
 
 import SwiftUI
@@ -15,17 +16,17 @@ public struct Step1CorrectionStudioView: View {
     @Bindable public var appState: AppState
     @Binding public var currentStep: Int
 
+    @State private var availableScans: [StorageManager.ScanItem] = []
+    @State private var selectedScan: StorageManager.ScanItem? = nil
     @State private var pdfURL: URL? = nil
     @State private var pdfDocument: PDFDocument? = nil
     @State private var currentPageIndex: Int = 0
     @State private var pageDrawings: [Int: PKDrawing] = [:]
     @State private var currentDrawing: PKDrawing = PKDrawing()
 
-    @State private var evalTitle: String = ""
-    @State private var evalDate: Date = Date()
-    @State private var evalMaxScore: Double = 20.0
     @State private var isImporterPresented: Bool = false
     @State private var isFullScreenCanvas: Bool = false
+    @State private var showMarkedToast: String? = nil
 
     public init(appState: AppState, currentStep: Binding<Int>) {
         self.appState = appState
@@ -38,56 +39,83 @@ public struct Step1CorrectionStudioView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            // MARK: - Barre d'outils supérieure (Métadonnées & Fichier)
-            HStack(spacing: 16) {
-                // Bouton d'importation PDF
-                Button {
-                    isImporterPresented = true
-                } label: {
-                    Label(
-                        pdfURL == nil ? "Importer le scan PDF" : pdfURL!.lastPathComponent,
-                        systemImage: pdfURL == nil ? "doc.badge.plus" : "doc.text.fill"
-                    )
-                    .fontWeight(.medium)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(pdfURL == nil ? .blue : .secondary)
-
-                Divider()
-                    .frame(height: 24)
-
-                // Sélecteur de classe
-                Picker("Classe", selection: $appState.selectedClassId) {
-                    Text("Choisir une classe").tag(nil as String?)
-                    ForEach(appState.classes) { group in
-                        Text(group.name).tag(group.id as String?)
+            // MARK: - Barre d'outils supérieure
+            HStack(spacing: 14) {
+                // Menu de sélection des paquets dans `Evaluations/A corriger`
+                Menu {
+                    Section("Paquets en attente dans A corriger") {
+                        ForEach(availableScans) { scan in
+                            Button {
+                                loadScanItem(scan)
+                            } label: {
+                                HStack {
+                                    if scan.isCorrected {
+                                        Label(scan.cleanTitle, systemImage: "checkmark.seal.fill")
+                                    } else {
+                                        Label(scan.cleanTitle, systemImage: "doc.text")
+                                    }
+                                }
+                            }
+                        }
                     }
+
+                    Divider()
+
+                    Button {
+                        isImporterPresented = true
+                    } label: {
+                        Label("Importer un autre PDF...", systemImage: "plus.rectangle.on.folder")
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: selectedScan?.isCorrected == true ? "checkmark.circle.fill" : "folder.fill")
+                            .foregroundColor(selectedScan?.isCorrected == true ? .green : .blue)
+                        Text(selectedScan?.cleanTitle ?? (pdfURL?.lastPathComponent ?? "Choisir un paquet de copies"))
+                            .fontWeight(.medium)
+                            .lineLimit(1)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color(white: 0.5, opacity: 0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
-                .pickerStyle(.menu)
-                .frame(maxWidth: 160)
+                .buttonStyle(.plain)
 
-                // Titre de l'évaluation
-                TextField("Titre du devoir (ex: DS 02 - Fractions)", text: $evalTitle)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(maxWidth: 240)
+                // Badge de statut du scan en cours
+                if let scan = selectedScan {
+                    if scan.isCorrected {
+                        BadgeView("Paquet Corrigé", icon: "checkmark.seal.fill", style: .success)
+                    } else {
+                        BadgeView("En cours", icon: "pencil", style: .warning)
+                    }
 
-                // Date
-                DatePicker("", selection: $evalDate, displayedComponents: .date)
-                    .labelsHidden()
+                    // Bouton pour marquer comme CORRIGÉ
+                    Button {
+                        toggleCorrectedStatus(for: scan)
+                    } label: {
+                        Label(
+                            scan.isCorrected ? "Démarquer (En cours)" : "Marquer comme Corrigé (CORRIGE_)",
+                            systemImage: scan.isCorrected ? "arrow.uturn.backward" : "checkmark.circle"
+                        )
+                        .font(.caption.bold())
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(scan.isCorrected ? .orange : .green)
+                }
 
                 Spacer()
 
-                // Barème
-                HStack(spacing: 6) {
-                    Text("Sur")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    TextField("20", value: $evalMaxScore, format: .number)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 50)
+                if let toast = showMarkedToast {
+                    Text(toast)
+                        .font(.caption.bold())
+                        .foregroundColor(.green)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(Color.green.opacity(0.12))
+                        .clipShape(Capsule())
                 }
 
-                // Bouton plein écran pour la correction au stylet
+                // Bouton plein écran pour correction confortable au stylet
                 Button {
                     isFullScreenCanvas.toggle()
                 } label: {
@@ -96,27 +124,27 @@ public struct Step1CorrectionStudioView: View {
                 }
                 .help("Bascule plein écran stylet")
 
-                // Bouton passer à l'étape suivante
+                // Bouton pour passer au chargement des copies
                 Button {
-                    proceedToStep2()
+                    saveCurrentDrawing()
+                    currentStep = 2
                 } label: {
-                    Label("Découpage ➔", systemImage: "scissors")
+                    Label("Chargement des copies (2) ➔", systemImage: "arrow.right.circle.fill")
                         .fontWeight(.semibold)
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(.green)
-                .disabled(pdfDocument == nil || (appState.selectedClassId == nil && appState.classes.isEmpty))
+                .tint(.blue)
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.vertical, 10)
             .background(Color(white: 0.5, opacity: 0.06))
 
             Divider()
 
-            // MARK: - Espace de travail de correction
+            // MARK: - Espace de travail de correction au stylet
             if let document = pdfDocument {
                 ZStack {
-                    // Vue PDF Kit sous-jacente
+                    // Vue PDFKit sous-jacente
                     PDFKitView(document: document, currentPageIndex: currentPageIndex)
                         .edgesIgnoringSafeArea(.all)
 
@@ -124,7 +152,7 @@ public struct Step1CorrectionStudioView: View {
                     PencilCanvasOverlay(drawing: $currentDrawing)
                         .edgesIgnoringSafeArea(.all)
 
-                    // Barre de navigation entre pages
+                    // Barre flottante de navigation entre les pages
                     VStack {
                         Spacer()
                         HStack(spacing: 16) {
@@ -171,25 +199,57 @@ public struct Step1CorrectionStudioView: View {
                     }
                 }
             } else {
-                // Écran d'accueil de dépôt de scan
+                // Aucun paquet ouvert
                 VStack(spacing: 20) {
-                    Image(systemName: "doc.viewfinder.fill")
+                    Image(systemName: "pencil.and.outline")
                         .font(.system(size: 64))
                         .foregroundColor(.blue.opacity(0.8))
 
-                    Text("Aucun scan PDF chargé")
+                    Text("Atelier de Correction au Stylet")
                         .font(.title2.bold())
 
-                    Text("Déposez le PDF issu du photocopieur ou cliquez ci-dessous pour démarrer la correction au stylet Apple Pencil.")
+                    Text("Sélectionnez un paquet scanné dans le dossier « A corriger » pour annoter vos copies au stylet Apple Pencil à votre rythme.")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
-                        .frame(maxWidth: 420)
+                        .frame(maxWidth: 440)
+
+                    if !availableScans.isEmpty {
+                        VStack(spacing: 8) {
+                            Text("Paquets disponibles dans Evaluations/A corriger/ :")
+                                .font(.caption.bold())
+                                .foregroundColor(.secondary)
+
+                            ForEach(availableScans) { scan in
+                                Button {
+                                    loadScanItem(scan)
+                                } label: {
+                                    HStack {
+                                        Image(systemName: scan.isCorrected ? "checkmark.seal.fill" : "doc.text.fill")
+                                            .foregroundColor(scan.isCorrected ? .green : .blue)
+                                        Text(scan.name)
+                                            .fontWeight(.medium)
+                                        Spacer()
+                                        if scan.isCorrected {
+                                            BadgeView("Corrigé", style: .success)
+                                        } else {
+                                            BadgeView("En attente", style: .neutral)
+                                        }
+                                    }
+                                    .padding(10)
+                                    .frame(maxWidth: 380)
+                                    .background(Color(white: 0.5, opacity: 0.06))
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
 
                     Button {
                         isImporterPresented = true
                     } label: {
-                        Label("Sélectionner un fichier PDF", systemImage: "folder.badge.plus")
+                        Label("Importer un fichier PDF externe", systemImage: "folder.badge.plus")
                             .font(.headline)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 10)
@@ -200,6 +260,9 @@ public struct Step1CorrectionStudioView: View {
                 .background(Color(white: 0.5, opacity: 0.03))
             }
         }
+        .task {
+            await refreshAvailableScans()
+        }
         .fileImporter(
             isPresented: $isImporterPresented,
             allowedContentTypes: [.pdf],
@@ -208,16 +271,32 @@ public struct Step1CorrectionStudioView: View {
             switch result {
             case .success(let urls):
                 guard let url = urls.first else { return }
-                loadPDF(from: url)
+                loadPDFFromURL(url)
             case .failure(let error):
-                appState.errorMessage = "Erreur d'importation : \(error.localizedDescription)"
+                appState.errorMessage = "Erreur : \(error.localizedDescription)"
             }
         }
     }
 
-    // MARK: - Logique interne
+    // MARK: - Actions & Logique
 
-    private func loadPDF(from url: URL) {
+    private func refreshAvailableScans() async {
+        if let list = try? await appState.storageManager.listScans() {
+            self.availableScans = list
+            if selectedScan == nil, let first = list.first {
+                loadScanItem(first)
+            }
+        }
+    }
+
+    private func loadScanItem(_ scan: StorageManager.ScanItem) {
+        saveCurrentDrawing()
+        selectedScan = scan
+        let url = appState.storageManager.rootURL.appendingPathComponent("Evaluations/A corriger").appendingPathComponent(scan.name)
+        loadPDFFromURL(url)
+    }
+
+    private func loadPDFFromURL(_ url: URL) {
         let isAccessing = url.startAccessingSecurityScopedResource()
         defer {
             if isAccessing { url.stopAccessingSecurityScopedResource() }
@@ -229,57 +308,34 @@ public struct Step1CorrectionStudioView: View {
             self.currentPageIndex = 0
             self.pageDrawings.removeAll()
             self.currentDrawing = PKDrawing()
-
-            if evalTitle.isEmpty {
-                let baseName = url.deletingPathExtension().lastPathComponent
-                self.evalTitle = baseName
-            }
         }
     }
 
     private func changePage(to newIndex: Int) {
         guard newIndex >= 0, newIndex < totalPages else { return }
-        // Sauvegarde du dessin de la page courante
-        pageDrawings[currentPageIndex] = currentDrawing
+        saveCurrentDrawing()
         currentPageIndex = newIndex
-        // Chargement du dessin de la nouvelle page
         currentDrawing = pageDrawings[newIndex] ?? PKDrawing()
     }
 
-    private func proceedToStep2() {
-        guard let doc = pdfDocument else { return }
+    private func saveCurrentDrawing() {
         pageDrawings[currentPageIndex] = currentDrawing
+    }
 
-        let selectedClass = appState.selectedClass?.name ?? "Classe"
-        var eval = Evaluation(
-            title: evalTitle.isEmpty ? "Devoir" : evalTitle,
-            date: evalDate,
-            className: selectedClass,
-            maxScore: evalMaxScore,
-            pagesPerCopy: Evaluation.estimatePagesPerCopy(totalPages: doc.pageCount, expectedClassSize: appState.studentsInSelectedClass.count)
-        )
-
-        // Générer les copies initiales découpées
-        let pagesPerCopy = eval.pagesPerCopy
-        var copies: [StudentCopy] = []
-        var page = 1
-        var copyIdx = 1
-
-        while page <= doc.pageCount {
-            let pageEnd = min(page + pagesPerCopy - 1, doc.pageCount)
-            let drawingData = pageDrawings[page - 1]?.dataRepresentation()
-            copies.append(StudentCopy(
-                index: copyIdx,
-                pageStart: page,
-                pageEnd: pageEnd,
-                annotationsData: drawingData
-            ))
-            page += pagesPerCopy
-            copyIdx += 1
+    private func toggleCorrectedStatus(for scan: StorageManager.ScanItem) {
+        let targetState = !scan.isCorrected
+        Task {
+            try? await appState.storageManager.markScan(scan: scan, asCorrected: targetState)
+            await refreshAvailableScans()
+            if let updated = availableScans.first(where: { $0.cleanTitle == scan.cleanTitle }) {
+                await MainActor.run {
+                    self.selectedScan = updated
+                    self.showMarkedToast = targetState ? "Marqué comme CORRIGÉ !" : "Remis en cours"
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                        self.showMarkedToast = nil
+                    }
+                }
+            }
         }
-
-        eval.copies = copies
-        appState.currentEvaluation = eval
-        currentStep = 2
     }
 }

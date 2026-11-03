@@ -16,6 +16,8 @@ public struct Evaluation: Identifiable, Hashable, Sendable {
     public var maxScore: Double
     public var pagesPerCopy: Int
     public var copies: [StudentCopy]
+    public var isCatchUp: Bool
+    public var existingBackupFileName: String?
 
     public init(
         id: UUID = UUID(),
@@ -24,7 +26,9 @@ public struct Evaluation: Identifiable, Hashable, Sendable {
         className: String = "",
         maxScore: Double = 20.0,
         pagesPerCopy: Int = 2,
-        copies: [StudentCopy] = []
+        copies: [StudentCopy] = [],
+        isCatchUp: Bool = false,
+        existingBackupFileName: String? = nil
     ) {
         self.id = id
         self.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -33,11 +37,13 @@ public struct Evaluation: Identifiable, Hashable, Sendable {
         self.maxScore = maxScore
         self.pagesPerCopy = max(1, pagesPerCopy)
         self.copies = copies
+        self.isCatchUp = isCatchUp
+        self.existingBackupFileName = existingBackupFileName
     }
 
-    // MARK: - Formatage de date
+    // MARK: - Formatage & Parsing de date
 
-    private static let dateFormatter: DateFormatter = {
+    public static let dateFormatter: DateFormatter = {
         let df = DateFormatter()
         df.dateFormat = "yyyy-MM-dd"
         return df
@@ -49,9 +55,27 @@ public struct Evaluation: Identifiable, Hashable, Sendable {
 
     /// Nom officiel de l'archive de sauvegarde : "YYYY-MM-DD - Classe - Titre.pdf"
     public var backupFileName: String {
+        if let existing = existingBackupFileName, !existing.isEmpty {
+            return existing
+        }
         let cleanClass = Student.sanitizeFolderName(className)
         let cleanTitle = Student.sanitizeFolderName(title)
         return "\(formattedDate) - \(cleanClass) - \(cleanTitle).pdf"
+    }
+
+    /// Analyse le nom d'un fichier de sauvegarde pour en extraire la date, la classe et le titre
+    /// Format attendu : "YYYY-MM-DD - Classe - Titre.pdf"
+    public static func parseBackupFileName(_ filename: String) -> (date: Date?, className: String, title: String)? {
+        let clean = filename.replacingOccurrences(of: ".pdf", with: "", options: .caseInsensitive)
+        let parts = clean.components(separatedBy: " - ")
+        guard parts.count >= 3 else { return nil }
+
+        let dateString = parts[0].trimmingCharacters(in: .whitespaces)
+        let parsedDate = dateFormatter.date(from: dateString)
+        let className = parts[1].trimmingCharacters(in: .whitespaces)
+        let title = parts[2...].joined(separator: " - ").trimmingCharacters(in: .whitespaces)
+
+        return (parsedDate, className, title)
     }
 
     // MARK: - Statistiques calculées

@@ -143,4 +143,92 @@ public final class StorageManager: @unchecked Sendable {
         let path = "Evaluations/Eleves/\(Student.sanitizeFolderName(student.classe))/\(student.folderName)"
         return (try? await activeProvider.itemExists(at: path)) ?? false
     }
+
+    // MARK: - Gestion des Scans dans `Evaluations/A corriger`
+
+    public struct ScanItem: Identifiable, Hashable, Sendable {
+        public var id: String { path }
+        public var name: String
+        public var path: String
+        public var isCorrected: Bool
+        public var cleanTitle: String {
+            if name.hasPrefix("CORRIGE_") {
+                return String(name.dropFirst("CORRIGE_".count))
+            } else if name.hasPrefix("Finished_") {
+                return String(name.dropFirst("Finished_".count))
+            }
+            return name
+        }
+    }
+
+    /// Liste tous les fichiers PDF en attente ou corrigés dans `Evaluations/A corriger`
+    public func listScans() async throws -> [ScanItem] {
+        try await ensureSourceFolderStructure()
+        let items = try await activeProvider.listContents(at: "Evaluations/A corriger")
+        return items
+            .filter { !$0.isDirectory && $0.name.lowercased().hasSuffix(".pdf") }
+            .map { item in
+                let isCorr = item.name.hasPrefix("CORRIGE_") || item.name.hasPrefix("Finished_")
+                return ScanItem(name: item.name, path: item.path, isCorrected: isCorr)
+            }
+            .sorted { $0.name < $1.name }
+    }
+
+    /// Marque un scan comme "CORRIGÉ" en préfixant son nom par `CORRIGE_`
+    public func markScan(scan: ScanItem, asCorrected: Bool) async throws {
+        let currentDir = "Evaluations/A corriger"
+        let newName: String
+        if asCorrected {
+            newName = scan.name.hasPrefix("CORRIGE_") ? scan.name : "CORRIGE_\(scan.name)"
+        } else {
+            newName = scan.cleanTitle
+        }
+        guard newName != scan.name else { return }
+        try await activeProvider.moveItem(from: "\(currentDir)/\(scan.name)", to: "\(currentDir)/\(newName)")
+    }
+
+    // MARK: - Gestion des Évaluations passées (`Evaluations/Backup`)
+
+    public struct ExistingBackup: Identifiable, Hashable, Sendable {
+        public var id: String { fileName }
+        public var fileName: String
+        public var path: String
+        public var date: Date?
+        public var className: String
+        public var evaluationTitle: String
+    }
+
+    /// Liste les évaluations déjà distribuées archivées dans `Evaluations/Backup`
+    public func listExistingBackups() async throws -> [ExistingBackup] {
+        try await ensureSourceFolderStructure()
+        let items = try await activeProvider.listContents(at: "Evaluations/Backup")
+        return items
+            .filter { !$0.isDirectory && $0.name.lowercased().hasSuffix(".pdf") }
+            .compactMap { item in
+                guard let parsed = Evaluation.parseBackupFileName(item.name) else { return nil }
+                return ExistingBackup(
+                    fileName: item.name,
+                    path: item.path,
+                    date: parsed.date,
+                    className: parsed.className,
+                    evaluationTitle: parsed.title
+                )
+            }
+            .sorted { ($0.date ?? Date.distantPast) > ($1.date ?? Date.distantPast) }
+    }
+
+    // MARK: - Détection des élèves ayant déjà une évaluation
+
+    /// Vérifie si un élève a déjà un PDF d'évaluation dans son dossier
+    public func studentHasEvaluation(student: Student, evaluationTitle: String) async -> Bool {
+        let classDir = Student.sanitizeFolderName(student.classe)
+        let studentDir = student.folderName
+        let path = "Evaluations/Eleves/\(classDir)/\(studentDir)"
+        guard let files = try? await activeProvider.listContents(at: path) else { return false }
+        let cleanTitle = Student.sanitizeFolderName(evaluationTitle).lowercased()
+        return files.contains { file in
+            let cleanFileName = file.name.lowercased()
+            return cleanFileName.contains(cleanTitle) && cleanFileName.hasSuffix(".pdf")
+        }
+    }
 }

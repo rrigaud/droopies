@@ -87,6 +87,26 @@ public final class LocalStorageProvider: StorageProvider, @unchecked Sendable {
         }
     }
 
+    public func moveItem(from sourcePath: String, to destinationPath: String) async throws {
+        let srcURL = try resolveURL(for: sourcePath)
+        let dstURL = try resolveURL(for: destinationPath)
+        guard fileManager.fileExists(atPath: srcURL.path) else {
+            throw StorageError.fileNotFound(path: sourcePath)
+        }
+        let parent = dstURL.deletingLastPathComponent()
+        if !fileManager.fileExists(atPath: parent.path) {
+            try fileManager.createDirectory(at: parent, withIntermediateDirectories: true)
+        }
+        try fileManager.moveItem(at: srcURL, to: dstURL)
+    }
+
+    public func deleteItem(at path: String) async throws {
+        let url = try resolveURL(for: path)
+        if fileManager.fileExists(atPath: url.path) {
+            try fileManager.removeItem(at: url)
+        }
+    }
+
     public func readData(at path: String) async throws -> Data {
         let url = try resolveURL(for: path)
         guard fileManager.fileExists(atPath: url.path) else {
