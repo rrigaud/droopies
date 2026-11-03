@@ -118,15 +118,13 @@ public struct Step3IdentificationView: View {
                     currentStep = 4
                 } label: {
                     Label("Distribution (4) ➔", systemImage: "paperplane.fill")
-                        .fontWeight(.semibold)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.green)
+                .buttonStyle(VibrantGradientButtonStyle(gradient: .electricBlue, isCompact: true))
                 .disabled(copies.isEmpty)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
-            .background(Color(white: 0.5, opacity: 0.06))
+            .background(.ultraThinMaterial)
 
             Divider()
 
@@ -149,7 +147,7 @@ public struct Step3IdentificationView: View {
 
             // MARK: - Bandeau de sélection horizontale des copies
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
+                HStack(spacing: 10) {
                     ForEach(0..<copies.count, id: \.self) { idx in
                         let copy = copies[idx]
                         let isSelected = idx == selectedCopyIndex
@@ -184,17 +182,16 @@ public struct Step3IdentificationView: View {
 
                                 if let grade = copy.grade {
                                     Text(String(format: "%.1f / %.0f", grade, evaluation?.maxScore ?? 20))
-                                        .font(.caption2)
+                                        .font(.caption2.bold())
                                         .foregroundColor(.blue)
                                 }
                             }
-                            .padding(8)
-                            .frame(width: 130, height: 68)
-                            .background(isSelected ? Color.blue.opacity(0.15) : Color(white: 0.5, opacity: 0.06))
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .padding(10)
+                            .frame(width: 130, height: 70)
+                            .glassCard(cornerRadius: 12, strokeOpacity: isSelected ? 0.6 : 0.18)
                             .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(isSelected ? Color.blue : Color.secondary.opacity(0.2), lineWidth: isSelected ? 2 : 1)
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 2)
                             )
                         }
                         .buttonStyle(.plain)
@@ -225,9 +222,10 @@ public struct Step3IdentificationView: View {
                             .buttonStyle(.bordered)
                         }
 
-                        RoundedRectangle(cornerRadius: 8)
+                        RoundedRectangle(cornerRadius: 14)
                             .fill(Color(white: 0.5, opacity: 0.08))
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .glassCard(cornerRadius: 14, strokeOpacity: 0.25)
                             .overlay(
                                 VStack(spacing: 8) {
                                     Image(systemName: "doc.text.magnifyingglass")
@@ -398,9 +396,8 @@ public struct Step3IdentificationView: View {
                         }
                     }
                     .frame(width: 320)
-                    .padding(16)
-                    .background(Color(white: 0.5, opacity: 0.05))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .padding(18)
+                    .glassCard(cornerRadius: 18)
                 }
                 .padding(16)
             }

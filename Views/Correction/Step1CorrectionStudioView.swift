@@ -5,6 +5,7 @@
 //  Étape 1 : Atelier de correction au stylet (Apple Pencil + PencilKit).
 //  Permet de corriger plusieurs paquets de copies en parallèle dans `Evaluations/A corriger/`
 //  et de marquer un paquet comme terminé avec le préfixe `CORRIGE_`.
+//  Sublimé avec barres d'outils flottantes et cartes de verre dépoli visionOS.
 //
 
 import SwiftUI
@@ -38,226 +39,33 @@ public struct Step1CorrectionStudioView: View {
     }
 
     public var body: some View {
-        VStack(spacing: 0) {
-            // MARK: - Barre d'outils supérieure
-            HStack(spacing: 14) {
-                // Menu de sélection des paquets dans `Evaluations/A corriger`
-                Menu {
-                    Section("Paquets en attente dans A corriger") {
-                        ForEach(availableScans) { scan in
-                            Button {
-                                loadScanItem(scan)
-                            } label: {
-                                HStack {
-                                    if scan.isCorrected {
-                                        Label(scan.cleanTitle, systemImage: "checkmark.seal.fill")
-                                    } else {
-                                        Label(scan.cleanTitle, systemImage: "doc.text")
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    Divider()
-
-                    Button {
-                        isImporterPresented = true
-                    } label: {
-                        Label("Importer un autre PDF...", systemImage: "plus.rectangle.on.folder")
-                    }
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: selectedScan?.isCorrected == true ? "checkmark.circle.fill" : "folder.fill")
-                            .foregroundColor(selectedScan?.isCorrected == true ? .green : .blue)
-                        Text(selectedScan?.cleanTitle ?? (pdfURL?.lastPathComponent ?? "Choisir un paquet de copies"))
-                            .fontWeight(.medium)
-                            .lineLimit(1)
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(Color(white: 0.5, opacity: 0.1))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                }
-                .buttonStyle(.plain)
-
-                // Badge de statut du scan en cours
-                if let scan = selectedScan {
-                    if scan.isCorrected {
-                        BadgeView("Paquet Corrigé", icon: "checkmark.seal.fill", style: .success)
-                    } else {
-                        BadgeView("En cours", icon: "pencil", style: .warning)
-                    }
-
-                    // Bouton pour marquer comme CORRIGÉ
-                    Button {
-                        toggleCorrectedStatus(for: scan)
-                    } label: {
-                        Label(
-                            scan.isCorrected ? "Démarquer (En cours)" : "Marquer comme Corrigé (CORRIGE_)",
-                            systemImage: scan.isCorrected ? "arrow.uturn.backward" : "checkmark.circle"
-                        )
-                        .font(.caption.bold())
-                    }
-                    .buttonStyle(.bordered)
-                    .tint(scan.isCorrected ? .orange : .green)
-                }
-
-                Spacer()
-
-                if let toast = showMarkedToast {
-                    Text(toast)
-                        .font(.caption.bold())
-                        .foregroundColor(.green)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(Color.green.opacity(0.12))
-                        .clipShape(Capsule())
-                }
-
-                // Bouton plein écran pour correction confortable au stylet
-                Button {
-                    isFullScreenCanvas.toggle()
-                } label: {
-                    Image(systemName: isFullScreenCanvas ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
-                        .font(.headline)
-                }
-                .help("Bascule plein écran stylet")
-
-                // Bouton pour passer au chargement des copies
-                Button {
-                    saveCurrentDrawing()
-                    currentStep = 2
-                } label: {
-                    Label("Chargement des copies (2) ➔", systemImage: "arrow.right.circle.fill")
-                        .fontWeight(.semibold)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.blue)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(Color(white: 0.5, opacity: 0.06))
-
-            Divider()
-
-            // MARK: - Espace de travail de correction au stylet
+        ZStack {
             if let document = pdfDocument {
+                // MARK: - Canvas de correction PDF + Apple Pencil
                 ZStack {
-                    // Vue PDFKit sous-jacente
                     PDFKitView(document: document, currentPageIndex: currentPageIndex)
                         .edgesIgnoringSafeArea(.all)
 
-                    // Calque transparent PencilKit tactile superposé
                     PencilCanvasOverlay(drawing: $currentDrawing)
                         .edgesIgnoringSafeArea(.all)
 
-                    // Barre flottante de navigation entre les pages
+                    // Barre d'outils supérieure flottante
+                    VStack {
+                        topFloatingStudioBar
+                            .padding(.top, 8)
+                        Spacer()
+                    }
+
+                    // Barre d'outils inférieure flottante (Island Toolbar)
                     VStack {
                         Spacer()
-                        HStack(spacing: 16) {
-                            Button {
-                                changePage(to: currentPageIndex - 1)
-                            } label: {
-                                Image(systemName: "chevron.left")
-                                    .font(.title3.bold())
-                                    .padding(8)
-                            }
-                            .disabled(currentPageIndex <= 0)
-
-                            Text("Page \(currentPageIndex + 1) sur \(totalPages)")
-                                .font(.subheadline.bold())
-                                .foregroundColor(.primary)
-
-                            Button {
-                                changePage(to: currentPageIndex + 1)
-                            } label: {
-                                Image(systemName: "chevron.right")
-                                    .font(.title3.bold())
-                                    .padding(8)
-                            }
-                            .disabled(currentPageIndex >= totalPages - 1)
-
-                            Divider()
-                                .frame(height: 20)
-
-                            Button(role: .destructive) {
-                                currentDrawing = PKDrawing()
-                                pageDrawings[currentPageIndex] = PKDrawing()
-                            } label: {
-                                Image(systemName: "trash")
-                                    .foregroundColor(.red)
-                            }
-                            .help("Effacer les annotations de cette page")
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .background(.ultraThinMaterial)
-                        .clipShape(Capsule())
-                        .shadow(color: .black.opacity(0.12), radius: 8, x: 0, y: 4)
-                        .padding(.bottom, 20)
+                        bottomFloatingStudioBar
+                            .padding(.bottom, 20)
                     }
                 }
             } else {
-                // Aucun paquet ouvert
-                VStack(spacing: 20) {
-                    Image(systemName: "pencil.and.outline")
-                        .font(.system(size: 64))
-                        .foregroundColor(.blue.opacity(0.8))
-
-                    Text("Atelier de Correction au Stylet")
-                        .font(.title2.bold())
-
-                    Text("Sélectionnez un paquet scanné dans le dossier « A corriger » pour annoter vos copies au stylet Apple Pencil à votre rythme.")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: 440)
-
-                    if !availableScans.isEmpty {
-                        VStack(spacing: 8) {
-                            Text("Paquets disponibles dans Evaluations/A corriger/ :")
-                                .font(.caption.bold())
-                                .foregroundColor(.secondary)
-
-                            ForEach(availableScans) { scan in
-                                Button {
-                                    loadScanItem(scan)
-                                } label: {
-                                    HStack {
-                                        Image(systemName: scan.isCorrected ? "checkmark.seal.fill" : "doc.text.fill")
-                                            .foregroundColor(scan.isCorrected ? .green : .blue)
-                                        Text(scan.name)
-                                            .fontWeight(.medium)
-                                        Spacer()
-                                        if scan.isCorrected {
-                                            BadgeView("Corrigé", style: .success)
-                                        } else {
-                                            BadgeView("En attente", style: .neutral)
-                                        }
-                                    }
-                                    .padding(10)
-                                    .frame(maxWidth: 380)
-                                    .background(Color(white: 0.5, opacity: 0.06))
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                    }
-
-                    Button {
-                        isImporterPresented = true
-                    } label: {
-                        Label("Importer un fichier PDF externe", systemImage: "folder.badge.plus")
-                            .font(.headline)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 10)
-                    }
-                    .buttonStyle(.borderedProminent)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(white: 0.5, opacity: 0.03))
+                // MARK: - Hero Card Liquid Glass (Aucun paquet ouvert)
+                emptyStateHeroCard
             }
         }
         .task {
@@ -276,6 +84,259 @@ public struct Step1CorrectionStudioView: View {
                 appState.errorMessage = "Erreur : \(error.localizedDescription)"
             }
         }
+    }
+
+    // MARK: - Barre d'outils Supérieure Flottante
+
+    private var topFloatingStudioBar: some View {
+        FloatingGlassBar {
+            // Menu de choix des paquets en attente
+            Menu {
+                Section("Paquets en attente (Evaluations/A corriger)") {
+                    ForEach(availableScans) { scan in
+                        Button {
+                            loadScanItem(scan)
+                        } label: {
+                            HStack {
+                                if scan.isCorrected {
+                                    Label(scan.cleanTitle, systemImage: "checkmark.seal.fill")
+                                } else {
+                                    Label(scan.cleanTitle, systemImage: "doc.text")
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Divider()
+
+                Button {
+                    isImporterPresented = true
+                } label: {
+                    Label("Importer un autre PDF...", systemImage: "plus.rectangle.on.folder")
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: selectedScan?.isCorrected == true ? "checkmark.seal.fill" : "folder.fill")
+                        .foregroundColor(selectedScan?.isCorrected == true ? .green : .blue)
+                    Text(selectedScan?.cleanTitle ?? (pdfURL?.lastPathComponent ?? "Choisir un paquet"))
+                        .font(.system(size: 13, weight: .semibold))
+                        .lineLimit(1)
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Color.primary.opacity(0.06))
+                .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+
+            if let scan = selectedScan {
+                if scan.isCorrected {
+                    BadgeView("Prêt pour chargement", icon: "checkmark.seal.fill", style: .success)
+                } else {
+                    BadgeView("Correction en cours", icon: "pencil", style: .warning)
+                }
+            }
+
+            if let toast = showMarkedToast {
+                Text(toast)
+                    .font(.caption.bold())
+                    .foregroundColor(.green)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(Color.green.opacity(0.12))
+                    .clipShape(Capsule())
+            }
+
+            Spacer()
+
+            Button {
+                isFullScreenCanvas.toggle()
+            } label: {
+                Image(systemName: isFullScreenCanvas ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                    .font(.system(size: 13, weight: .semibold))
+                    .frame(width: 28, height: 28)
+            }
+            .help("Plein écran stylet")
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 20)
+    }
+
+    // MARK: - Barre d'outils Inférieure Flottante (VisionOS Island Dock)
+
+    private var bottomFloatingStudioBar: some View {
+        FloatingGlassBar {
+            // Navigation pages
+            Button {
+                changePage(to: currentPageIndex - 1)
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 14, weight: .bold))
+                    .frame(width: 32, height: 32)
+            }
+            .disabled(currentPageIndex <= 0)
+            .buttonStyle(.plain)
+
+            Text("Page \(currentPageIndex + 1) / \(totalPages)")
+                .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                .padding(.horizontal, 6)
+
+            Button {
+                changePage(to: currentPageIndex + 1)
+            } label: {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .bold))
+                    .frame(width: 32, height: 32)
+            }
+            .disabled(currentPageIndex >= totalPages - 1)
+            .buttonStyle(.plain)
+
+            Divider().frame(height: 20)
+
+            // Effacer page
+            Button(role: .destructive) {
+                currentDrawing = PKDrawing()
+                pageDrawings[currentPageIndex] = PKDrawing()
+            } label: {
+                Image(systemName: "trash")
+                    .font(.system(size: 14))
+                    .foregroundColor(.red.opacity(0.85))
+                    .frame(width: 30, height: 30)
+            }
+            .help("Effacer les annotations de cette page")
+            .buttonStyle(.plain)
+
+            Divider().frame(height: 20)
+
+            // Bouton Bascule CORRIGÉ
+            if let scan = selectedScan {
+                Button {
+                    toggleCorrectedStatus(for: scan)
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: scan.isCorrected ? "checkmark.seal.fill" : "circle.dashed")
+                        Text(scan.isCorrected ? "Terminé (CORRIGÉ)" : "Marquer Corrigé")
+                            .font(.system(size: 12, weight: .bold))
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(scan.isCorrected ? LinearGradient.emeraldGreen : LinearGradient.coralOrange)
+                    .clipShape(Capsule())
+                    .shadow(color: (scan.isCorrected ? Color.green : Color.orange).opacity(0.35), radius: 6, y: 2)
+                }
+                .buttonStyle(.plain)
+            }
+
+            Divider().frame(height: 20)
+
+            // Bouton Passer au chargement
+            Button {
+                saveCurrentDrawing()
+                currentStep = 2
+            } label: {
+                HStack(spacing: 6) {
+                    Text("Charger (2)")
+                        .font(.system(size: 12, weight: .bold))
+                    Image(systemName: "arrow.right.circle.fill")
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 7)
+                .background(LinearGradient.electricBlue)
+                .clipShape(Capsule())
+                .shadow(color: Color.blue.opacity(0.35), radius: 6, y: 2)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    // MARK: - Hero Card Liquid Glass (État vide)
+
+    private var emptyStateHeroCard: some View {
+        VStack(spacing: 24) {
+            // Icône Mascotte Stylisée
+            ZStack {
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            colors: [Color(hex: "3B82F6").opacity(0.3), Color.clear],
+                            center: .center,
+                            startRadius: 10,
+                            endRadius: 55
+                        )
+                    )
+                    .frame(width: 110, height: 110)
+
+                Image(systemName: "pencil.and.scribble")
+                    .font(.system(size: 44, weight: .semibold))
+                    .foregroundStyle(LinearGradient.electricBlue)
+            }
+
+            VStack(spacing: 8) {
+                Text("Atelier Stylet & Correction")
+                    .font(.system(.title2, design: .rounded, weight: .bold))
+
+                Text("Ouvrez un paquet de copies numérisées pour annoter au stylet avec Apple Pencil.\nVous pouvez corriger plusieurs paquets en parallèle à votre rythme.")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 480)
+            }
+
+            if !availableScans.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Paquets détectés dans Evaluations/A corriger/ :")
+                        .font(.caption.bold())
+                        .foregroundColor(.secondary)
+                        .padding(.leading, 4)
+
+                    VStack(spacing: 8) {
+                        ForEach(availableScans) { scan in
+                            Button {
+                                loadScanItem(scan)
+                            } label: {
+                                HStack {
+                                    Image(systemName: scan.isCorrected ? "checkmark.seal.fill" : "doc.text.fill")
+                                        .font(.system(size: 16))
+                                        .foregroundColor(scan.isCorrected ? .green : .blue)
+
+                                    Text(scan.cleanTitle)
+                                        .font(.system(size: 14, weight: .medium))
+
+                                    Spacer()
+
+                                    if scan.isCorrected {
+                                        BadgeView("Prêt (CORRIGÉ)", style: .success)
+                                    } else {
+                                        BadgeView("En attente", style: .neutral)
+                                    }
+                                }
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 11)
+                                .frame(maxWidth: 400)
+                                .glassCard(cornerRadius: 12, strokeOpacity: 0.3)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+
+            Button {
+                isImporterPresented = true
+            } label: {
+                Label("Importer un fichier PDF", systemImage: "folder.badge.plus")
+            }
+            .buttonStyle(VibrantGradientButtonStyle(gradient: .electricBlue))
+        }
+        .padding(36)
+        .glassCard(cornerRadius: 26, strokeOpacity: 0.5)
+        .frame(maxWidth: 520)
     }
 
     // MARK: - Actions & Logique

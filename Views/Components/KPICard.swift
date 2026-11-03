@@ -2,7 +2,7 @@
 //  KPICard.swift
 //  Dropies
 //
-//  Carte d'indicateur clé de performance (KPI) pour le tableau de bord et la synthèse.
+//  Carte d'indicateur clé de performance (KPI) au style Liquid Glass.
 //
 
 import SwiftUI
@@ -29,38 +29,38 @@ public struct KPICard: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text(title)
                     .font(.caption)
-                    .fontWeight(.medium)
+                    .fontWeight(.semibold)
                     .foregroundColor(.secondary)
                 Spacer()
                 Image(systemName: icon)
-                    .font(.subheadline)
+                    .font(.system(size: 13, weight: .bold))
                     .foregroundColor(tintColor)
-                    .frame(width: 28, height: 28)
-                    .background(tintColor.opacity(0.12))
+                    .frame(width: 30, height: 30)
+                    .background(tintColor.opacity(0.16))
                     .clipShape(Circle())
+                    .overlay(
+                        Circle()
+                            .stroke(tintColor.opacity(0.3), lineWidth: 1)
+                    )
             }
 
             Text(value)
-                .font(.system(.title, design: .rounded, weight: .bold))
+                .font(.system(.title, design: .rounded, weight: .heavy))
                 .foregroundColor(.primary)
 
             if let subtitle = subtitle {
                 Text(subtitle)
                     .font(.caption2)
+                    .fontWeight(.medium)
                     .foregroundColor(.secondary)
             }
         }
-        .padding(14)
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(white: 0.5, opacity: 0.08))
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Color.secondary.opacity(0.15), lineWidth: 1)
-        )
+        .glassCard(cornerRadius: 14)
     }
 }

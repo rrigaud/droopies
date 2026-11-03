@@ -5,6 +5,7 @@
 //  Étape 2 : Chargement des copies & Préparation de l'évaluation.
 //  Gère à la fois les nouvelles évaluations et les rattrapages d'élèves absents
 //  avec fusion automatique du backup et auto-complétion.
+//  Sublimé avec onglets glissants Liquid Glass et cartes visionOS.
 //
 
 import SwiftUI
@@ -17,12 +18,14 @@ public struct Step2LoadingView: View {
 
     public enum LoadingMode: String, CaseIterable, Identifiable {
         case newEvaluation = "Nouvelle évaluation"
-        case catchUpAbsents = "Rattrapage d'élèves absents"
+        case catchUpAbsents = "Mode Rattrapage (Élèves absents)"
 
         public var id: String { rawValue }
     }
 
     @State private var mode: LoadingMode = .newEvaluation
+    @Namespace private var modeTabNamespace
+
     @State private var availableScans: [StorageManager.ScanItem] = []
     @State private var selectedScan: StorageManager.ScanItem? = nil
     @State private var existingBackups: [StorageManager.ExistingBackup] = []
@@ -55,60 +58,52 @@ public struct Step2LoadingView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            // MARK: - Sélecteur de Mode en haut
-            HStack(spacing: 20) {
+            // MARK: - Barre d'outils supérieure flottante
+            HStack(spacing: 16) {
                 Button {
                     currentStep = 1
                 } label: {
-                    Label("Atelier Stylet", systemImage: "arrow.left")
+                    Label("Atelier Stylet", systemImage: "chevron.left")
+                        .font(.system(size: 13, weight: .medium))
                 }
                 .buttonStyle(.plain)
                 .foregroundColor(.secondary)
 
                 Divider().frame(height: 20)
 
-                Picker("Type de devoir", selection: $mode) {
-                    ForEach(LoadingMode.allCases) { m in
-                        Text(m.rawValue).tag(m)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .frame(maxWidth: 380)
-                .onChange(of: mode) { _, newMode in
-                    handleModeChange(newMode)
-                }
+                // Onglets Glissants Liquid Glass
+                modeTabsControl
 
                 Spacer()
 
                 Button {
                     proceedToIdentification()
                 } label: {
-                    Label("Identifier les copies (3) ➔", systemImage: "person.crop.rectangle.badge.plus")
-                        .fontWeight(.semibold)
+                    Label("Identifier (3) ➔", systemImage: "person.crop.rectangle.badge.plus")
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.green)
+                .buttonStyle(VibrantGradientButtonStyle(gradient: .emeraldGreen, isCompact: true))
                 .disabled(loadedPDFDoc == nil || evalTitle.trimmingCharacters(in: .whitespaces).isEmpty || selectedClassId == nil)
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(Color(white: 0.5, opacity: 0.06))
+            .padding(.vertical, 10)
+            .background(.ultraThinMaterial)
 
             Divider()
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 20) {
                     // MARK: - En mode Rattrapage : Choix du Backup existant
                     if mode == .catchUpAbsents {
-                        VStack(alignment: .leading, spacing: 10) {
+                        VStack(alignment: .leading, spacing: 12) {
                             HStack {
                                 Image(systemName: "arrow.triangle.merge")
+                                    .font(.title3)
                                     .foregroundColor(.orange)
-                                Text("Sélection de l'évaluation passée (Backup)")
+                                Text("Sélection de l'évaluation archivée (Backup)")
                                     .font(.headline)
                             }
 
-                            Text("Choisissez le devoir déjà distribué. Dropies remplira automatiquement la classe, la date et le titre, et fusionnera ce nouveau scan à la fin du backup existant.")
+                            Text("Choisissez le devoir déjà distribué. Dropies pré-remplira automatiquement la classe, la date et le titre, et fusionnera ce nouveau scan à la fin du backup existant.")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
 
@@ -126,35 +121,34 @@ public struct Step2LoadingView: View {
                                     }
                                 }
                                 .pickerStyle(.menu)
-                                .onChange(of: selectedBackup) { _, backup in
-                                    if let b = backup {
+                                .onChange(of: selectedBackup) { _, newBackup in
+                                    if let b = newBackup {
                                         applyBackupMetadata(b)
                                     }
                                 }
                             }
                         }
-                        .padding(16)
-                        .background(Color.orange.opacity(0.08))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.orange.opacity(0.3), lineWidth: 1)
-                        )
+                        .padding(18)
+                        .glassCard(cornerRadius: 18, strokeOpacity: 0.4)
                     }
 
-                    // MARK: - Choix du scan brut PDF
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("1. Sélection du scan PDF")
-                            .font(.headline)
+                    // MARK: - Choix du Scan PDF
+                    VStack(alignment: .leading, spacing: 14) {
+                        HStack {
+                            Image(systemName: "doc.viewfinder")
+                                .font(.title3)
+                                .foregroundColor(.blue)
+                            Text("Sélection du paquet de copies numérisé")
+                                .font(.headline)
+                        }
 
-                        if availableScans.isEmpty {
-                            Text("Aucun PDF dans Evaluations/A corriger/")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        } else {
-                            VStack(spacing: 8) {
+                        if !availableScans.isEmpty {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Paquets détectés dans Evaluations/A corriger/ :")
+                                    .font(.caption.bold())
+                                    .foregroundColor(.secondary)
+
                                 ForEach(availableScans) { scan in
-                                    let isSelected = selectedScan?.path == scan.path
                                     Button {
                                         selectScan(scan)
                                     } label: {
@@ -162,19 +156,25 @@ public struct Step2LoadingView: View {
                                             Image(systemName: scan.isCorrected ? "checkmark.seal.fill" : "doc.text.fill")
                                                 .foregroundColor(scan.isCorrected ? .green : .blue)
                                             Text(scan.cleanTitle)
-                                                .fontWeight(isSelected ? .bold : .medium)
+                                                .fontWeight(selectedScan?.id == scan.id ? .bold : .medium)
+
                                             Spacer()
+
                                             if scan.isCorrected {
-                                                BadgeView("Prêt (CORRIGÉ)", style: .success)
+                                                BadgeView("CORRIGÉ", style: .success)
+                                            } else {
+                                                BadgeView("En attente", style: .neutral)
+                                            }
+
+                                            if selectedScan?.id == scan.id {
+                                                Image(systemName: "checkmark.circle.fill")
+                                                    .foregroundColor(.blue)
                                             }
                                         }
-                                        .padding(12)
-                                        .background(isSelected ? Color.blue.opacity(0.15) : Color(white: 0.5, opacity: 0.05))
-                                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 8)
-                                                .stroke(isSelected ? Color.blue : Color.secondary.opacity(0.2), lineWidth: isSelected ? 2 : 1)
-                                        )
+                                        .padding(.horizontal, 14)
+                                        .padding(.vertical, 10)
+                                        .background(selectedScan?.id == scan.id ? Color.blue.opacity(0.12) : Color.primary.opacity(0.04))
+                                        .clipShape(RoundedRectangle(cornerRadius: 10))
                                     }
                                     .buttonStyle(.plain)
                                 }
@@ -184,78 +184,90 @@ public struct Step2LoadingView: View {
                         Button {
                             isExternalPickerPresented = true
                         } label: {
-                            Label("Importer un autre fichier PDF...", systemImage: "plus.rectangle.on.folder")
-                                .font(.caption)
+                            Label("Importer un autre PDF depuis le disque...", systemImage: "plus.rectangle.on.folder")
+                                .font(.subheadline)
                         }
-                        .buttonStyle(.bordered)
                     }
-                    .padding(16)
-                    .background(Color(white: 0.5, opacity: 0.04))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .padding(18)
+                    .glassCard(cornerRadius: 18)
 
                     // MARK: - Métadonnées du devoir
                     VStack(alignment: .leading, spacing: 14) {
-                        Text("2. Informations sur le devoir")
-                            .font(.headline)
+                        HStack {
+                            Image(systemName: "slider.horizontal.3")
+                                .font(.title3)
+                                .foregroundColor(.purple)
+                            Text("Informations sur l'évaluation")
+                                .font(.headline)
+                        }
 
-                        HStack(spacing: 16) {
-                            // Classe
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Classe").font(.caption.bold()).foregroundColor(.secondary)
+                        Grid(alignment: .leading, horizontalSpacing: 20, verticalSpacing: 14) {
+                            GridRow {
+                                Text("Classe concernée :")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
                                 Picker("Classe", selection: $selectedClassId) {
-                                    Text("Choisir une classe").tag(nil as String?)
-                                    ForEach(appState.classes) { group in
-                                        Text(group.name).tag(group.id as String?)
+                                    Text("— Sélectionner une classe —").tag(nil as String?)
+                                    ForEach(appState.classes) { cls in
+                                        Text("\(cls.name) (\(cls.studentCount) élèves)").tag(cls.id as String?)
                                     }
                                 }
                                 .pickerStyle(.menu)
-                                .disabled(mode == .catchUpAbsents && selectedBackup != nil)
                             }
-                            .frame(maxWidth: 160)
 
-                            // Titre
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Titre de l'évaluation").font(.caption.bold()).foregroundColor(.secondary)
-                                TextField("ex: DS 02 - Fractions", text: $evalTitle)
+                            GridRow {
+                                Text("Titre de l'évaluation :")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                TextField("Ex: Devoir Maison n°3, Contrôle Chapitre 4...", text: $evalTitle)
                                     .textFieldStyle(.roundedBorder)
-                                    .disabled(mode == .catchUpAbsents && selectedBackup != nil)
                             }
 
-                            // Date
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Date").font(.caption.bold()).foregroundColor(.secondary)
+                            GridRow {
+                                Text("Date de passation :")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
                                 DatePicker("", selection: $evalDate, displayedComponents: .date)
                                     .labelsHidden()
-                                    .disabled(mode == .catchUpAbsents && selectedBackup != nil)
                             }
 
-                            // Barème
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Note max").font(.caption.bold()).foregroundColor(.secondary)
-                                TextField("20", value: $evalMaxScore, format: .number)
-                                    .textFieldStyle(.roundedBorder)
-                                    .frame(width: 60)
+                            GridRow {
+                                Text("Note maximale (Barème) :")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                HStack {
+                                    TextField("20", value: $evalMaxScore, format: .number)
+                                        .textFieldStyle(.roundedBorder)
+                                        .frame(width: 80)
+                                    Text("points")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
                             }
                         }
                     }
-                    .padding(16)
-                    .background(Color(white: 0.5, opacity: 0.04))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .padding(18)
+                    .glassCard(cornerRadius: 18)
 
-                    // MARK: - Découpage & Ratio de pages
+                    // MARK: - Paramètres de découpage des copies
                     VStack(alignment: .leading, spacing: 14) {
-                        Text("3. Réglage du découpage")
-                            .font(.headline)
+                        HStack {
+                            Image(systemName: "scissors")
+                                .font(.title3)
+                                .foregroundColor(.teal)
+                            Text("Découpage des copies")
+                                .font(.headline)
+                        }
 
                         HStack(spacing: 20) {
                             VStack(alignment: .leading, spacing: 6) {
-                                Text("Nombre de pages par copie :")
+                                Text("Nombre de pages par copie élève :")
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
 
-                                Picker("Pages", selection: $pagesPerCopy) {
-                                    ForEach(1...6, id: \.self) { num in
-                                        Text("\(num) \(num > 1 ? "pages" : "page")").tag(num)
+                                Picker("Pages par copie", selection: $pagesPerCopy) {
+                                    ForEach(1...6, id: \.self) { n in
+                                        Text("\(n) \(n > 1 ? "pages" : "page")").tag(n)
                                     }
                                 }
                                 .pickerStyle(.segmented)
@@ -274,9 +286,8 @@ public struct Step2LoadingView: View {
                             }
                         }
                     }
-                    .padding(16)
-                    .background(Color(white: 0.5, opacity: 0.04))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .padding(18)
+                    .glassCard(cornerRadius: 18)
                 }
                 .padding(20)
             }
@@ -295,12 +306,54 @@ public struct Step2LoadingView: View {
         }
     }
 
+    // MARK: - Contrôle d'onglets Liquid Glass
+
+    private var modeTabsControl: some View {
+        HStack(spacing: 6) {
+            ForEach(LoadingMode.allCases) { m in
+                let isSelected = mode == m
+                Button {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        mode = m
+                        handleModeChange(m)
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: m == .newEvaluation ? "doc.badge.plus" : "arrow.triangle.merge")
+                            .font(.system(size: 12))
+                        Text(m.rawValue)
+                            .font(.system(size: 13, weight: isSelected ? .bold : .medium))
+                    }
+                    .foregroundColor(isSelected ? .white : .primary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(
+                        Group {
+                            if isSelected {
+                                Capsule()
+                                    .fill(LinearGradient.electricBlue)
+                                    .matchedGeometryEffect(id: "modeTabPill", in: modeTabNamespace)
+                                    .shadow(color: Color.blue.opacity(0.35), radius: 6, y: 2)
+                            } else {
+                                Color.clear
+                            }
+                        }
+                    )
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(4)
+        .background(Color.primary.opacity(0.06))
+        .clipShape(Capsule())
+    }
+
     // MARK: - Actions
 
     private func loadInitialScansAndBackups() async {
         if let scans = try? await appState.storageManager.listScans() {
             self.availableScans = scans
-            // Pré-sélection du premier scan corrigé (CORRIGE_) s'il existe
             if let firstCorrected = scans.first(where: { $0.isCorrected }) {
                 selectScan(firstCorrected)
             } else if let first = scans.first {
@@ -372,7 +425,6 @@ public struct Step2LoadingView: View {
             existingBackupFileName: selectedBackup?.fileName
         )
 
-        // Découpage initial des copies
         var copies: [StudentCopy] = []
         var page = 1
         var copyIdx = 1

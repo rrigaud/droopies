@@ -2,11 +2,9 @@
 //  CorrectionWorkflowView.swift
 //  Dropies
 //
-//  Conteneur principal du flux de correction en 4 étapes :
-//  1. Atelier de correction au stylet (Apple Pencil / PencilKit & paquets A corriger)
-//  2. Chargement des copies & Préparation (Nouvelle évaluation ou Rattrapage d'absents)
-//  3. Découpage & Identification assistée par Vision OCR (filtrage des élèves absents)
-//  4. Distribution, fusion du backup et envoi Cloud en arrière-plan
+//  Conteneur principal du flux de correction en 4 étapes.
+//  Présente une barre flottante en verre dépoli (Liquid Glass Capsule)
+//  avec transitions animées et esthétique visionOS / iPadOS 18.
 //
 
 import SwiftUI
@@ -14,66 +12,14 @@ import SwiftUI
 public struct CorrectionWorkflowView: View {
     @Bindable public var appState: AppState
     @State private var currentStep: Int = 1
+    @Namespace private var stepperNamespace
 
     public init(appState: AppState) {
         self.appState = appState
     }
 
     public var body: some View {
-        VStack(spacing: 0) {
-            // MARK: - En-tête Stepper visuel à 4 étapes
-            HStack(spacing: 16) {
-                stepIndicator(
-                    number: 1,
-                    title: "1. Atelier Stylet",
-                    icon: "pencil.and.outline",
-                    isActive: currentStep == 1,
-                    isDone: currentStep > 1
-                )
-
-                Image(systemName: "chevron.right")
-                    .font(.caption2.bold())
-                    .foregroundColor(.secondary)
-
-                stepIndicator(
-                    number: 2,
-                    title: "2. Chargement des copies",
-                    icon: "tray.and.arrow.down.fill",
-                    isActive: currentStep == 2,
-                    isDone: currentStep > 2
-                )
-
-                Image(systemName: "chevron.right")
-                    .font(.caption2.bold())
-                    .foregroundColor(.secondary)
-
-                stepIndicator(
-                    number: 3,
-                    title: "3. Découpage & OCR",
-                    icon: "viewfinder",
-                    isActive: currentStep == 3,
-                    isDone: currentStep > 3
-                )
-
-                Image(systemName: "chevron.right")
-                    .font(.caption2.bold())
-                    .foregroundColor(.secondary)
-
-                stepIndicator(
-                    number: 4,
-                    title: "4. Distribution",
-                    icon: "paperplane.fill",
-                    isActive: currentStep == 4,
-                    isDone: false
-                )
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .frame(maxWidth: .infinity)
-            .background(Color(white: 0.5, opacity: 0.04))
-
-            Divider()
-
+        ZStack(alignment: .top) {
             // MARK: - Vue de l'étape active
             Group {
                 switch currentStep {
@@ -90,38 +36,99 @@ public struct CorrectionWorkflowView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.top, 68)
+
+            // MARK: - Stepper Flottant VisionOS (Island Capsule)
+            floatingStepper
+                .padding(.top, 14)
         }
+        .withLiquidGlassBackground()
+    }
+
+    // MARK: - Composant Stepper Flottant en Verre Dépoli
+
+    private var floatingStepper: some View {
+        HStack(spacing: 4) {
+            stepItem(number: 1, title: "Atelier Stylet", icon: "pencil.and.outline")
+            stepChevron
+            stepItem(number: 2, title: "Chargement", icon: "tray.and.arrow.down.fill")
+            stepChevron
+            stepItem(number: 3, title: "Identification", icon: "viewfinder")
+            stepChevron
+            stepItem(number: 4, title: "Distribution", icon: "paperplane.fill")
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .glassCapsule(strokeOpacity: 0.45)
+    }
+
+    private var stepChevron: some View {
+        Image(systemName: "chevron.right")
+            .font(.system(size: 9, weight: .bold))
+            .foregroundColor(.secondary.opacity(0.4))
+            .padding(.horizontal, 2)
     }
 
     @ViewBuilder
-    private func stepIndicator(number: Int, title: String, icon: String, isActive: Bool, isDone: Bool) -> some View {
+    private func stepItem(number: Int, title: String, icon: String) -> some View {
+        let isActive = currentStep == number
+        let isDone = currentStep > number
+
         Button {
-            // Permettre la navigation fluide entre étapes accessibles
-            if isDone || number <= currentStep {
-                currentStep = number
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                if isDone || number <= currentStep {
+                    currentStep = number
+                }
             }
         } label: {
-            HStack(spacing: 6) {
+            HStack(spacing: 8) {
                 ZStack {
-                    Circle()
-                        .fill(isActive ? Color.blue : (isDone ? Color.green : Color.secondary.opacity(0.2)))
-                        .frame(width: 22, height: 22)
-
                     if isDone {
+                        Circle()
+                            .fill(Color(hex: "10B981"))
+                            .frame(width: 22, height: 22)
                         Image(systemName: "checkmark")
                             .font(.system(size: 10, weight: .bold))
                             .foregroundColor(.white)
-                    } else {
+                    } else if isActive {
+                        Circle()
+                            .fill(Color.white)
+                            .frame(width: 22, height: 22)
                         Text("\(number)")
                             .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(isActive ? .white : .secondary)
+                            .foregroundColor(Color(hex: "2563EB"))
+                    } else {
+                        Circle()
+                            .fill(Color.primary.opacity(0.08))
+                            .frame(width: 22, height: 22)
+                        Text("\(number)")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.secondary)
                     }
                 }
 
                 Text(title)
-                    .font(.system(size: 12, weight: isActive ? .semibold : .regular))
-                    .foregroundColor(isActive ? .primary : .secondary)
+                    .font(.system(size: 13, weight: isActive ? .bold : .medium))
+                    .foregroundColor(isActive ? .white : (isDone ? .primary : .secondary))
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(
+                Group {
+                    if isActive {
+                        Capsule()
+                            .fill(LinearGradient.electricBlue)
+                            .matchedGeometryEffect(id: "activePill", in: stepperNamespace)
+                            .shadow(color: Color.blue.opacity(0.4), radius: 8, y: 2)
+                    } else if isDone {
+                        Capsule()
+                            .fill(Color.green.opacity(0.08))
+                    } else {
+                        Color.clear
+                    }
+                }
+            )
+            .clipShape(Capsule())
         }
         .buttonStyle(.plain)
     }

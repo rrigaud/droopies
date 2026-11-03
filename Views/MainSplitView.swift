@@ -3,7 +3,7 @@
 //  Dropies
 //
 //  Navigation principale adaptative iPadOS & macOS (NavigationSplitView).
-//  Garantit une ergonomie fluide au doigt, à l'Apple Pencil et au clavier/trackpad.
+//  Sublimée avec le style Liquid Glass, barres translucides et icônes vibrantes.
 //
 
 import SwiftUI
@@ -22,6 +22,15 @@ public enum NavigationTab: String, Hashable, CaseIterable {
         case .settings: return "gearshape.fill"
         }
     }
+
+    public var tintColor: Color {
+        switch self {
+        case .correction: return Color(red: 0.15, green: 0.45, blue: 1.0)
+        case .students: return Color(red: 0.55, green: 0.35, blue: 0.95)
+        case .portal: return Color(red: 0.05, green: 0.75, blue: 0.45)
+        case .settings: return Color(white: 0.45)
+        }
+    }
 }
 
 public struct MainSplitView: View {
@@ -35,31 +44,71 @@ public struct MainSplitView: View {
     public var body: some View {
         NavigationSplitView {
             List(selection: $selectedTab) {
+                // MARK: - En-tête Dropies
+                Section {
+                    HStack(spacing: 12) {
+                        Image(systemName: "dog.fill")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(width: 36, height: 36)
+                            .background(
+                                LinearGradient(
+                                    colors: [Color.blue, Color.cyan],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            .shadow(color: Color.blue.opacity(0.35), radius: 6, y: 2)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Dropies")
+                                .font(.system(.headline, design: .rounded, weight: .bold))
+                            Text("Studio Enseignant")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+
+                        Spacer()
+
+                        Text("v1.0")
+                            .font(.system(size: 10, weight: .semibold))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.secondary.opacity(0.15))
+                            .clipShape(Capsule())
+                    }
+                    .padding(.vertical, 4)
+                }
+
                 Section("Flux de Correction") {
                     NavigationLink(value: NavigationTab.correction) {
-                        Label(NavigationTab.correction.rawValue, systemImage: NavigationTab.correction.icon)
+                        sidebarItem(tab: .correction)
                     }
                 }
 
                 Section("Administration Scolaire") {
                     NavigationLink(value: NavigationTab.students) {
                         HStack {
-                            Label(NavigationTab.students.rawValue, systemImage: NavigationTab.students.icon)
+                            sidebarItem(tab: .students)
                             Spacer()
                             Text("\(appState.students.count)")
                                 .font(.caption2.bold())
-                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 2)
+                                .background(Color.secondary.opacity(0.12))
+                                .clipShape(Capsule())
                         }
                     }
 
                     NavigationLink(value: NavigationTab.portal) {
-                        Label(NavigationTab.portal.rawValue, systemImage: NavigationTab.portal.icon)
+                        sidebarItem(tab: .portal)
                     }
                 }
 
                 Section("Configuration") {
                     NavigationLink(value: NavigationTab.settings) {
-                        Label(NavigationTab.settings.rawValue, systemImage: NavigationTab.settings.icon)
+                        sidebarItem(tab: .settings)
                     }
                 }
             }
@@ -84,5 +133,28 @@ public struct MainSplitView: View {
         .task {
             await appState.loadInitialData()
         }
+    }
+
+    @ViewBuilder
+    private func sidebarItem(tab: NavigationTab) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: tab.icon)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.white)
+                .frame(width: 28, height: 28)
+                .background(
+                    LinearGradient(
+                        colors: [tab.tintColor, tab.tintColor.opacity(0.8)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .shadow(color: tab.tintColor.opacity(0.3), radius: 3, y: 1)
+
+            Text(tab.rawValue)
+                .font(.system(size: 14, weight: .medium))
+        }
+        .padding(.vertical, 2)
     }
 }

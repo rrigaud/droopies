@@ -74,18 +74,16 @@ public struct Step4DistributionView: View {
                     distributeCopies()
                 } label: {
                     Label(
-                        evaluation?.isCatchUp == true ? "Distribuer & Fusionner Backup" : "Distribuer les copies",
+                        evaluation?.isCatchUp == true ? "Distribuer & Fusionner" : "Distribuer les copies",
                         systemImage: "icloud.and.arrow.up.fill"
                     )
-                    .fontWeight(.semibold)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.blue)
+                .buttonStyle(VibrantGradientButtonStyle(gradient: .electricBlue, isCompact: true))
                 .disabled(isDistributing || copies.isEmpty)
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(Color(white: 0.5, opacity: 0.06))
+            .padding(.vertical, 10)
+            .background(.ultraThinMaterial)
 
             Divider()
 
@@ -255,12 +253,7 @@ public struct Step4DistributionView: View {
                                 Divider()
                             }
                         }
-                        .background(Color(white: 0.5, opacity: 0.04))
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10)
-                                .stroke(Color.secondary.opacity(0.15), lineWidth: 1)
-                        )
+                        .glassCard(cornerRadius: 16)
                     }
                 }
                 .padding(16)
