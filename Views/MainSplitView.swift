@@ -114,8 +114,7 @@ public struct MainSplitView: View {
                                 .fill(appState.storageManager.activeProvider.isConnected ? Color.green : Color.orange)
                                 .frame(width: 8, height: 8)
 
-                            Image(systemName: appState.storageManager.activeProvider.providerType.iconName)
-                                .foregroundColor(.blue)
+                            CloudBrandIconView(type: appState.storageManager.activeProvider.providerType, size: 16)
 
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(appState.storageManager.activeProvider.providerType.displayName)

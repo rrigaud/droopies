@@ -176,16 +176,16 @@ public struct SplashSetupView: View {
                 .foregroundColor(.primary)
 
             HStack(spacing: 8) {
-                cloudOptionChip(type: .dropbox, label: "Dropbox", icon: "shippingbox.fill", color: .blue)
-                cloudOptionChip(type: .nextcloud, label: "Nextcloud", icon: "cloud.fill", color: .cyan)
-                cloudOptionChip(type: .oneDrive, label: "OneDrive", icon: "server.rack", color: .indigo)
-                cloudOptionChip(type: .googleDrive, label: "Google Drive", icon: "triangle.fill", color: .orange)
+                cloudOptionChip(type: .dropbox, label: "Dropbox", color: Color(red: 0.0, green: 0.38, blue: 1.0))
+                cloudOptionChip(type: .nextcloud, label: "Nextcloud", color: Color(red: 0.0, green: 0.51, blue: 0.79))
+                cloudOptionChip(type: .oneDrive, label: "OneDrive", color: Color(red: 0.0, green: 0.47, blue: 0.83))
+                cloudOptionChip(type: .googleDrive, label: "Google Drive", color: Color(red: 0.0, green: 0.67, blue: 0.28))
             }
         }
     }
 
     @ViewBuilder
-    private func cloudOptionChip(type: AppSettings.StorageProviderType, label: String, icon: String, color: Color) -> some View {
+    private func cloudOptionChip(type: AppSettings.StorageProviderType, label: String, color: Color) -> some View {
         let isSelected = selectedProviderType == type
         Button {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
@@ -199,31 +199,31 @@ public struct SplashSetupView: View {
                 }
             }
         } label: {
-            VStack(spacing: 6) {
-                Image(systemName: icon)
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(isSelected ? .white : color)
+            VStack(spacing: 8) {
+                CloudBrandIconView(type: type, size: 28, isSelected: isSelected)
+                    .frame(height: 28)
+
                 Text(label)
                     .font(.system(size: 11, weight: isSelected ? .bold : .medium))
                     .foregroundColor(isSelected ? .white : .primary)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 10)
+            .padding(.vertical, 12)
             .background(
                 Group {
                     if isSelected {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(LinearGradient(colors: [color, color.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                            .shadow(color: color.opacity(0.35), radius: 6, y: 2)
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(LinearGradient(colors: [color, color.opacity(0.85)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                            .shadow(color: color.opacity(0.4), radius: 8, y: 3)
                     } else {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
                             .fill(Color.primary.opacity(0.04))
                     }
                 }
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(isSelected ? Color.white.opacity(0.3) : Color.primary.opacity(0.08), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(isSelected ? Color.white.opacity(0.35) : Color.primary.opacity(0.08), lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
@@ -237,10 +237,14 @@ public struct SplashSetupView: View {
                 ZStack {
                     Circle()
                         .fill(isCloudConnected ? Color.green.opacity(0.15) : Color.blue.opacity(0.15))
-                        .frame(width: 28, height: 28)
-                    Image(systemName: isCloudConnected ? "checkmark" : selectedProviderType.iconName)
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundColor(isCloudConnected ? .green : .blue)
+                        .frame(width: 32, height: 32)
+                    if isCloudConnected {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.green)
+                    } else {
+                        CloudBrandIconView(type: selectedProviderType, size: 18)
+                    }
                 }
 
                 Text("2. Connexion au compte \(selectedProviderType.displayName)")
@@ -314,8 +318,7 @@ public struct SplashSetupView: View {
                                 Text("Connexion en cours...")
                                     .font(.headline.bold())
                             } else {
-                                Image(systemName: "shippingbox.fill")
-                                    .font(.title3)
+                                DropboxOfficialLogo(size: 22, isSelected: true)
                                 Text("Se connecter avec Dropbox")
                                     .font(.headline.bold())
                             }
