@@ -315,7 +315,7 @@ public struct Step2LoadingView: View {
 
     private func selectScan(_ scan: StorageManager.ScanItem) {
         selectedScan = scan
-        let url = appState.storageManager.rootURL.appendingPathComponent("Evaluations/A corriger").appendingPathComponent(scan.name)
+        let url = appState.storageManager.localURL(for: "Evaluations/A corriger/\(scan.name)")
         loadPDF(from: url)
         if evalTitle.isEmpty {
             self.evalTitle = scan.cleanTitle.replacingOccurrences(of: ".pdf", with: "")

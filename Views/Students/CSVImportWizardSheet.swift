@@ -323,7 +323,7 @@ public struct CSVImportWizardSheet: View {
                 id: currentMaxId,
                 name: fullName.trimmingCharacters(in: .whitespacesAndNewlines),
                 classe: cl.trimmingCharacters(in: .whitespacesAndNewlines),
-                gender: sx.uppercased().hasPrefix("F") ? "F" : "M",
+                gender: sx.uppercased().hasPrefix("F") ? .female : .male,
                 login: Student.generateLogin(from: fullName),
                 password: "droopy\(Int.random(in: 10...99))"
             )

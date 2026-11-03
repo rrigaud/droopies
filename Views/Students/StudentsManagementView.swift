@@ -173,7 +173,7 @@ public struct StudentsManagementView: View {
                                 BadgeView(student.classe, style: .info)
                                     .frame(width: 80, alignment: .center)
 
-                                Text(student.gender)
+                                Text(student.gender.rawValue)
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                                     .frame(width: 60, alignment: .center)
@@ -189,7 +189,7 @@ public struct StudentsManagementView: View {
                                     .frame(width: 130, alignment: .leading)
 
                                 Group {
-                                    if student.urlDropbox != nil {
+                                    if !student.urlDropbox.isEmpty {
                                         BadgeView("Lien OK", icon: "link", style: .success)
                                     } else {
                                         BadgeView("Local", icon: "folder", style: .neutral)

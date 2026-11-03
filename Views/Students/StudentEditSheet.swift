@@ -15,7 +15,7 @@ public struct StudentEditSheet: View {
 
     @State private var name: String = ""
     @State private var classe: String = ""
-    @State private var gender: String = "M"
+    @State private var gender: Student.Gender = .male
     @State private var login: String = ""
     @State private var password: String = ""
     @State private var urlDropbox: String = ""
@@ -36,8 +36,8 @@ public struct StudentEditSheet: View {
                     TextField("Nom & Prénom (ex: DUPONT Jules)", text: $name)
                     TextField("Classe (ex: 4B, 3e1)", text: $classe)
                     Picker("Genre", selection: $gender) {
-                        Text("Masculin (M)").tag("M")
-                        Text("Féminin (F)").tag("F")
+                        Text("Masculin (M)").tag(Student.Gender.male)
+                        Text("Féminin (F)").tag(Student.Gender.female)
                     }
                 }
 
@@ -73,7 +73,7 @@ public struct StudentEditSheet: View {
                     gender = student.gender
                     login = student.login
                     password = student.password
-                    urlDropbox = student.urlDropbox ?? ""
+                    urlDropbox = student.urlDropbox
                 } else {
                     classe = appState.selectedClass?.name ?? ""
                 }
@@ -87,7 +87,7 @@ public struct StudentEditSheet: View {
         let cleanClasse = classe.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanLogin = login.isEmpty ? Student.generateLogin(from: cleanName) : login.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanPassword = password.isEmpty ? "droopy" : password.trimmingCharacters(in: .whitespacesAndNewlines)
-        let cleanUrl = urlDropbox.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : urlDropbox
+        let cleanUrl = urlDropbox.trimmingCharacters(in: .whitespacesAndNewlines)
 
         Task {
             if let existing = studentToEdit {

@@ -24,6 +24,32 @@ public final class StorageManager: @unchecked Sendable {
         self.activeProvider = provider
     }
 
+    // MARK: - Résolution de l'URL du dossier racine (Source)
+    public var rootURL: URL {
+        get {
+            if let local = activeProvider as? LocalStorageProvider, let url = local.rootURL {
+                return url
+            }
+            // Emplacement par défaut : Documents/Source
+            let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first ?? URL(fileURLWithPath: NSHomeDirectory())
+            return docs.appendingPathComponent("Source")
+        }
+        set {
+            if let local = activeProvider as? LocalStorageProvider {
+                local.setRootURL(newValue)
+            } else {
+                let local = LocalStorageProvider(rootURL: newValue)
+                self.activeProvider = local
+            }
+        }
+    }
+
+    /// Résout l'URL locale absolue pour un chemin relatif dans le dossier Source
+    public func localURL(for relativePath: String) -> URL {
+        let clean = relativePath.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        return clean.isEmpty ? rootURL : rootURL.appendingPathComponent(clean)
+    }
+
     // MARK: - Gestion de `eleves.json`
 
     /// Charge et décode la liste officielle des élèves depuis `eleves.json`

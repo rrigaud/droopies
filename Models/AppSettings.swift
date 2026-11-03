@@ -124,4 +124,15 @@ public struct AppSettings: Codable, Hashable, Sendable {
         try container.encodeIfPresent(studentsLastSyncedAt, forKey: .studentsLastSyncedAt)
         try container.encodeIfPresent(studentsLastModifiedAt, forKey: .studentsLastModifiedAt)
     }
+
+    // MARK: - Mises à jour d'horodatage ISO 8601
+    private static let isoFormatter = ISO8601DateFormatter()
+
+    public mutating func touchModification() {
+        self.studentsLastModifiedAt = Self.isoFormatter.string(from: Date())
+    }
+
+    public mutating func touchPortalGeneration() {
+        self.portalLastGeneratedAt = Self.isoFormatter.string(from: Date())
+    }
 }

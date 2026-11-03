@@ -292,7 +292,7 @@ public struct Step1CorrectionStudioView: View {
     private func loadScanItem(_ scan: StorageManager.ScanItem) {
         saveCurrentDrawing()
         selectedScan = scan
-        let url = appState.storageManager.rootURL.appendingPathComponent("Evaluations/A corriger").appendingPathComponent(scan.name)
+        let url = appState.storageManager.localURL(for: "Evaluations/A corriger/\(scan.name)")
         loadPDFFromURL(url)
     }
 

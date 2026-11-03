@@ -126,4 +126,15 @@ public struct Student: Identifiable, Codable, Hashable, Sendable {
         let result = String(String.UnicodeScalarView(cleaned)).trimmingCharacters(in: .whitespacesAndNewlines)
         return result.isEmpty ? "Sans_Nom" : result
     }
+
+    /// Génère un identifiant standard à partir du nom complet (ex: "DUPONT Jules" -> "jules.dupont")
+    public static func generateLogin(from fullName: String) -> String {
+        let clean = sanitizeFolderName(fullName).lowercased()
+        let parts = clean.components(separatedBy: " ").filter { !$0.isEmpty }
+        guard !parts.isEmpty else { return "eleve" }
+        if parts.count >= 2 {
+            return "\(parts.last!).\(parts.first!)"
+        }
+        return parts[0]
+    }
 }

@@ -27,6 +27,10 @@ public struct ClassGroup: Identifiable, Hashable, Sendable {
         students.count
     }
 
+    public var count: Int {
+        studentCount
+    }
+
     /// Nombre de garçons
     public var maleCount: Int {
         students.filter { $0.gender == .male }.count
