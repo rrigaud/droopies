@@ -3,7 +3,8 @@
 //  Dropies
 //
 //  Implémentation de StorageProvider pour l'API Dropbox v2.
-//  Gère l'authentification OAuth2 PKCE, le refresh token persistant et les échanges réseau.
+//  Supporte à la fois les jetons d'accès directs (Developer Token)
+//  et les Refresh Tokens persistants avec persistance automatique.
 //
 
 import Foundation
@@ -21,28 +22,48 @@ public final class DropboxStorageProvider: StorageProvider, @unchecked Sendable 
 
     private let session = URLSession(configuration: .default)
 
+    private static let kTokenKey = "dropies_dropbox_token"
+    private static let kRefreshTokenKey = "dropies_dropbox_refresh_token"
+    private static let kAppKey = "dropies_dropbox_app_key"
+    private static let kRootPathKey = "dropies_dropbox_root_path"
+
     public var isConnected: Bool {
-        !appKey.isEmpty && !refreshToken.isEmpty
+        (accessToken != nil && !accessToken!.isEmpty) || (!appKey.isEmpty && !refreshToken.isEmpty)
     }
 
     public init(
         appKey: String = "",
         refreshToken: String = "",
-        rootFolderPath: String = "",
+        accessToken: String? = nil,
+        rootFolderPath: String = "/Droopy",
         accountDisplayName: String? = nil,
         accountEmail: String? = nil
     ) {
-        self.appKey = appKey
-        self.refreshToken = refreshToken
-        self.rootFolderPath = rootFolderPath
+        // Chargement des valeurs persistées si non fournies
+        let savedToken = UserDefaults.standard.string(forKey: Self.kTokenKey)
+        let savedRefresh = UserDefaults.standard.string(forKey: Self.kRefreshTokenKey)
+        let savedAppKey = UserDefaults.standard.string(forKey: Self.kAppKey)
+        let savedRoot = UserDefaults.standard.string(forKey: Self.kRootPathKey) ?? "/Droopy"
+
+        self.accessToken = accessToken ?? savedToken
+        self.refreshToken = refreshToken.isEmpty ? (savedRefresh ?? "") : refreshToken
+        self.appKey = appKey.isEmpty ? (savedAppKey ?? "") : appKey
+        self.rootFolderPath = rootFolderPath.isEmpty ? savedRoot : rootFolderPath
         self.accountDisplayName = accountDisplayName
         self.accountEmail = accountEmail
     }
 
-    public func configure(appKey: String, refreshToken: String, rootFolderPath: String) {
+    public func configure(appKey: String = "", refreshToken: String = "", accessToken: String? = nil, rootFolderPath: String = "/Droopy") {
         self.appKey = appKey
         self.refreshToken = refreshToken
+        self.accessToken = accessToken
         self.rootFolderPath = rootFolderPath
+
+        // Sauvegarde persistante
+        UserDefaults.standard.set(accessToken, forKey: Self.kTokenKey)
+        UserDefaults.standard.set(refreshToken, forKey: Self.kRefreshTokenKey)
+        UserDefaults.standard.set(appKey, forKey: Self.kAppKey)
+        UserDefaults.standard.set(rootFolderPath, forKey: Self.kRootPathKey)
     }
 
     public func disconnect() async throws {
@@ -51,9 +72,13 @@ public final class DropboxStorageProvider: StorageProvider, @unchecked Sendable 
         self.accessToken = nil
         self.accountDisplayName = nil
         self.accountEmail = nil
+
+        UserDefaults.standard.removeObject(forKey: Self.kTokenKey)
+        UserDefaults.standard.removeObject(forKey: Self.kRefreshTokenKey)
+        UserDefaults.standard.removeObject(forKey: Self.kAppKey)
     }
 
-    // MARK: - Gestion de l'Access Token (OAuth2 Refresh)
+    // MARK: - Gestion de l'Access Token
     private func getValidAccessToken() async throws -> String {
         if let token = accessToken, !token.isEmpty {
             return token
@@ -125,14 +150,9 @@ public final class DropboxStorageProvider: StorageProvider, @unchecked Sendable 
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: ["path": remotePath, "autorename": false])
 
-        let (data, response) = try await session.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw StorageError.unknown("Réponse invalide")
-        }
-        // 200 = créé, 409 = dossier existe déjà (acceptable)
-        if httpResponse.statusCode != 200 && httpResponse.statusCode != 409 {
-            let msg = String(data: data, encoding: .utf8) ?? ""
-            throw StorageError.serverError(statusCode: httpResponse.statusCode, message: msg)
+        let (_, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) || httpResponse.statusCode == 409 else {
+            throw StorageError.unknown("Impossible de créer le dossier Dropbox : \(remotePath)")
         }
     }
 
@@ -144,24 +164,26 @@ public final class DropboxStorageProvider: StorageProvider, @unchecked Sendable 
         request.httpMethod = "POST"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONSerialization.data(withJSONObject: ["path": remotePath])
+
+        let reqPath = remotePath == "/" ? "" : remotePath
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["path": reqPath, "recursive": false])
 
         let (data, response) = try await session.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-            throw StorageError.folderNotFound(path: path)
+        guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
+            return []
         }
 
         struct ListFolderResponse: Decodable {
             struct Entry: Decodable {
                 let tag: String
                 let name: String
-                let path_display: String?
+                let path_lower: String?
                 let size: Int64?
 
                 enum CodingKeys: String, CodingKey {
                     case tag = ".tag"
                     case name
-                    case path_display
+                    case path_lower
                     case size
                 }
             }
@@ -172,49 +194,10 @@ public final class DropboxStorageProvider: StorageProvider, @unchecked Sendable 
         return decoded.entries.map { entry in
             CloudItem(
                 name: entry.name,
-                path: entry.path_display ?? entry.name,
+                path: entry.path_lower ?? entry.name,
                 isDirectory: entry.tag == "folder",
                 size: entry.size
             )
-        }
-    }
-
-    public func moveItem(from sourcePath: String, to destinationPath: String) async throws {
-        let token = try await getValidAccessToken()
-        let fromPath = normalizeRemotePath(sourcePath)
-        let toPath = normalizeRemotePath(destinationPath)
-
-        var request = URLRequest(url: URL(string: "https://api.dropboxapi.com/2/files/move_v2")!)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONSerialization.data(withJSONObject: [
-            "from_path": fromPath,
-            "to_path": toPath,
-            "autorename": false
-        ])
-
-        let (data, response) = try await session.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-            let msg = String(data: data, encoding: .utf8) ?? ""
-            throw StorageError.serverError(statusCode: (response as? HTTPURLResponse)?.statusCode ?? 500, message: msg)
-        }
-    }
-
-    public func deleteItem(at path: String) async throws {
-        let token = try await getValidAccessToken()
-        let remotePath = normalizeRemotePath(path)
-
-        var request = URLRequest(url: URL(string: "https://api.dropboxapi.com/2/files/delete_v2")!)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONSerialization.data(withJSONObject: ["path": remotePath])
-
-        let (data, response) = try await session.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse, (httpResponse.statusCode == 200 || httpResponse.statusCode == 409) else {
-            let msg = String(data: data, encoding: .utf8) ?? ""
-            throw StorageError.serverError(statusCode: (response as? HTTPURLResponse)?.statusCode ?? 500, message: msg)
         }
     }
 
@@ -225,12 +208,12 @@ public final class DropboxStorageProvider: StorageProvider, @unchecked Sendable 
         var request = URLRequest(url: URL(string: "https://content.dropboxapi.com/2/files/download")!)
         request.httpMethod = "POST"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        let apiArg = try JSONSerialization.data(withJSONObject: ["path": remotePath])
-        let apiArgHeader = String(data: apiArg, encoding: .utf8) ?? "{}"
-        request.setValue(apiArgHeader, forHTTPHeaderField: "Dropbox-API-Arg")
+        let apiArg = ["path": remotePath]
+        let apiArgData = try JSONSerialization.data(withJSONObject: apiArg)
+        request.setValue(String(data: apiArgData, encoding: .utf8) ?? "{}", forHTTPHeaderField: "Dropbox-API-Arg")
 
         let (data, response) = try await session.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+        guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
             throw StorageError.fileNotFound(path: path)
         }
         return data
@@ -271,6 +254,43 @@ public final class DropboxStorageProvider: StorageProvider, @unchecked Sendable 
     public func downloadFile(remotePath: String, to localURL: URL) async throws {
         let data = try await readData(at: remotePath)
         try data.write(to: localURL)
+    }
+
+    public func deleteItem(at path: String) async throws {
+        let token = try await getValidAccessToken()
+        let remotePath = normalizeRemotePath(path)
+
+        var request = URLRequest(url: URL(string: "https://api.dropboxapi.com/2/files/delete_v2")!)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["path": remotePath])
+
+        let (_, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
+            throw StorageError.unknown("Échec suppression Dropbox : \(remotePath)")
+        }
+    }
+
+    public func moveItem(from sourcePath: String, to destinationPath: String) async throws {
+        let token = try await getValidAccessToken()
+        let fromRemote = normalizeRemotePath(sourcePath)
+        let toRemote = normalizeRemotePath(destinationPath)
+
+        var request = URLRequest(url: URL(string: "https://api.dropboxapi.com/2/files/move_v2")!)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: [
+            "from_path": fromRemote,
+            "to_path": toRemote,
+            "autorename": false
+        ])
+
+        let (_, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
+            throw StorageError.unknown("Échec déplacement Dropbox")
+        }
     }
 
     public func createSharedLink(for remotePath: String) async throws -> String {
@@ -341,5 +361,12 @@ public final class DropboxStorageProvider: StorageProvider, @unchecked Sendable 
             self.accountDisplayName = info.name.display_name
             self.accountEmail = info.email
         }
+    }
+
+    public func testConnection() async throws -> (name: String, email: String) {
+        try await fetchAccountInfo()
+        let name = accountDisplayName ?? "Utilisateur Dropbox"
+        let email = accountEmail ?? "Connecté"
+        return (name, email)
     }
 }

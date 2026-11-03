@@ -47,19 +47,7 @@ public struct MainSplitView: View {
                 // MARK: - En-tête Dropies
                 Section {
                     HStack(spacing: 12) {
-                        Image(systemName: "dog.fill")
-                            .font(.system(size: 20, weight: .bold))
-                            .foregroundColor(.white)
-                            .frame(width: 36, height: 36)
-                            .background(
-                                LinearGradient(
-                                    colors: [Color.blue, Color.cyan],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                            .shadow(color: Color.blue.opacity(0.35), radius: 6, y: 2)
+                        DropiesMascotView(size: 36, hasShadow: true)
 
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Dropies")

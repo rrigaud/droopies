@@ -4,6 +4,7 @@
 //
 //  Point d'entrée principal de l'application native Dropies (@main).
 //  Supporte nativement macOS Sonoma+ et iPadOS 17+.
+//  Démarre par le SplashScreen de configuration environnementale si nécessaire.
 //
 
 import SwiftUI
@@ -11,13 +12,24 @@ import SwiftUI
 @main
 struct DropiesApp: App {
     @State private var appState = AppState()
+    @State private var isSetupCompleted: Bool = false
 
     var body: some Scene {
         WindowGroup {
-            MainSplitView(appState: appState)
-                #if os(macOS)
-                .frame(minWidth: 950, minHeight: 650)
-                #endif
+            Group {
+                if isSetupCompleted {
+                    MainSplitView(appState: appState)
+                } else {
+                    SplashSetupView(appState: appState) {
+                        withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
+                            isSetupCompleted = true
+                        }
+                    }
+                }
+            }
+            #if os(macOS)
+            .frame(minWidth: 950, minHeight: 650)
+            #endif
         }
         #if os(macOS)
         .defaultSize(width: 1150, height: 780)

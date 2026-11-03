@@ -4,6 +4,7 @@
 //
 //  Section Administrative : Gestion complète des élèves, des classes,
 //  création automatique des dossiers physiques et impression des fiches QR code.
+//  Sublimé avec Liquid Glass et gestion modale robuste par ActiveSheet.
 //
 
 import SwiftUI
@@ -11,12 +12,25 @@ import SwiftUI
 public struct StudentsManagementView: View {
     @Bindable public var appState: AppState
 
+    public enum ActiveSheet: Identifiable {
+        case addStudent
+        case editStudent(Student)
+        case csvImport
+        case labels
+
+        public var id: String {
+            switch self {
+            case .addStudent: return "add"
+            case .editStudent(let s): return "edit-\(s.id)"
+            case .csvImport: return "csv"
+            case .labels: return "labels"
+            }
+        }
+    }
+
     @State private var selectedClassFilter: String = "Toutes"
     @State private var searchQuery: String = ""
-    @State private var isAddStudentPresented: Bool = false
-    @State private var studentToEdit: Student? = nil
-    @State private var isCSVImportPresented: Bool = false
-    @State private var isLabelsPresented: Bool = false
+    @State private var activeSheet: ActiveSheet? = nil
     @State private var showDeleteConfirmation: Bool = false
     @State private var studentToDelete: Student? = nil
 
@@ -62,24 +76,25 @@ public struct StudentsManagementView: View {
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
-                .background(Color(white: 0.5, opacity: 0.08))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .background(Color.primary.opacity(0.06))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
                 .frame(maxWidth: 280)
 
                 Spacer()
 
                 // Boutons d'action rapides
                 Button {
-                    isAddStudentPresented = true
+                    activeSheet = .addStudent
                 } label: {
-                    Label("Ajouter", systemImage: "person.badge.plus")
+                    Label("Ajouter un élève", systemImage: "person.badge.plus")
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(VibrantGradientButtonStyle(gradient: .electricBlue, isCompact: true))
 
                 Button {
-                    isCSVImportPresented = true
+                    activeSheet = .csvImport
                 } label: {
                     Label("Importer CSV", systemImage: "arrow.down.doc")
+                        .font(.system(size: 13, weight: .semibold))
                 }
                 .buttonStyle(.bordered)
 
@@ -99,18 +114,19 @@ public struct StudentsManagementView: View {
                     Divider()
 
                     Button {
-                        isLabelsPresented = true
+                        activeSheet = .labels
                     } label: {
                         Label("Imprimer les fiches de connexion (QR)", systemImage: "printer.fill")
                     }
                 } label: {
                     Label("Outils", systemImage: "ellipsis.circle")
+                        .font(.system(size: 13, weight: .semibold))
                 }
                 .buttonStyle(.bordered)
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(Color(white: 0.5, opacity: 0.04))
+            .padding(.vertical, 10)
+            .background(.ultraThinMaterial)
 
             Divider()
 
@@ -126,40 +142,81 @@ public struct StudentsManagementView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
             }
-            .background(Color(white: 0.5, opacity: 0.02))
 
             Divider()
 
-            // MARK: - Tableau des élèves
+            // MARK: - Liste des élèves
             if filteredStudents.isEmpty {
-                VStack(spacing: 14) {
+                VStack(spacing: 16) {
+                    Spacer()
                     Image(systemName: "person.2.slash")
                         .font(.system(size: 48))
                         .foregroundColor(.secondary)
-                    Text("Aucun élève trouvé")
-                        .font(.headline)
-                    Text("Ajoutez un premier élève ou importez un fichier CSV de votre classe.")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+
+                    if appState.students.isEmpty {
+                        Text("Aucun élève dans la base eleves.json")
+                            .font(.headline)
+                        Text("Importez un fichier CSV (Pronote / Siècle) ou ajoutez manuellement vos premiers élèves.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: 400)
+
+                        Button {
+                            activeSheet = .addStudent
+                        } label: {
+                            Label("Ajouter un premier élève", systemImage: "person.badge.plus")
+                        }
+                        .buttonStyle(VibrantGradientButtonStyle(gradient: .electricBlue))
+                    } else {
+                        Text("Aucun élève ne correspond à votre recherche")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 VStack(spacing: 0) {
-                    // En-tête des colonnes
+                    // En-têtes du tableau
                     HStack {
-                        Text("Nom & Prénom").frame(maxWidth: .infinity, alignment: .leading)
-                        Text("Classe").frame(width: 80, alignment: .center)
-                        Text("Genre").frame(width: 60, alignment: .center)
-                        Text("Identifiant").frame(width: 140, alignment: .leading)
-                        Text("Mot de passe").frame(width: 130, alignment: .leading)
-                        Text("Dossier Cloud").frame(width: 120, alignment: .center)
-                        Text("Actions").frame(width: 80, alignment: .trailing)
+                        Text("Nom & Prénom")
+                            .font(.caption.bold())
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                        Text("Classe")
+                            .font(.caption.bold())
+                            .foregroundColor(.secondary)
+                            .frame(width: 80, alignment: .center)
+
+                        Text("Genre")
+                            .font(.caption.bold())
+                            .foregroundColor(.secondary)
+                            .frame(width: 60, alignment: .center)
+
+                        Text("Identifiant")
+                            .font(.caption.bold())
+                            .foregroundColor(.secondary)
+                            .frame(width: 140, alignment: .leading)
+
+                        Text("Mot de passe")
+                            .font(.caption.bold())
+                            .foregroundColor(.secondary)
+                            .frame(width: 130, alignment: .leading)
+
+                        Text("Dossier")
+                            .font(.caption.bold())
+                            .foregroundColor(.secondary)
+                            .frame(width: 120, alignment: .center)
+
+                        Text("Actions")
+                            .font(.caption.bold())
+                            .foregroundColor(.secondary)
+                            .frame(width: 80, alignment: .trailing)
                     }
-                    .font(.caption.bold())
-                    .foregroundColor(.secondary)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 8)
-                    .background(Color(white: 0.5, opacity: 0.06))
+                    .background(Color.primary.opacity(0.04))
 
                     Divider()
 
@@ -199,7 +256,7 @@ public struct StudentsManagementView: View {
 
                                 HStack(spacing: 8) {
                                     Button {
-                                        studentToEdit = student
+                                        activeSheet = .editStudent(student)
                                     } label: {
                                         Image(systemName: "pencil")
                                             .foregroundColor(.blue)
@@ -224,17 +281,17 @@ public struct StudentsManagementView: View {
                 }
             }
         }
-        .sheet(isPresented: $isAddStudentPresented) {
-            StudentEditSheet(appState: appState)
-        }
-        .sheet(item: $studentToEdit) { student in
-            StudentEditSheet(appState: appState, studentToEdit: student)
-        }
-        .sheet(isPresented: $isCSVImportPresented) {
-            CSVImportWizardSheet(appState: appState)
-        }
-        .sheet(isPresented: $isLabelsPresented) {
-            StudentLabelsView(appState: appState)
+        .sheet(item: $activeSheet) { sheet in
+            switch sheet {
+            case .addStudent:
+                StudentEditSheet(appState: appState)
+            case .editStudent(let student):
+                StudentEditSheet(appState: appState, studentToEdit: student)
+            case .csvImport:
+                CSVImportWizardSheet(appState: appState)
+            case .labels:
+                StudentLabelsView(appState: appState)
+            }
         }
         .confirmationDialog(
             "Supprimer cet élève ?",
@@ -272,7 +329,7 @@ public struct StudentsManagementView: View {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
-            .background(isSelected ? Color.blue : Color(white: 0.5, opacity: 0.08))
+            .background(isSelected ? Color.blue : Color.primary.opacity(0.06))
             .foregroundColor(isSelected ? .white : .primary)
             .clipShape(Capsule())
         }

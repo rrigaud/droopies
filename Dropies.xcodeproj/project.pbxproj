@@ -6,78 +6,84 @@
 	objectVersion = 56;
 	objects = {
 /* Begin PBXBuildFile section */
-		79426B1040D54DC3984740FC /* DropiesApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E5E0A498472436EB39F188F /* DropiesApp.swift */; };
-		44270462529A4980BB4C2AA6 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCF3AA48FE86400D99B79669 /* AppSettings.swift */; };
-		8F96F1472E6345D78CAFF355 /* ClassGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2F19EE1E29A49A89DB5511F /* ClassGroup.swift */; };
-		1402A2BB4FDE4DAFA7B42B59 /* Evaluation.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5BAA4946025482A9F3ED66E /* Evaluation.swift */; };
-		46FDB0E2702344ABA7CE9313 /* Student.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D806CF5E6FC4DC49CFD67FC /* Student.swift */; };
-		78C1FCD4EDDD4223959EFF49 /* StudentCopy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9476643035524F06A7CC6613 /* StudentCopy.swift */; };
-		4FEF01FCAA544161A1BEB36E /* CloudItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 644838524D2A4F32AAC88091 /* CloudItem.swift */; };
-		6AD4821122694C808C9DC3BF /* DropboxStorageProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90581619B07E48D190C6829E /* DropboxStorageProvider.swift */; };
-		8532B422DC2F42E7B4D30F57 /* LocalStorageProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2BB5ADDB4114B23B360D3B0 /* LocalStorageProvider.swift */; };
-		3BBA6DABECEF4CC6B69755B2 /* StorageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04CE7D68D9AA43178036A8F9 /* StorageManager.swift */; };
-		31D4309881474CA6A6B0CCCC /* StorageProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABF82DD6B1B54D778C1B4288 /* StorageProvider.swift */; };
-		F87A893E81794C03A34DB1BB /* PDFEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F46BF2467E54ED6926B8678 /* PDFEngine.swift */; };
-		CDBC4E3A29854AB586F14017 /* OCREngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B084495E589C4FD892225F68 /* OCREngine.swift */; };
-		80C619EA117F4F81B1AD4923 /* StudentMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11403BCAEF9D4C199FBCB965 /* StudentMatcher.swift */; };
-		B4CDACE957AE4097B186A0C2 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 261D8D87EF654D939DA956C5 /* AppState.swift */; };
-		3F6AA642B028482E950444E0 /* MainSplitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3C2C1ECB5F04A70A3A616DA /* MainSplitView.swift */; };
-		75F4D1E1B0F84114A1F8396D /* BadgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E4C1FA22D7A4F2BA3CC118C /* BadgeView.swift */; };
-		DFE26B094777445E86304FD8 /* GlassComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 855BA86D32D34394B1FC11EB /* GlassComponents.swift */; };
-		07D5DFCD3C324A498B7B90E1 /* KPICard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47B97563FF904D54AE64286E /* KPICard.swift */; };
-		728F83D784B6469999E058B1 /* PDFKitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A545A5008B64557A9501582 /* PDFKitView.swift */; };
-		F774ACC252604B6887640CE9 /* PencilCanvasOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B2B929B8D745F586D04715 /* PencilCanvasOverlay.swift */; };
-		DC7EC26FF03F4541A36924CC /* QRCodeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD450A82295F48E685E5B947 /* QRCodeView.swift */; };
-		2416F54940A44B9286EE1E8D /* CorrectionWorkflowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 828128B17FE24F5593DBF7D6 /* CorrectionWorkflowView.swift */; };
-		4DD0F256F61A4E399A6FB2EF /* Step1CorrectionStudioView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C4ABC87D2F74C128FC0AB2F /* Step1CorrectionStudioView.swift */; };
-		2D0D15E1AA4E4882970EA1EE /* Step2LoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70A5A7C458BD4CDBAB8424E2 /* Step2LoadingView.swift */; };
-		9D084AF4324A4BF995F678F3 /* Step3IdentificationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA8E2C69FFDE482FAF1C0936 /* Step3IdentificationView.swift */; };
-		FB502CA783BF4D56998C3172 /* Step4DistributionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E65DCC98E18D48AE947F9082 /* Step4DistributionView.swift */; };
-		12D694D0EC9E405A8308BD00 /* StudentsManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72EFFB08FFFB4FA0854FC960 /* StudentsManagementView.swift */; };
-		F46E9245C1D24F91A9B274F2 /* StudentEditSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62D1929D05454BAF8AC7D20C /* StudentEditSheet.swift */; };
-		1C2E9927150D409D9F471787 /* CSVImportWizardSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5E4F1FDCB52494F9BEB72CA /* CSVImportWizardSheet.swift */; };
-		32F5D516ED1048B499EFCEC9 /* StudentLabelsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7CAF40CCDB445C0AC55DFF1 /* StudentLabelsView.swift */; };
-		D0B74FA23EAB4A839DBE126A /* PortalSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8320252B65A7412B82D66F9B /* PortalSettingsView.swift */; };
-		2751C9B68A5C4CC2924AF302 /* AppSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E83DCD5B68D46F7A1E009E7 /* AppSettingsView.swift */; };
+		41FCFE0D5F8944B782449DC3 /* DropiesApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 518BC8C6F0AC4094AA578008 /* DropiesApp.swift */; };
+		E8B236C8639E4539A92A2843 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B238E44F352F4036A3645BF5 /* AppSettings.swift */; };
+		845D58AA17844AE68816E19F /* ClassGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6197BAD6A871444B9B15CE78 /* ClassGroup.swift */; };
+		731061C7D84141FEA6F21E6C /* Evaluation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7153580972B0422BB424A7D1 /* Evaluation.swift */; };
+		91F520FC616C4538A862519C /* Student.swift in Sources */ = {isa = PBXBuildFile; fileRef = C76EF5DAAEF74E0FBF3E11EA /* Student.swift */; };
+		584079F61A5C4A4DACBD9CE9 /* StudentCopy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C7CA63A97744B859E0339E3 /* StudentCopy.swift */; };
+		F34303B060FE49E18E6594D1 /* CloudItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BD716ADE93C4607BD1A7A54 /* CloudItem.swift */; };
+		6195C3A47A8E49ADB34FAFF2 /* DropboxStorageProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D913A03F01FB49048F242B1F /* DropboxStorageProvider.swift */; };
+		05E0FD196C3243748983AFD2 /* LocalStorageProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96EDF47AF8474F41B2AC0F71 /* LocalStorageProvider.swift */; };
+		13793CDCC9ED483C8F93FBD4 /* StorageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CF57C1D327D4762B478E784 /* StorageManager.swift */; };
+		46CE24B0ADAE493288501370 /* StorageProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF1AB290A8DC4C669F58DEEB /* StorageProvider.swift */; };
+		DF8564954E554037B3918570 /* PDFEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AA661A2D9D249EE9A4D8374 /* PDFEngine.swift */; };
+		3C14BBFDF3AD4C44B97441A2 /* OCREngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = E50C152601714FBB9DBEB9D6 /* OCREngine.swift */; };
+		4C1161C0661B49A18569802C /* StudentMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6F70F3274CF47B9A5DBE0DB /* StudentMatcher.swift */; };
+		F06B7325DE4D43E1926520F9 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73D331F06F664B29AF0B4C6E /* AppState.swift */; };
+		B76EDA9BD07645C4B26D723F /* MainSplitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45856FAB5C624932AEF63266 /* MainSplitView.swift */; };
+		14533C65B59243CA85612ECA /* BadgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41AB54564AB2413E8DE307DA /* BadgeView.swift */; };
+		7E5558E0A2F846DB85618B64 /* GlassComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A5BE11D72984C1FA13896D9 /* GlassComponents.swift */; };
+		CD784F64DA00480EBFE83FDD /* DropiesMascotView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F51513C1DB2A4BFDB0FC94FC /* DropiesMascotView.swift */; };
+		24A6B58542854F2FBB5D036B /* KPICard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C4B6DF93079461F958B7180 /* KPICard.swift */; };
+		D50C7B9A21D24AE6A889D4B0 /* PDFKitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4EF887DB25B4CC6972D19BD /* PDFKitView.swift */; };
+		B2BC8432C3AD46C49251126B /* PencilCanvasOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2F473B85C4B4B9495077F9C /* PencilCanvasOverlay.swift */; };
+		C65E5E19F3424249BB250D3B /* QRCodeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59EB79BC64A946F8A271F774 /* QRCodeView.swift */; };
+		05831859008A4DFC9182A42B /* SplashSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D3D1EC699A7498B881C7640 /* SplashSetupView.swift */; };
+		2D543124EA734C7B900B8CDA /* CorrectionWorkflowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16FA22AC5D154DED8A8427F9 /* CorrectionWorkflowView.swift */; };
+		34C6528FFA1746C588D1C893 /* Step1CorrectionStudioView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 584880E7DEDA4F2FB3EBF479 /* Step1CorrectionStudioView.swift */; };
+		EE0E3C6723B940AA91282901 /* Step2LoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1F2A413F9F64C66892C812E /* Step2LoadingView.swift */; };
+		8A70D4B76C6A465EADD2BD74 /* Step3IdentificationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AA929698E3F4189A9DCDC1F /* Step3IdentificationView.swift */; };
+		934AF1CF05EA4CAD8E71F376 /* Step4DistributionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC4F22EE6C2F49E3B05E6060 /* Step4DistributionView.swift */; };
+		7E67F5769E5248EC9D038D83 /* StudentsManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87B9CA9CA3F4E938F1D3D3A /* StudentsManagementView.swift */; };
+		43AE5B76126B4DABB1DBF0ED /* StudentEditSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14F3FA69E413440DBD91CA63 /* StudentEditSheet.swift */; };
+		CFE957E3DDFA4ED0B6FDD001 /* CSVImportWizardSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B15FE35FC6DB4DB69E05233F /* CSVImportWizardSheet.swift */; };
+		3FAC9B0481314F86B5894A2E /* StudentLabelsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76387F798EAC41A39A1FC859 /* StudentLabelsView.swift */; };
+		C464B4F2CA3B465585D48593 /* PortalSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC3C80E61C994B2C9A0F993D /* PortalSettingsView.swift */; };
+		607E9C22440F4A7BACBEFDC1 /* AppSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10D15834C384BBC805F5055 /* AppSettingsView.swift */; };
+		58319139DD0A4E50A2AED343 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9034EF219FDA4559B3B19ECB /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 /* Begin PBXFileReference section */
-		CCB103049292463EBD08EEA4 /* Dropies.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Dropies.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		6E5E0A498472436EB39F188F /* DropiesApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DropiesApp.swift"; sourceTree = "<group>"; };
-		FCF3AA48FE86400D99B79669 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppSettings.swift"; sourceTree = "<group>"; };
-		B2F19EE1E29A49A89DB5511F /* ClassGroup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ClassGroup.swift"; sourceTree = "<group>"; };
-		F5BAA4946025482A9F3ED66E /* Evaluation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Evaluation.swift"; sourceTree = "<group>"; };
-		6D806CF5E6FC4DC49CFD67FC /* Student.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Student.swift"; sourceTree = "<group>"; };
-		9476643035524F06A7CC6613 /* StudentCopy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StudentCopy.swift"; sourceTree = "<group>"; };
-		644838524D2A4F32AAC88091 /* CloudItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CloudItem.swift"; sourceTree = "<group>"; };
-		90581619B07E48D190C6829E /* DropboxStorageProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DropboxStorageProvider.swift"; sourceTree = "<group>"; };
-		E2BB5ADDB4114B23B360D3B0 /* LocalStorageProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LocalStorageProvider.swift"; sourceTree = "<group>"; };
-		04CE7D68D9AA43178036A8F9 /* StorageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StorageManager.swift"; sourceTree = "<group>"; };
-		ABF82DD6B1B54D778C1B4288 /* StorageProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StorageProvider.swift"; sourceTree = "<group>"; };
-		1F46BF2467E54ED6926B8678 /* PDFEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PDFEngine.swift"; sourceTree = "<group>"; };
-		B084495E589C4FD892225F68 /* OCREngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "OCREngine.swift"; sourceTree = "<group>"; };
-		11403BCAEF9D4C199FBCB965 /* StudentMatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StudentMatcher.swift"; sourceTree = "<group>"; };
-		261D8D87EF654D939DA956C5 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppState.swift"; sourceTree = "<group>"; };
-		E3C2C1ECB5F04A70A3A616DA /* MainSplitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MainSplitView.swift"; sourceTree = "<group>"; };
-		8E4C1FA22D7A4F2BA3CC118C /* BadgeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BadgeView.swift"; sourceTree = "<group>"; };
-		855BA86D32D34394B1FC11EB /* GlassComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GlassComponents.swift"; sourceTree = "<group>"; };
-		47B97563FF904D54AE64286E /* KPICard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "KPICard.swift"; sourceTree = "<group>"; };
-		4A545A5008B64557A9501582 /* PDFKitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PDFKitView.swift"; sourceTree = "<group>"; };
-		C5B2B929B8D745F586D04715 /* PencilCanvasOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PencilCanvasOverlay.swift"; sourceTree = "<group>"; };
-		AD450A82295F48E685E5B947 /* QRCodeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "QRCodeView.swift"; sourceTree = "<group>"; };
-		828128B17FE24F5593DBF7D6 /* CorrectionWorkflowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CorrectionWorkflowView.swift"; sourceTree = "<group>"; };
-		7C4ABC87D2F74C128FC0AB2F /* Step1CorrectionStudioView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Step1CorrectionStudioView.swift"; sourceTree = "<group>"; };
-		70A5A7C458BD4CDBAB8424E2 /* Step2LoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Step2LoadingView.swift"; sourceTree = "<group>"; };
-		BA8E2C69FFDE482FAF1C0936 /* Step3IdentificationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Step3IdentificationView.swift"; sourceTree = "<group>"; };
-		E65DCC98E18D48AE947F9082 /* Step4DistributionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Step4DistributionView.swift"; sourceTree = "<group>"; };
-		72EFFB08FFFB4FA0854FC960 /* StudentsManagementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StudentsManagementView.swift"; sourceTree = "<group>"; };
-		62D1929D05454BAF8AC7D20C /* StudentEditSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StudentEditSheet.swift"; sourceTree = "<group>"; };
-		C5E4F1FDCB52494F9BEB72CA /* CSVImportWizardSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CSVImportWizardSheet.swift"; sourceTree = "<group>"; };
-		D7CAF40CCDB445C0AC55DFF1 /* StudentLabelsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StudentLabelsView.swift"; sourceTree = "<group>"; };
-		8320252B65A7412B82D66F9B /* PortalSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PortalSettingsView.swift"; sourceTree = "<group>"; };
-		8E83DCD5B68D46F7A1E009E7 /* AppSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppSettingsView.swift"; sourceTree = "<group>"; };
+		D94E97F97ED149868279F122 /* Dropies.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Dropies.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		518BC8C6F0AC4094AA578008 /* DropiesApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DropiesApp.swift"; sourceTree = "<group>"; };
+		B238E44F352F4036A3645BF5 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppSettings.swift"; sourceTree = "<group>"; };
+		6197BAD6A871444B9B15CE78 /* ClassGroup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ClassGroup.swift"; sourceTree = "<group>"; };
+		7153580972B0422BB424A7D1 /* Evaluation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Evaluation.swift"; sourceTree = "<group>"; };
+		C76EF5DAAEF74E0FBF3E11EA /* Student.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Student.swift"; sourceTree = "<group>"; };
+		3C7CA63A97744B859E0339E3 /* StudentCopy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StudentCopy.swift"; sourceTree = "<group>"; };
+		6BD716ADE93C4607BD1A7A54 /* CloudItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CloudItem.swift"; sourceTree = "<group>"; };
+		D913A03F01FB49048F242B1F /* DropboxStorageProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DropboxStorageProvider.swift"; sourceTree = "<group>"; };
+		96EDF47AF8474F41B2AC0F71 /* LocalStorageProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LocalStorageProvider.swift"; sourceTree = "<group>"; };
+		0CF57C1D327D4762B478E784 /* StorageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StorageManager.swift"; sourceTree = "<group>"; };
+		CF1AB290A8DC4C669F58DEEB /* StorageProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StorageProvider.swift"; sourceTree = "<group>"; };
+		4AA661A2D9D249EE9A4D8374 /* PDFEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PDFEngine.swift"; sourceTree = "<group>"; };
+		E50C152601714FBB9DBEB9D6 /* OCREngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "OCREngine.swift"; sourceTree = "<group>"; };
+		A6F70F3274CF47B9A5DBE0DB /* StudentMatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StudentMatcher.swift"; sourceTree = "<group>"; };
+		73D331F06F664B29AF0B4C6E /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppState.swift"; sourceTree = "<group>"; };
+		45856FAB5C624932AEF63266 /* MainSplitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MainSplitView.swift"; sourceTree = "<group>"; };
+		41AB54564AB2413E8DE307DA /* BadgeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BadgeView.swift"; sourceTree = "<group>"; };
+		3A5BE11D72984C1FA13896D9 /* GlassComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GlassComponents.swift"; sourceTree = "<group>"; };
+		F51513C1DB2A4BFDB0FC94FC /* DropiesMascotView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DropiesMascotView.swift"; sourceTree = "<group>"; };
+		2C4B6DF93079461F958B7180 /* KPICard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "KPICard.swift"; sourceTree = "<group>"; };
+		E4EF887DB25B4CC6972D19BD /* PDFKitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PDFKitView.swift"; sourceTree = "<group>"; };
+		C2F473B85C4B4B9495077F9C /* PencilCanvasOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PencilCanvasOverlay.swift"; sourceTree = "<group>"; };
+		59EB79BC64A946F8A271F774 /* QRCodeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "QRCodeView.swift"; sourceTree = "<group>"; };
+		2D3D1EC699A7498B881C7640 /* SplashSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SplashSetupView.swift"; sourceTree = "<group>"; };
+		16FA22AC5D154DED8A8427F9 /* CorrectionWorkflowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CorrectionWorkflowView.swift"; sourceTree = "<group>"; };
+		584880E7DEDA4F2FB3EBF479 /* Step1CorrectionStudioView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Step1CorrectionStudioView.swift"; sourceTree = "<group>"; };
+		E1F2A413F9F64C66892C812E /* Step2LoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Step2LoadingView.swift"; sourceTree = "<group>"; };
+		5AA929698E3F4189A9DCDC1F /* Step3IdentificationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Step3IdentificationView.swift"; sourceTree = "<group>"; };
+		AC4F22EE6C2F49E3B05E6060 /* Step4DistributionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Step4DistributionView.swift"; sourceTree = "<group>"; };
+		C87B9CA9CA3F4E938F1D3D3A /* StudentsManagementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StudentsManagementView.swift"; sourceTree = "<group>"; };
+		14F3FA69E413440DBD91CA63 /* StudentEditSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StudentEditSheet.swift"; sourceTree = "<group>"; };
+		B15FE35FC6DB4DB69E05233F /* CSVImportWizardSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CSVImportWizardSheet.swift"; sourceTree = "<group>"; };
+		76387F798EAC41A39A1FC859 /* StudentLabelsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StudentLabelsView.swift"; sourceTree = "<group>"; };
+		CC3C80E61C994B2C9A0F993D /* PortalSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PortalSettingsView.swift"; sourceTree = "<group>"; };
+		B10D15834C384BBC805F5055 /* AppSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppSettingsView.swift"; sourceTree = "<group>"; };
+		9034EF219FDA4559B3B19ECB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Assets.xcassets"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 /* Begin PBXFrameworksBuildPhase section */
-		FB1BA738480E4407ABD8ECC4 /* Frameworks */ = {
+		EC1C113ECCA04E68BFDAF539 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -86,167 +92,186 @@
 		};
 /* End PBXFrameworksBuildPhase section */
 /* Begin PBXGroup section */
-		30D737050C28433EB3237C41 = {
+		744110981BFC43528CF9A979 = {
 			isa = PBXGroup;
 			children = (
-				0C688AB220C44EDCADC70248 /* App */,
-				1D0584996E3E45848EF8102C /* Models */,
-				5BD86272E0424623B624213D /* Services */,
-				0703E9EF95D7412CAA2F9F2B /* ViewModels */,
-				D095B527EF114084B75848DA /* Views */,
-				31B3ED65F10C403C8D8D32CD /* Products */,
+				CB09F90F0F844814B0BBD03A /* App */,
+				6588CB3FC79D47B5A16DC9A0 /* Models */,
+				322021D3C8B14586854FB59F /* Services */,
+				B84E049A0948433B8429933D /* ViewModels */,
+				EC9E688CE93C4502936214A8 /* Views */,
+				37B3ABD1735A4B838C05F0D9 /* Resources */,
+				7A75D254AC134604AF0BF3C3 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		31B3ED65F10C403C8D8D32CD /* Products */ = {
+		7A75D254AC134604AF0BF3C3 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				CCB103049292463EBD08EEA4 /* Dropies.app */,
+				D94E97F97ED149868279F122 /* Dropies.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		0C688AB220C44EDCADC70248 /* App */ = {
+		CB09F90F0F844814B0BBD03A /* App */ = {
 			isa = PBXGroup;
 			children = (
-				6E5E0A498472436EB39F188F /* DropiesApp.swift */,
+				518BC8C6F0AC4094AA578008 /* DropiesApp.swift */,
 			);
 			path = "App";
 			sourceTree = "<group>";
 		};
-		1D0584996E3E45848EF8102C /* Models */ = {
+		6588CB3FC79D47B5A16DC9A0 /* Models */ = {
 			isa = PBXGroup;
 			children = (
-				FCF3AA48FE86400D99B79669 /* AppSettings.swift */,
-				B2F19EE1E29A49A89DB5511F /* ClassGroup.swift */,
-				F5BAA4946025482A9F3ED66E /* Evaluation.swift */,
-				6D806CF5E6FC4DC49CFD67FC /* Student.swift */,
-				9476643035524F06A7CC6613 /* StudentCopy.swift */,
+				B238E44F352F4036A3645BF5 /* AppSettings.swift */,
+				6197BAD6A871444B9B15CE78 /* ClassGroup.swift */,
+				7153580972B0422BB424A7D1 /* Evaluation.swift */,
+				C76EF5DAAEF74E0FBF3E11EA /* Student.swift */,
+				3C7CA63A97744B859E0339E3 /* StudentCopy.swift */,
 			);
 			path = "Models";
 			sourceTree = "<group>";
 		};
-		5BD86272E0424623B624213D /* Services */ = {
+		322021D3C8B14586854FB59F /* Services */ = {
 			isa = PBXGroup;
 			children = (
-				60635CBA2DF24C1185D7A59D /* Storage */,
-				7C9A74F40F3C453988D39F48 /* PDFEngine */,
-				D5A1F78F70FF4BE99557C330 /* OCREngine */,
+				05183728DD124A3BB116C097 /* Storage */,
+				554003B48ADC4D6F9165668C /* PDFEngine */,
+				AA4A97D25353480CA2F0A5C2 /* OCREngine */,
 			);
 			path = "Services";
 			sourceTree = "<group>";
 		};
-		60635CBA2DF24C1185D7A59D /* Storage */ = {
+		05183728DD124A3BB116C097 /* Storage */ = {
 			isa = PBXGroup;
 			children = (
-				644838524D2A4F32AAC88091 /* CloudItem.swift */,
-				90581619B07E48D190C6829E /* DropboxStorageProvider.swift */,
-				E2BB5ADDB4114B23B360D3B0 /* LocalStorageProvider.swift */,
-				04CE7D68D9AA43178036A8F9 /* StorageManager.swift */,
-				ABF82DD6B1B54D778C1B4288 /* StorageProvider.swift */,
+				6BD716ADE93C4607BD1A7A54 /* CloudItem.swift */,
+				D913A03F01FB49048F242B1F /* DropboxStorageProvider.swift */,
+				96EDF47AF8474F41B2AC0F71 /* LocalStorageProvider.swift */,
+				0CF57C1D327D4762B478E784 /* StorageManager.swift */,
+				CF1AB290A8DC4C669F58DEEB /* StorageProvider.swift */,
 			);
 			path = "Storage";
 			sourceTree = "<group>";
 		};
-		7C9A74F40F3C453988D39F48 /* PDFEngine */ = {
+		554003B48ADC4D6F9165668C /* PDFEngine */ = {
 			isa = PBXGroup;
 			children = (
-				1F46BF2467E54ED6926B8678 /* PDFEngine.swift */,
+				4AA661A2D9D249EE9A4D8374 /* PDFEngine.swift */,
 			);
 			path = "PDFEngine";
 			sourceTree = "<group>";
 		};
-		D5A1F78F70FF4BE99557C330 /* OCREngine */ = {
+		AA4A97D25353480CA2F0A5C2 /* OCREngine */ = {
 			isa = PBXGroup;
 			children = (
-				B084495E589C4FD892225F68 /* OCREngine.swift */,
-				11403BCAEF9D4C199FBCB965 /* StudentMatcher.swift */,
+				E50C152601714FBB9DBEB9D6 /* OCREngine.swift */,
+				A6F70F3274CF47B9A5DBE0DB /* StudentMatcher.swift */,
 			);
 			path = "OCREngine";
 			sourceTree = "<group>";
 		};
-		0703E9EF95D7412CAA2F9F2B /* ViewModels */ = {
+		B84E049A0948433B8429933D /* ViewModels */ = {
 			isa = PBXGroup;
 			children = (
-				261D8D87EF654D939DA956C5 /* AppState.swift */,
+				73D331F06F664B29AF0B4C6E /* AppState.swift */,
 			);
 			path = "ViewModels";
 			sourceTree = "<group>";
 		};
-		D095B527EF114084B75848DA /* Views */ = {
+		EC9E688CE93C4502936214A8 /* Views */ = {
 			isa = PBXGroup;
 			children = (
-				E3C2C1ECB5F04A70A3A616DA /* MainSplitView.swift */,
-				87BFBCED32D44B6A924C3C50 /* Components */,
-				63ADFCA0B8F14F4E90365669 /* Correction */,
-				6132F62E18E541A9991BD67E /* Students */,
-				80BF599162E548C0AA4F2E9B /* Portal */,
-				1130B8FF8ED945608D42ABC8 /* Settings */,
+				45856FAB5C624932AEF63266 /* MainSplitView.swift */,
+				51C4845716964F89B1B4D941 /* Components */,
+				C448041C669C4604980C008D /* Splash */,
+				D3B7C39A4FDD428B8F47A459 /* Correction */,
+				E8ABB1FF471F44DE89537AE6 /* Students */,
+				FA1211EE32DB48A48B048DE8 /* Portal */,
+				202B77F7454447A994E0924C /* Settings */,
 			);
 			path = "Views";
 			sourceTree = "<group>";
 		};
-		87BFBCED32D44B6A924C3C50 /* Components */ = {
+		51C4845716964F89B1B4D941 /* Components */ = {
 			isa = PBXGroup;
 			children = (
-				8E4C1FA22D7A4F2BA3CC118C /* BadgeView.swift */,
-				855BA86D32D34394B1FC11EB /* GlassComponents.swift */,
-				47B97563FF904D54AE64286E /* KPICard.swift */,
-				4A545A5008B64557A9501582 /* PDFKitView.swift */,
-				C5B2B929B8D745F586D04715 /* PencilCanvasOverlay.swift */,
-				AD450A82295F48E685E5B947 /* QRCodeView.swift */,
+				41AB54564AB2413E8DE307DA /* BadgeView.swift */,
+				3A5BE11D72984C1FA13896D9 /* GlassComponents.swift */,
+				F51513C1DB2A4BFDB0FC94FC /* DropiesMascotView.swift */,
+				2C4B6DF93079461F958B7180 /* KPICard.swift */,
+				E4EF887DB25B4CC6972D19BD /* PDFKitView.swift */,
+				C2F473B85C4B4B9495077F9C /* PencilCanvasOverlay.swift */,
+				59EB79BC64A946F8A271F774 /* QRCodeView.swift */,
 			);
 			path = "Components";
 			sourceTree = "<group>";
 		};
-		63ADFCA0B8F14F4E90365669 /* Correction */ = {
+		C448041C669C4604980C008D /* Splash */ = {
 			isa = PBXGroup;
 			children = (
-				828128B17FE24F5593DBF7D6 /* CorrectionWorkflowView.swift */,
-				7C4ABC87D2F74C128FC0AB2F /* Step1CorrectionStudioView.swift */,
-				70A5A7C458BD4CDBAB8424E2 /* Step2LoadingView.swift */,
-				BA8E2C69FFDE482FAF1C0936 /* Step3IdentificationView.swift */,
-				E65DCC98E18D48AE947F9082 /* Step4DistributionView.swift */,
+				2D3D1EC699A7498B881C7640 /* SplashSetupView.swift */,
+			);
+			path = "Splash";
+			sourceTree = "<group>";
+		};
+		D3B7C39A4FDD428B8F47A459 /* Correction */ = {
+			isa = PBXGroup;
+			children = (
+				16FA22AC5D154DED8A8427F9 /* CorrectionWorkflowView.swift */,
+				584880E7DEDA4F2FB3EBF479 /* Step1CorrectionStudioView.swift */,
+				E1F2A413F9F64C66892C812E /* Step2LoadingView.swift */,
+				5AA929698E3F4189A9DCDC1F /* Step3IdentificationView.swift */,
+				AC4F22EE6C2F49E3B05E6060 /* Step4DistributionView.swift */,
 			);
 			path = "Correction";
 			sourceTree = "<group>";
 		};
-		6132F62E18E541A9991BD67E /* Students */ = {
+		E8ABB1FF471F44DE89537AE6 /* Students */ = {
 			isa = PBXGroup;
 			children = (
-				72EFFB08FFFB4FA0854FC960 /* StudentsManagementView.swift */,
-				62D1929D05454BAF8AC7D20C /* StudentEditSheet.swift */,
-				C5E4F1FDCB52494F9BEB72CA /* CSVImportWizardSheet.swift */,
-				D7CAF40CCDB445C0AC55DFF1 /* StudentLabelsView.swift */,
+				C87B9CA9CA3F4E938F1D3D3A /* StudentsManagementView.swift */,
+				14F3FA69E413440DBD91CA63 /* StudentEditSheet.swift */,
+				B15FE35FC6DB4DB69E05233F /* CSVImportWizardSheet.swift */,
+				76387F798EAC41A39A1FC859 /* StudentLabelsView.swift */,
 			);
 			path = "Students";
 			sourceTree = "<group>";
 		};
-		80BF599162E548C0AA4F2E9B /* Portal */ = {
+		FA1211EE32DB48A48B048DE8 /* Portal */ = {
 			isa = PBXGroup;
 			children = (
-				8320252B65A7412B82D66F9B /* PortalSettingsView.swift */,
+				CC3C80E61C994B2C9A0F993D /* PortalSettingsView.swift */,
 			);
 			path = "Portal";
 			sourceTree = "<group>";
 		};
-		1130B8FF8ED945608D42ABC8 /* Settings */ = {
+		202B77F7454447A994E0924C /* Settings */ = {
 			isa = PBXGroup;
 			children = (
-				8E83DCD5B68D46F7A1E009E7 /* AppSettingsView.swift */,
+				B10D15834C384BBC805F5055 /* AppSettingsView.swift */,
 			);
 			path = "Settings";
 			sourceTree = "<group>";
 		};
+		37B3ABD1735A4B838C05F0D9 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				9034EF219FDA4559B3B19ECB /* Assets.xcassets */,
+			);
+			path = "Resources";
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 /* Begin PBXNativeTarget section */
-		4C264255651741ADA387C453 /* Dropies */ = {
+		51B1BF72068E4833BD1FF163 /* Dropies */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 128F795C9188456A95DEB53E /* Build configuration list for PBXNativeTarget "Dropies" */;
+			buildConfigurationList = 2F349055D2164572B2982258 /* Build configuration list for PBXNativeTarget "Dropies" */;
 			buildPhases = (
-				1C698ABA60AF4DCFB2BEC08F /* Sources */,
-				FB1BA738480E4407ABD8ECC4 /* Frameworks */,
-				8D85A9FC457D4502B091F112 /* Resources */,
+				9986493F6ACA4F7AA3509820 /* Sources */,
+				EC1C113ECCA04E68BFDAF539 /* Frameworks */,
+				CD410E5B3DF14F58B5CC6AB1 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -254,107 +279,117 @@
 			);
 			name = Dropies;
 			productName = Dropies;
-			productReference = CCB103049292463EBD08EEA4 /* Dropies.app */;
+			productReference = D94E97F97ED149868279F122 /* Dropies.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 /* Begin PBXProject section */
-		699DB23B6C924167B7607FDD /* Project object */ = {
+		0BC28A44098A4A8DBF7A6A5C /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
-					4C264255651741ADA387C453 = {
+					51B1BF72068E4833BD1FF163 = {
 						CreatedOnToolsVersion = 16.0;
 					};
 				};
 			};
-			buildConfigurationList = 7072B34310D84C27AF757145 /* Build configuration list for PBXProject "Dropies" */;
+			buildConfigurationList = 5E06029E4E7744C2A79FC3AE /* Build configuration list for PBXProject "Dropies" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = fr;
 			hasScannedForEncodings = 0;
 			knownRegions = (
-				en,
-				Base,
 				fr,
+				Base,
 			);
-			mainGroup = 30D737050C28433EB3237C41;
-			productRefGroup = 31B3ED65F10C403C8D8D32CD /* Products */;
+			mainGroup = 744110981BFC43528CF9A979;
+			productRefGroup = 7A75D254AC134604AF0BF3C3 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				4C264255651741ADA387C453 /* Dropies */,
+				51B1BF72068E4833BD1FF163 /* Dropies */,
 			);
 		};
 /* End PBXProject section */
 /* Begin PBXResourcesBuildPhase section */
-		8D85A9FC457D4502B091F112 /* Resources */ = {
+		CD410E5B3DF14F58B5CC6AB1 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				58319139DD0A4E50A2AED343 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 /* Begin PBXSourcesBuildPhase section */
-		1C698ABA60AF4DCFB2BEC08F /* Sources */ = {
+		9986493F6ACA4F7AA3509820 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				79426B1040D54DC3984740FC /* DropiesApp.swift in Sources */,
-				44270462529A4980BB4C2AA6 /* AppSettings.swift in Sources */,
-				8F96F1472E6345D78CAFF355 /* ClassGroup.swift in Sources */,
-				1402A2BB4FDE4DAFA7B42B59 /* Evaluation.swift in Sources */,
-				46FDB0E2702344ABA7CE9313 /* Student.swift in Sources */,
-				78C1FCD4EDDD4223959EFF49 /* StudentCopy.swift in Sources */,
-				4FEF01FCAA544161A1BEB36E /* CloudItem.swift in Sources */,
-				6AD4821122694C808C9DC3BF /* DropboxStorageProvider.swift in Sources */,
-				8532B422DC2F42E7B4D30F57 /* LocalStorageProvider.swift in Sources */,
-				3BBA6DABECEF4CC6B69755B2 /* StorageManager.swift in Sources */,
-				31D4309881474CA6A6B0CCCC /* StorageProvider.swift in Sources */,
-				F87A893E81794C03A34DB1BB /* PDFEngine.swift in Sources */,
-				CDBC4E3A29854AB586F14017 /* OCREngine.swift in Sources */,
-				80C619EA117F4F81B1AD4923 /* StudentMatcher.swift in Sources */,
-				B4CDACE957AE4097B186A0C2 /* AppState.swift in Sources */,
-				3F6AA642B028482E950444E0 /* MainSplitView.swift in Sources */,
-				75F4D1E1B0F84114A1F8396D /* BadgeView.swift in Sources */,
-				DFE26B094777445E86304FD8 /* GlassComponents.swift in Sources */,
-				07D5DFCD3C324A498B7B90E1 /* KPICard.swift in Sources */,
-				728F83D784B6469999E058B1 /* PDFKitView.swift in Sources */,
-				F774ACC252604B6887640CE9 /* PencilCanvasOverlay.swift in Sources */,
-				DC7EC26FF03F4541A36924CC /* QRCodeView.swift in Sources */,
-				2416F54940A44B9286EE1E8D /* CorrectionWorkflowView.swift in Sources */,
-				4DD0F256F61A4E399A6FB2EF /* Step1CorrectionStudioView.swift in Sources */,
-				2D0D15E1AA4E4882970EA1EE /* Step2LoadingView.swift in Sources */,
-				9D084AF4324A4BF995F678F3 /* Step3IdentificationView.swift in Sources */,
-				FB502CA783BF4D56998C3172 /* Step4DistributionView.swift in Sources */,
-				12D694D0EC9E405A8308BD00 /* StudentsManagementView.swift in Sources */,
-				F46E9245C1D24F91A9B274F2 /* StudentEditSheet.swift in Sources */,
-				1C2E9927150D409D9F471787 /* CSVImportWizardSheet.swift in Sources */,
-				32F5D516ED1048B499EFCEC9 /* StudentLabelsView.swift in Sources */,
-				D0B74FA23EAB4A839DBE126A /* PortalSettingsView.swift in Sources */,
-				2751C9B68A5C4CC2924AF302 /* AppSettingsView.swift in Sources */,
+				41FCFE0D5F8944B782449DC3 /* DropiesApp.swift in Sources */,
+				E8B236C8639E4539A92A2843 /* AppSettings.swift in Sources */,
+				845D58AA17844AE68816E19F /* ClassGroup.swift in Sources */,
+				731061C7D84141FEA6F21E6C /* Evaluation.swift in Sources */,
+				91F520FC616C4538A862519C /* Student.swift in Sources */,
+				584079F61A5C4A4DACBD9CE9 /* StudentCopy.swift in Sources */,
+				F34303B060FE49E18E6594D1 /* CloudItem.swift in Sources */,
+				6195C3A47A8E49ADB34FAFF2 /* DropboxStorageProvider.swift in Sources */,
+				05E0FD196C3243748983AFD2 /* LocalStorageProvider.swift in Sources */,
+				13793CDCC9ED483C8F93FBD4 /* StorageManager.swift in Sources */,
+				46CE24B0ADAE493288501370 /* StorageProvider.swift in Sources */,
+				DF8564954E554037B3918570 /* PDFEngine.swift in Sources */,
+				3C14BBFDF3AD4C44B97441A2 /* OCREngine.swift in Sources */,
+				4C1161C0661B49A18569802C /* StudentMatcher.swift in Sources */,
+				F06B7325DE4D43E1926520F9 /* AppState.swift in Sources */,
+				B76EDA9BD07645C4B26D723F /* MainSplitView.swift in Sources */,
+				14533C65B59243CA85612ECA /* BadgeView.swift in Sources */,
+				7E5558E0A2F846DB85618B64 /* GlassComponents.swift in Sources */,
+				CD784F64DA00480EBFE83FDD /* DropiesMascotView.swift in Sources */,
+				24A6B58542854F2FBB5D036B /* KPICard.swift in Sources */,
+				D50C7B9A21D24AE6A889D4B0 /* PDFKitView.swift in Sources */,
+				B2BC8432C3AD46C49251126B /* PencilCanvasOverlay.swift in Sources */,
+				C65E5E19F3424249BB250D3B /* QRCodeView.swift in Sources */,
+				05831859008A4DFC9182A42B /* SplashSetupView.swift in Sources */,
+				2D543124EA734C7B900B8CDA /* CorrectionWorkflowView.swift in Sources */,
+				34C6528FFA1746C588D1C893 /* Step1CorrectionStudioView.swift in Sources */,
+				EE0E3C6723B940AA91282901 /* Step2LoadingView.swift in Sources */,
+				8A70D4B76C6A465EADD2BD74 /* Step3IdentificationView.swift in Sources */,
+				934AF1CF05EA4CAD8E71F376 /* Step4DistributionView.swift in Sources */,
+				7E67F5769E5248EC9D038D83 /* StudentsManagementView.swift in Sources */,
+				43AE5B76126B4DABB1DBF0ED /* StudentEditSheet.swift in Sources */,
+				CFE957E3DDFA4ED0B6FDD001 /* CSVImportWizardSheet.swift in Sources */,
+				3FAC9B0481314F86B5894A2E /* StudentLabelsView.swift in Sources */,
+				C464B4F2CA3B465585D48593 /* PortalSettingsView.swift in Sources */,
+				607E9C22440F4A7BACBEFDC1 /* AppSettingsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 /* Begin XCBuildConfiguration section */
-		B5C5FE60A15C411698F222B6 /* Debug */ = {
+		07A3E1E098F24B50945965AD /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
 					"$(inherited)",
 				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -363,36 +398,42 @@
 			};
 			name = Debug;
 		};
-		7F0CDC3143A04C42BB538216 /* Release */ = {
+		386AA0E565C541FD8F6F3047 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SWIFT_COMPILATION_MODE = "wholemodule";
-				SWIFT_OPTIMIZATION_LEVEL = "-O";
 			};
 			name = Release;
 		};
-		8EC729566D504FFAA6F2CF33 /* Debug */ = {
+		4AD45DAE9D774641B44FD1B1 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Dropies;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Dropies utilise l'appareil photo pour scanner les copies d'élèves.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Dropies accède aux photos pour importer des devoirs scannés.";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Dropies utilise la caméra pour scanner les QR codes de connexion des élèves.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Dropies accède aux photos pour importer des devoirs ou étiquettes.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -400,31 +441,28 @@
 				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = fr.education.dropies;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
-				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = "2";
 			};
 			name = Debug;
 		};
-		87C3AC66D99343CE97EE5C50 /* Release */ = {
+		9F2F483A94FB4F0C8E1F33A9 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Dropies;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Dropies utilise l'appareil photo pour scanner les copies d'élèves.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Dropies accède aux photos pour importer des devoirs scannés.";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Dropies utilise la caméra pour scanner les QR codes de connexion des élèves.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Dropies accède aux photos pour importer des devoirs ou étiquettes.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -432,37 +470,36 @@
 				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = fr.education.dropies;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
-				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = "2";
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 /* Begin XCConfigurationList section */
-		7072B34310D84C27AF757145 /* Build configuration list for PBXProject "Dropies" */ = {
+		5E06029E4E7744C2A79FC3AE /* Build configuration list for PBXProject "Dropies" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				B5C5FE60A15C411698F222B6 /* Debug */,
-				7F0CDC3143A04C42BB538216 /* Release */,
+				07A3E1E098F24B50945965AD /* Debug */,
+				386AA0E565C541FD8F6F3047 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		128F795C9188456A95DEB53E /* Build configuration list for PBXNativeTarget "Dropies" */ = {
+		2F349055D2164572B2982258 /* Build configuration list for PBXNativeTarget "Dropies" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				8EC729566D504FFAA6F2CF33 /* Debug */,
-				87C3AC66D99343CE97EE5C50 /* Release */,
+				4AD45DAE9D774641B44FD1B1 /* Debug */,
+				9F2F483A94FB4F0C8E1F33A9 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
-	rootObject = 699DB23B6C924167B7607FDD /* Project object */;
+	rootObject = 0BC28A44098A4A8DBF7A6A5C /* Project object */;
 }

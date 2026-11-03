@@ -32,7 +32,7 @@ public struct StudentEditSheet: View {
     public var body: some View {
         NavigationStack {
             Form {
-                Section("Identité") {
+                Section("Identité de l'élève") {
                     TextField("Nom & Prénom (ex: DUPONT Jules)", text: $name)
                     TextField("Classe (ex: 4B, 3e1)", text: $classe)
                     Picker("Genre", selection: $gender) {
@@ -48,10 +48,16 @@ public struct StudentEditSheet: View {
 
                 Section("Lien de dossier Cloud (optionnel)") {
                     TextField("https://www.dropbox.com/...", text: $urlDropbox)
+                        #if os(iOS)
+                        .keyboardType(.URL)
                         .textContentType(.URL)
+                        #endif
                 }
             }
             .navigationTitle(isNewStudent ? "Nouvel Élève" : "Modifier l'Élève")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Annuler") {
@@ -79,7 +85,9 @@ public struct StudentEditSheet: View {
                 }
             }
         }
-        .frame(minWidth: 450, minHeight: 380)
+        #if os(macOS)
+        .frame(minWidth: 460, minHeight: 400)
+        #endif
     }
 
     private func saveStudent() {
