@@ -66,6 +66,24 @@ public final class DropboxStorageProvider: StorageProvider, @unchecked Sendable 
         UserDefaults.standard.set(rootFolderPath, forKey: Self.kRootPathKey)
     }
 
+    public func configure(session: DropboxAuthSession, rootFolderPath: String? = nil) {
+        self.appKey = session.appKey
+        self.refreshToken = session.refreshToken
+        self.accessToken = session.accessToken
+        self.accountDisplayName = session.displayName
+        self.accountEmail = session.email
+        if let root = rootFolderPath, !root.isEmpty {
+            self.rootFolderPath = root
+        }
+
+        UserDefaults.standard.set(session.accessToken, forKey: Self.kTokenKey)
+        UserDefaults.standard.set(session.refreshToken, forKey: Self.kRefreshTokenKey)
+        UserDefaults.standard.set(session.appKey, forKey: Self.kAppKey)
+        if let root = rootFolderPath, !root.isEmpty {
+            UserDefaults.standard.set(root, forKey: Self.kRootPathKey)
+        }
+    }
+
     public func disconnect() async throws {
         self.appKey = ""
         self.refreshToken = ""

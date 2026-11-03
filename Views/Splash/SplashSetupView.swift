@@ -11,22 +11,29 @@
 //
 
 import SwiftUI
+import AuthenticationServices
 
 public struct SplashSetupView: View {
     @Bindable public var appState: AppState
     public var onFinish: () -> Void
 
     @State private var selectedProviderType: AppSettings.StorageProviderType = .dropbox
-    @State private var dropboxToken: String = ""
     @State private var rootFolder: String = ""
 
     // Boîte de dialogue de sélection du dossier
     @State private var showFolderPicker: Bool = false
 
-    // États de progression
+    // États de connexion Cloud
+    @State private var isConnectingCloud: Bool = false
     @State private var isCheckingCloud: Bool = false
     @State private var cloudStatusMessage: String? = nil
     @State private var isCloudConnected: Bool = false
+    @State private var connectedUserDisplayName: String? = nil
+    @State private var connectedUserEmail: String? = nil
+
+    // Réglages avancés (App Key personnalisée)
+    @State private var showAdvancedAppKey: Bool = false
+    @State private var customAppKey: String = ""
 
     @State private var isCheckingFolder: Bool = false
     @State private var folderStatusMessage: String? = nil
@@ -37,7 +44,6 @@ public struct SplashSetupView: View {
     @State private var isDataLoaded: Bool = false
 
     @State private var errorMessage: String? = nil
-    @State private var showTokenHelp: Bool = false
 
     public init(appState: AppState, onFinish: @escaping () -> Void) {
         self.appState = appState
@@ -226,7 +232,7 @@ public struct SplashSetupView: View {
     // MARK: - Section 2 : Connexion Compte
 
     private var cloudAccountConnectionSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
                 ZStack {
                     Circle()
@@ -242,7 +248,7 @@ public struct SplashSetupView: View {
 
                 Spacer()
 
-                if isCheckingCloud {
+                if isCheckingCloud || isConnectingCloud {
                     ProgressView().scaleEffect(0.8)
                 } else if isCloudConnected {
                     BadgeView("Connecté", style: .success)
@@ -257,69 +263,97 @@ public struct SplashSetupView: View {
                     .foregroundColor(.secondary)
                     .padding(.leading, 36)
             } else if isCloudConnected {
-                HStack {
-                    Text(cloudStatusMessage ?? "Compte Dropbox actif")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                // Compte connecté : affichage clair de l'enseignant et bouton de déconnexion
+                HStack(spacing: 12) {
+                    Image(systemName: "person.crop.circle.badge.checkmark")
+                        .font(.title2)
+                        .foregroundColor(.green)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(connectedUserDisplayName ?? "Enseignant Dropbox")
+                            .font(.subheadline.bold())
+                            .foregroundColor(.primary)
+
+                        Text(connectedUserEmail ?? "Compte actif et synchronisé")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
 
                     Spacer()
 
-                    Button("Changer de compte...") {
-                        isCloudConnected = false
-                        isFolderValidated = false
-                        isDataLoaded = false
+                    Button("Déconnecter") {
+                        disconnectDropbox()
                     }
-                    .font(.caption2)
-                    .foregroundColor(.blue)
+                    .font(.caption.bold())
+                    .foregroundColor(.red)
+                    .buttonStyle(.plain)
                 }
+                .padding(12)
+                .background(Color.green.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.green.opacity(0.2), lineWidth: 1)
+                )
                 .padding(.leading, 36)
             } else {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Associez votre compte Dropbox pour permettre la synchronisation :")
+                // NON CONNECTÉ : Un seul bouton d'action principal en 1 clic
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Connectez votre compte Dropbox en 1 clic pour activer la synchronisation de vos devoirs et partages :")
                         .font(.caption)
                         .foregroundColor(.secondary)
 
-                    HStack {
-                        SecureField("Coller votre clé ou Token Dropbox", text: $dropboxToken)
-                            .textFieldStyle(.roundedBorder)
-
-                        Button {
-                            connectWithDropboxToken()
-                        } label: {
-                            Text("Connecter")
-                                .font(.subheadline.bold())
-                        }
-                        .buttonStyle(VibrantGradientButtonStyle(gradient: .electricBlue, isCompact: true))
-                        .disabled(dropboxToken.trimmingCharacters(in: .whitespaces).isEmpty || isCheckingCloud)
-                    }
-
                     Button {
-                        withAnimation { showTokenHelp.toggle() }
+                        connectWithDropbox1Click()
                     } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: "questionmark.circle")
-                            Text("Aide : obtenir mon token Dropbox personnel")
+                        HStack(spacing: 10) {
+                            if isConnectingCloud {
+                                ProgressView()
+                                    .controlSize(.small)
+                                    .tint(.white)
+                                Text("Connexion en cours...")
+                                    .font(.headline.bold())
+                            } else {
+                                Image(systemName: "shippingbox.fill")
+                                    .font(.title3)
+                                Text("Se connecter avec Dropbox")
+                                    .font(.headline.bold())
+                            }
                         }
-                        .font(.caption2)
-                        .foregroundColor(.blue)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 4)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(VibrantGradientButtonStyle(gradient: .electricBlue))
+                    .disabled(isConnectingCloud || isCheckingCloud)
 
-                    if showTokenHelp {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("1. Rendez-vous sur dropbox.com/developers/apps")
-                            Text("2. Cliquez sur votre application Droopy (Scoped App)")
-                            Text("3. Onglet 'Settings' ➔ Bouton 'Generate' sous Generated access token")
-                            Text("4. Copiez la clé et collez-la ci-dessus.")
+                    // Option avancée dépliable : App Key personnalisée si l'enseignant le souhaite
+                    DisclosureGroup(isExpanded: $showAdvancedAppKey) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Par défaut, Dropies utilise l'App Key officielle intégrée. Vous pouvez renseigner votre propre clé de Scoped App créée sur la console Dropbox :")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+
+                            HStack {
+                                TextField("App Key personnalisée (ex: 34f1m7xkyj0y8wh)", text: $customAppKey)
+                                    .textFieldStyle(.roundedBorder)
+                                    .font(.system(.caption, design: .monospaced))
+
+                                if !customAppKey.isEmpty {
+                                    Button("Effacer") {
+                                        customAppKey = ""
+                                        DropboxOAuthManager.shared.effectiveAppKey = ""
+                                    }
+                                    .font(.caption2)
+                                }
+                            }
                         }
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                        .padding(8)
-                        .background(Color.primary.opacity(0.04))
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .padding(.top, 4)
+                    } label: {
+                        Text("Options avancées (App Key personnalisée)")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
                     }
                 }
-                .padding(.top, 4)
                 .padding(.leading, 36)
             }
         }
@@ -450,10 +484,12 @@ public struct SplashSetupView: View {
                 await MainActor.run {
                     self.appState.storageManager.setProvider(provider)
                     self.isCloudConnected = true
-                    self.cloudStatusMessage = "Connecté : \(info.name) (\(info.email))"
+                    self.connectedUserDisplayName = info.name
+                    self.connectedUserEmail = info.email
+                    self.cloudStatusMessage = "\(info.name) (\(info.email))"
                     self.rootFolder = provider.rootFolderPath
                 }
-                if !provider.rootFolderPath.isEmpty {
+                if !provider.rootFolderPath.isEmpty && provider.rootFolderPath != "/Droopy" {
                     await applyAndValidateSourceFolder(provider.rootFolderPath)
                 }
             } catch {
@@ -464,26 +500,28 @@ public struct SplashSetupView: View {
         }
     }
 
-    private func connectWithDropboxToken() {
-        let cleanToken = dropboxToken.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleanToken.isEmpty else { return }
-
-        isCheckingCloud = true
+    private func connectWithDropbox1Click() {
+        isConnectingCloud = true
         errorMessage = nil
 
         Task {
-            let provider = DropboxStorageProvider(accessToken: cleanToken, rootFolderPath: rootFolder)
-            provider.configure(accessToken: cleanToken, rootFolderPath: rootFolder)
-
             do {
-                let info = try await provider.testConnection()
+                let keyToUse = customAppKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : customAppKey
+                let session = try await DropboxOAuthManager.shared.signInWithDropbox(customAppKey: keyToUse)
+
+                let provider = DropboxStorageProvider()
+                provider.configure(session: session, rootFolderPath: rootFolder)
+
                 await MainActor.run {
                     self.appState.storageManager.setProvider(provider)
                     self.isCloudConnected = true
-                    self.cloudStatusMessage = "Connecté : \(info.name) (\(info.email))"
-                    self.isCheckingCloud = false
+                    self.connectedUserDisplayName = session.displayName
+                    self.connectedUserEmail = session.email
+                    self.cloudStatusMessage = "\(session.displayName) (\(session.email))"
+                    self.isConnectingCloud = false
                 }
-                if !rootFolder.isEmpty {
+
+                if !rootFolder.isEmpty && rootFolder != "/Droopy" {
                     await applyAndValidateSourceFolder(rootFolder)
                 } else {
                     // Ouvrir automatiquement l'explorateur de dossiers
@@ -493,9 +531,27 @@ public struct SplashSetupView: View {
                 }
             } catch {
                 await MainActor.run {
-                    self.isCheckingCloud = false
-                    self.errorMessage = "Échec de connexion Dropbox : vérifiez votre clé ou jeton."
+                    self.isConnectingCloud = false
+                    // Si l'utilisateur a annulé, ne pas afficher d'erreur anxiogène
+                    if (error as? ASWebAuthenticationSessionError)?.code != .canceledLogin {
+                        self.errorMessage = "Échec de connexion Dropbox : \(error.localizedDescription)"
+                    }
                 }
+            }
+        }
+    }
+
+    private func disconnectDropbox() {
+        Task {
+            let provider = DropboxStorageProvider()
+            try? await provider.disconnect()
+            await MainActor.run {
+                self.isCloudConnected = false
+                self.connectedUserDisplayName = nil
+                self.connectedUserEmail = nil
+                self.cloudStatusMessage = nil
+                self.isFolderValidated = false
+                self.isDataLoaded = false
             }
         }
     }
