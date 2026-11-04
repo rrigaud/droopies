@@ -66,6 +66,19 @@ public struct AppSettings: Codable, Hashable, Sendable {
         }
     }
 
+    /// Année scolaire en cours (ex: "2026-2027" du 1er septembre au 31 août)
+    public static var currentSchoolYear: String {
+        let calendar = Calendar.current
+        let now = Date()
+        let year = calendar.component(.year, from: now)
+        let month = calendar.component(.month, from: now)
+        if month >= 8 {
+            return "\(year)-\(year + 1)"
+        } else {
+            return "\(year - 1)-\(year)"
+        }
+    }
+
     public init(
         portalUrl: String = "",
         portalTitle: String = "Portail Élèves",

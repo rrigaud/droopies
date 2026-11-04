@@ -137,10 +137,11 @@ public struct CloudFolderPickerSheet: View {
                     .padding(.top, 12)
                     .padding(.bottom, 6)
 
-                    // Raccourci 1-Clic pratique : /Droopies
+                    // Raccourci Année Scolaire automatique (ex: /2026-2027)
                     if currentPath.isEmpty || currentPath == "/" {
+                        let defaultYearFolder = "/\(AppSettings.currentSchoolYear)"
                         Button {
-                            onSelect("/Droopies")
+                            onSelect(defaultYearFolder)
                             dismiss()
                         } label: {
                             HStack(spacing: 10) {
@@ -148,18 +149,18 @@ public struct CloudFolderPickerSheet: View {
                                     .font(.subheadline)
                                     .foregroundColor(.orange)
 
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text("Créer ou utiliser le dossier standard /Droopies")
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Utiliser l'année scolaire \(AppSettings.currentSchoolYear)")
                                         .font(.subheadline.bold())
                                         .foregroundColor(.primary)
-                                    Text("Dossier dédié recommandé à la racine de votre compte")
+                                    Text("Créera /Applications/Droopies/\(AppSettings.currentSchoolYear)")
                                         .font(.caption2)
                                         .foregroundColor(.secondary)
                                 }
 
                                 Spacer()
 
-                                Text("1 clic")
+                                Text("Recommandé")
                                     .font(.caption2.bold())
                                     .foregroundColor(.blue)
                                     .padding(.horizontal, 8)

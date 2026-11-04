@@ -401,22 +401,42 @@ public struct SplashSetupView: View {
 
             VStack(alignment: .leading, spacing: 12) {
                 if rootFolder.isEmpty {
-                    Text("Naviguez dans votre Cloud Dropbox et sélectionnez le dossier où Droopies créera et synchronisera vos évaluations :")
+                    Text("Choisissez le dossier où Droopies organisera vos évaluations dans Dropbox (ex: \(AppSettings.currentSchoolYear) ou un dossier de test) :")
                         .font(.caption)
                         .foregroundColor(.secondary)
 
-                    Button {
-                        showFolderPicker = true
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: "shippingbox.fill")
-                                .font(.system(size: 16, weight: .bold))
-                            Text("Parcourir mes dossiers Dropbox")
-                                .font(.headline.bold())
+                    VStack(spacing: 10) {
+                        // Action 1-clic : Année scolaire en cours (Recommandé)
+                        Button {
+                            let targetYear = "/\(AppSettings.currentSchoolYear)"
+                            Task {
+                                await applyAndValidateSourceFolder(targetYear)
+                            }
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "sparkles")
+                                    .font(.system(size: 15, weight: .bold))
+                                Text("Créer le dossier de l'année scolaire : \(AppSettings.currentSchoolYear)")
+                                    .font(.headline.bold())
+                            }
+                            .frame(maxWidth: .infinity)
                         }
-                        .frame(maxWidth: .infinity)
+                        .buttonStyle(VibrantGradientButtonStyle(gradient: .electricBlue))
+
+                        // Action 2 : Parcourir / Choisir un autre dossier (dossier de test, etc.)
+                        Button {
+                            showFolderPicker = true
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "folder.badge.gearshape")
+                                Text("Parcourir ou choisir un autre dossier (Dossier Test, etc.)...")
+                            }
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.top, 2)
                     }
-                    .buttonStyle(VibrantGradientButtonStyle(gradient: .electricBlue))
                 } else {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 10) {
