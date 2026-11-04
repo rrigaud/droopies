@@ -310,7 +310,7 @@ public struct SplashSetupView: View {
                     Button {
                         connectWithDropbox1Click()
                     } label: {
-                        HStack(spacing: 10) {
+                        HStack(spacing: 8) {
                             if isConnectingCloud {
                                 ProgressView()
                                     .controlSize(.small)
@@ -318,13 +318,13 @@ public struct SplashSetupView: View {
                                 Text("Connexion en cours...")
                                     .font(.headline.bold())
                             } else {
-                                DropboxOfficialLogo(size: 22, isSelected: true)
+                                Image(systemName: "link")
+                                    .font(.system(size: 15, weight: .bold))
                                 Text("Se connecter avec Dropbox")
                                     .font(.headline.bold())
                             }
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 4)
                     }
                     .buttonStyle(VibrantGradientButtonStyle(gradient: .electricBlue))
                     .disabled(isConnectingCloud || isCheckingCloud)

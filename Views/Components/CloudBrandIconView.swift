@@ -128,6 +128,7 @@ public struct DropboxOfficialLogo: View {
             }
         }
         .aspectRatio(1.0, contentMode: .fit)
+        .frame(width: size, height: size)
     }
 }
 
@@ -180,6 +181,7 @@ public struct GoogleDriveOfficialLogo: View {
             }
         }
         .aspectRatio(100.0 / 90.0, contentMode: .fit)
+        .frame(width: size, height: size * 0.9)
     }
 }
 
@@ -239,6 +241,7 @@ public struct OneDriveOfficialLogo: View {
             }
         }
         .aspectRatio(1.0, contentMode: .fit)
+        .frame(width: size, height: size)
     }
 }
 
@@ -284,5 +287,6 @@ public struct NextcloudOfficialLogo: View {
             }
         }
         .aspectRatio(1.0, contentMode: .fit)
+        .frame(width: size, height: size)
     }
 }
