@@ -1,6 +1,6 @@
 //
 //  SplashSetupView.swift
-//  Dropies
+//  Droopies
 //
 //  Écran de démarrage et assistant de configuration initiale (Splash & Cloud Setup).
 //  Permet de :
@@ -62,11 +62,11 @@ public struct SplashSetupView: View {
                 VStack(spacing: 24) {
                     // MARK: - En-tête avec Mascotte Officielle Droopy v5
                     VStack(spacing: 12) {
-                        DropiesMascotView(size: 84, hasShadow: true, isAnimated: true)
+                        DroopiesMascotView(size: 84, hasShadow: true, isAnimated: true)
                             .padding(.top, 16)
 
                         VStack(spacing: 4) {
-                            Text("Dropies")
+                            Text("Droopies")
                                 .font(.system(size: 32, weight: .bold, design: .rounded))
 
                             Text("Studio Numérique Enseignant • iPadOS & macOS")
@@ -121,7 +121,7 @@ public struct SplashSetupView: View {
                                 onFinish()
                             } label: {
                                 HStack(spacing: 10) {
-                                    Text("Accéder à Dropies")
+                                    Text("Accéder à Droopies")
                                         .font(.headline.bold())
                                     Image(systemName: "arrow.right.circle.fill")
                                         .font(.title3)
@@ -190,7 +190,7 @@ public struct SplashSetupView: View {
         Button {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                 selectedProviderType = type
-                UserDefaults.standard.set(type.rawValue, forKey: "dropies_selected_provider")
+                UserDefaults.standard.set(type.rawValue, forKey: "droopies_selected_provider")
                 if type != .dropbox {
                     isCloudConnected = false
                     cloudStatusMessage = "\(label) sera disponible très prochainement. Veuillez utiliser Dropbox pour le moment."
@@ -332,7 +332,7 @@ public struct SplashSetupView: View {
                     // Option avancée dépliable : App Key personnalisée si l'enseignant le souhaite
                     DisclosureGroup(isExpanded: $showAdvancedAppKey) {
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("Par défaut, Dropies utilise l'App Key officielle intégrée. Vous pouvez renseigner votre propre clé de Scoped App créée sur la console Dropbox :")
+                            Text("Par défaut, Droopies utilise l'App Key officielle intégrée. Vous pouvez renseigner votre propre clé de Scoped App créée sur la console Dropbox :")
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
 
@@ -475,7 +475,7 @@ public struct SplashSetupView: View {
         defer { isCheckingCloud = false }
 
         // Récupérer le type de cloud mémorisé
-        if let savedType = UserDefaults.standard.string(forKey: "dropies_selected_provider"),
+        if let savedType = UserDefaults.standard.string(forKey: "droopies_selected_provider"),
            let prov = AppSettings.StorageProviderType(rawValue: savedType) {
             self.selectedProviderType = prov
         }

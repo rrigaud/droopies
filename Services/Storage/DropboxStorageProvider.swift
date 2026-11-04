@@ -1,6 +1,6 @@
 //
 //  DropboxStorageProvider.swift
-//  Dropies
+//  Droopies
 //
 //  Implémentation de StorageProvider pour l'API Dropbox v2.
 //  Supporte à la fois les jetons d'accès directs (Developer Token)
@@ -22,10 +22,10 @@ public final class DropboxStorageProvider: StorageProvider, @unchecked Sendable 
 
     private let session = URLSession(configuration: .default)
 
-    private static let kTokenKey = "dropies_dropbox_token"
-    private static let kRefreshTokenKey = "dropies_dropbox_refresh_token"
-    private static let kAppKey = "dropies_dropbox_app_key"
-    private static let kRootPathKey = "dropies_dropbox_root_path"
+    private static let kTokenKey = "droopies_dropbox_token"
+    private static let kRefreshTokenKey = "droopies_dropbox_refresh_token"
+    private static let kAppKey = "droopies_dropbox_app_key"
+    private static let kRootPathKey = "droopies_dropbox_root_path"
 
     public var isConnected: Bool {
         (accessToken != nil && !accessToken!.isEmpty) || (!appKey.isEmpty && !refreshToken.isEmpty)

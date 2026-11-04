@@ -1,6 +1,6 @@
 //
 //  MainSplitView.swift
-//  Dropies
+//  Droopies
 //
 //  Navigation principale adaptative iPadOS & macOS (NavigationSplitView).
 //  Sublimée avec le style Liquid Glass, barres translucides et sélecteur de Cloud actif.
@@ -54,13 +54,13 @@ public struct MainSplitView: View {
     public var body: some View {
         NavigationSplitView {
             List(selection: $selectedTab) {
-                // MARK: - En-tête Dropies
+                // MARK: - En-tête Droopies
                 Section {
                     HStack(spacing: 12) {
-                        DropiesMascotView(size: 36, hasShadow: true)
+                        DroopiesMascotView(size: 36, hasShadow: true)
 
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Dropies")
+                            Text("Droopies")
                                 .font(.system(.headline, design: .rounded, weight: .bold))
                             Text("Studio Enseignant")
                                 .font(.caption2)
@@ -173,7 +173,7 @@ public struct MainSplitView: View {
                 }
             }
             .listStyle(.sidebar)
-            .navigationTitle("Dropies")
+            .navigationTitle("Droopies")
         } detail: {
             Group {
                 switch selectedTab {

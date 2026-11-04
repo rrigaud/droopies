@@ -1,9 +1,9 @@
 //
 //  CloudBrandIconView.swift
-//  Dropies
+//  Droopies
 //
 //  Composant vectoriel natif haute fidélité rendant les logos officiels
-//  des 4 services Cloud supportés par Dropies :
+//  des 4 services Cloud supportés par Droopies :
 //  - Dropbox : les 5 facettes isométriques officielles (Dropbox Blue #0061FF)
 //  - Google Drive : le ruban triangulaire tricolore officiel (Bleu, Jaune, Vert)
 //  - Microsoft OneDrive : le double nuage Fluent Design superposé (Azur #0078D4)

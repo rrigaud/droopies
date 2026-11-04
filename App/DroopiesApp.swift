@@ -1,8 +1,8 @@
 //
-//  DropiesApp.swift
-//  Dropies
+//  DroopiesApp.swift
+//  Droopies
 //
-//  Point d'entrée principal de l'application native Dropies (@main).
+//  Point d'entrée principal de l'application native Droopies (@main).
 //  Supporte nativement macOS Sonoma+ et iPadOS 17+.
 //  Démarre par le SplashScreen de configuration environnementale si nécessaire.
 //
@@ -10,7 +10,7 @@
 import SwiftUI
 
 @main
-struct DropiesApp: App {
+struct DroopiesApp: App {
     @State private var appState = AppState()
     @State private var isSetupCompleted: Bool = false
 

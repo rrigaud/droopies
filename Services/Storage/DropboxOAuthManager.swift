@@ -1,6 +1,6 @@
 //
 //  DropboxOAuthManager.swift
-//  Dropies
+//  Droopies
 //
 //  Gestionnaire officiel de l'authentification native Dropbox via OAuth 2.0 PKCE.
 //  Utilise AuthenticationServices (ASWebAuthenticationSession) pour offrir une connexion
@@ -32,13 +32,13 @@ public struct DropboxAuthSession: Sendable {
 public final class DropboxOAuthManager: NSObject, ASWebAuthenticationPresentationContextProviding {
     public static let shared = DropboxOAuthManager()
 
-    /// Clé d'application Dropbox par défaut pour Dropies (Scoped App officielle).
+    /// Clé d'application Dropbox par défaut pour Droopies (Scoped App officielle).
     public static let defaultAppKey = "cpb97d4akmmhn3j"
 
-    public static let callbackScheme = "dropies"
-    public static let redirectURI = "dropies://oauth-callback"
+    public static let callbackScheme = "droopies"
+    public static let redirectURI = "droopies://oauth-callback"
 
-    private static let kSavedAppKey = "dropies_dropbox_app_key"
+    private static let kSavedAppKey = "droopies_dropbox_app_key"
 
     private var activeAuthSession: ASWebAuthenticationSession?
 
@@ -207,8 +207,8 @@ public final class DropboxOAuthManager: NSObject, ASWebAuthenticationPresentatio
 
         // 5. Mémorisation des réglages
         effectiveAppKey = appKeyToUse
-        UserDefaults.standard.set(tokenResult.access_token, forKey: "dropies_dropbox_token")
-        UserDefaults.standard.set(refreshToken, forKey: "dropies_dropbox_refresh_token")
+        UserDefaults.standard.set(tokenResult.access_token, forKey: "droopies_dropbox_token")
+        UserDefaults.standard.set(refreshToken, forKey: "droopies_dropbox_refresh_token")
 
         return DropboxAuthSession(
             displayName: profile.name,

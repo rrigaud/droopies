@@ -1,6 +1,6 @@
 //
 //  StudentLabelsView.swift
-//  Dropies
+//  Droopies
 //
 //  Générateur de fiches et étiquettes de connexion découpables
 //  avec QR Code personnalisé pour chaque élève.
@@ -32,7 +32,7 @@ public struct StudentLabelsView: View {
     }
 
     private var portalURL: String {
-        appState.settings.portalUrl.isEmpty ? "https://dropies.education" : appState.settings.portalUrl
+        appState.settings.portalUrl.isEmpty ? "https://droopies.education" : appState.settings.portalUrl
     }
 
     public var body: some View {
@@ -158,7 +158,7 @@ public struct StudentLabelsView: View {
         let printController = UIPrintInteractionController.shared
         let printInfo = UIPrintInfo(dictionary: nil)
         printInfo.outputType = .general
-        printInfo.jobName = "Fiches_Connexion_Dropies"
+        printInfo.jobName = "Fiches_Connexion_Droopies"
         printController.printInfo = printInfo
         printController.present(animated: true, completionHandler: nil)
         #endif

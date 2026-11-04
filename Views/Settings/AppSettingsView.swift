@@ -1,6 +1,6 @@
 //
 //  AppSettingsView.swift
-//  Dropies
+//  Droopies
 //
 //  Réglages de l'application : Dossier Source, Fournisseur Cloud (Dropbox, Local, Nextcloud),
 //  état de la synchronisation et informations système.
@@ -104,14 +104,14 @@ public struct AppSettingsView: View {
                     HStack {
                         Image(systemName: "app.badge.checkmark.fill")
                             .foregroundColor(.blue)
-                        Text("Dropies Native")
+                        Text("Droopies Native")
                             .fontWeight(.medium)
                         Spacer()
                         Text("v1.0.0 (Swift 6)")
                             .foregroundColor(.secondary)
                     }
 
-                    Text("Dropies est une application native Universal (iPadOS & macOS), conçue pour fonctionner à 100% en local et garantir la confidentialité des données scolaires (RGPD).")
+                    Text("Droopies est une application native Universal (iPadOS & macOS), conçue pour fonctionner à 100% en local et garantir la confidentialité des données scolaires (RGPD).")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }

@@ -6,7 +6,7 @@
 	objectVersion = 56;
 	objects = {
 /* Begin PBXBuildFile section */
-		BD9856F89A254B18A95F5F05 /* DropiesApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF568F9666D143E39D3A7884 /* DropiesApp.swift */; };
+		BD9856F89A254B18A95F5F05 /* DroopiesApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF568F9666D143E39D3A7884 /* DroopiesApp.swift */; };
 		684AAD1881BA46FF83C1920B /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 698F5CE7621740A997A33753 /* AppSettings.swift */; };
 		21EBF3AEE3394C2F91F8FE17 /* ClassGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = F559E7A374E1461EAF64806C /* ClassGroup.swift */; };
 		2E31378023AF4C38B98C7D9C /* Evaluation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A282270706FA4F2A8EEE30EC /* Evaluation.swift */; };
@@ -26,7 +26,7 @@
 		8F11E5D0DB1F444492310BC2 /* BadgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A45ABE61147543968CADE2F6 /* BadgeView.swift */; };
 		9BF85E08BD0F49E69B6F5CDB /* CloudBrandIconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A485B528561B4FF5BC32A5F5 /* CloudBrandIconView.swift */; };
 		07364B8A28114FBC9BBC34E5 /* GlassComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F51FD117BE3047188F97D511 /* GlassComponents.swift */; };
-		E69089CC2C504695871623E9 /* DropiesMascotView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AC6A2CFF646430389A2E6B6 /* DropiesMascotView.swift */; };
+		E69089CC2C504695871623E9 /* DroopiesMascotView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AC6A2CFF646430389A2E6B6 /* DroopiesMascotView.swift */; };
 		3A04BBF8E19B4639940725E2 /* CloudFolderPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C769A07D8F8443889A78CAFF /* CloudFolderPickerSheet.swift */; };
 		F602766BE11D4FF79986BC50 /* KPICard.swift in Sources */ = {isa = PBXBuildFile; fileRef = BABEB20AF8EE4EACAD378710 /* KPICard.swift */; };
 		C1BD89AD319344CCA945EAA5 /* PDFKitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 735A04CF8B914B5697E6498C /* PDFKitView.swift */; };
@@ -47,8 +47,8 @@
 		1A08E039EF474DE3B83CC29C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B4E43E30C77745679D9CE033 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 /* Begin PBXFileReference section */
-		14B9BDD37D0B4D719674A212 /* Dropies.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Dropies.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		CF568F9666D143E39D3A7884 /* DropiesApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DropiesApp.swift"; sourceTree = "<group>"; };
+		14B9BDD37D0B4D719674A212 /* Droopies.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Droopies.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CF568F9666D143E39D3A7884 /* DroopiesApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DroopiesApp.swift"; sourceTree = "<group>"; };
 		698F5CE7621740A997A33753 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppSettings.swift"; sourceTree = "<group>"; };
 		F559E7A374E1461EAF64806C /* ClassGroup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ClassGroup.swift"; sourceTree = "<group>"; };
 		A282270706FA4F2A8EEE30EC /* Evaluation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Evaluation.swift"; sourceTree = "<group>"; };
@@ -68,7 +68,7 @@
 		A45ABE61147543968CADE2F6 /* BadgeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BadgeView.swift"; sourceTree = "<group>"; };
 		A485B528561B4FF5BC32A5F5 /* CloudBrandIconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CloudBrandIconView.swift"; sourceTree = "<group>"; };
 		F51FD117BE3047188F97D511 /* GlassComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GlassComponents.swift"; sourceTree = "<group>"; };
-		1AC6A2CFF646430389A2E6B6 /* DropiesMascotView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DropiesMascotView.swift"; sourceTree = "<group>"; };
+		1AC6A2CFF646430389A2E6B6 /* DroopiesMascotView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DroopiesMascotView.swift"; sourceTree = "<group>"; };
 		C769A07D8F8443889A78CAFF /* CloudFolderPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CloudFolderPickerSheet.swift"; sourceTree = "<group>"; };
 		BABEB20AF8EE4EACAD378710 /* KPICard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "KPICard.swift"; sourceTree = "<group>"; };
 		735A04CF8B914B5697E6498C /* PDFKitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PDFKitView.swift"; sourceTree = "<group>"; };
@@ -114,7 +114,7 @@
 		5235F7406F1D4D48BD644209 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				14B9BDD37D0B4D719674A212 /* Dropies.app */,
+				14B9BDD37D0B4D719674A212 /* Droopies.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -122,7 +122,7 @@
 		20EA246164C746BC8D35AAF4 /* App */ = {
 			isa = PBXGroup;
 			children = (
-				CF568F9666D143E39D3A7884 /* DropiesApp.swift */,
+				CF568F9666D143E39D3A7884 /* DroopiesApp.swift */,
 			);
 			path = "App";
 			sourceTree = "<group>";
@@ -207,7 +207,7 @@
 				A45ABE61147543968CADE2F6 /* BadgeView.swift */,
 				A485B528561B4FF5BC32A5F5 /* CloudBrandIconView.swift */,
 				F51FD117BE3047188F97D511 /* GlassComponents.swift */,
-				1AC6A2CFF646430389A2E6B6 /* DropiesMascotView.swift */,
+				1AC6A2CFF646430389A2E6B6 /* DroopiesMascotView.swift */,
 				C769A07D8F8443889A78CAFF /* CloudFolderPickerSheet.swift */,
 				BABEB20AF8EE4EACAD378710 /* KPICard.swift */,
 				735A04CF8B914B5697E6498C /* PDFKitView.swift */,
@@ -274,7 +274,7 @@
 		};
 /* End PBXGroup section */
 /* Begin PBXNativeTarget section */
-		577899A6D95C4321B9A058FF /* Dropies */ = {
+		577899A6D95C4321B9A058FF /* Droopies */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 37C622DACBF84287856FAA83 /* Build configuration list for PBXNativeTarget "Dropies" */;
 			buildPhases = (
@@ -286,9 +286,9 @@
 			);
 			dependencies = (
 			);
-			name = Dropies;
-			productName = Dropies;
-			productReference = 14B9BDD37D0B4D719674A212 /* Dropies.app */;
+			name = Droopies;
+			productName = Droopies;
+			productReference = 14B9BDD37D0B4D719674A212 /* Droopies.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -304,7 +304,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 4B67305DF9144D1BB9248BC4 /* Build configuration list for PBXProject "Dropies" */;
+			buildConfigurationList = 4B67305DF9144D1BB9248BC4 /* Build configuration list for PBXProject "Droopies" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = fr;
 			hasScannedForEncodings = 0;
@@ -317,7 +317,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				577899A6D95C4321B9A058FF /* Dropies */,
+				577899A6D95C4321B9A058FF /* Droopies */,
 			);
 		};
 /* End PBXProject section */
@@ -336,7 +336,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				BD9856F89A254B18A95F5F05 /* DropiesApp.swift in Sources */,
+				BD9856F89A254B18A95F5F05 /* DroopiesApp.swift in Sources */,
 				684AAD1881BA46FF83C1920B /* AppSettings.swift in Sources */,
 				21EBF3AEE3394C2F91F8FE17 /* ClassGroup.swift in Sources */,
 				2E31378023AF4C38B98C7D9C /* Evaluation.swift in Sources */,
@@ -356,7 +356,7 @@
 				8F11E5D0DB1F444492310BC2 /* BadgeView.swift in Sources */,
 				9BF85E08BD0F49E69B6F5CDB /* CloudBrandIconView.swift in Sources */,
 				07364B8A28114FBC9BBC34E5 /* GlassComponents.swift in Sources */,
-				E69089CC2C504695871623E9 /* DropiesMascotView.swift in Sources */,
+				E69089CC2C504695871623E9 /* DroopiesMascotView.swift in Sources */,
 				3A04BBF8E19B4639940725E2 /* CloudFolderPickerSheet.swift in Sources */,
 				F602766BE11D4FF79986BC50 /* KPICard.swift in Sources */,
 				C1BD89AD319344CCA945EAA5 /* PDFKitView.swift in Sources */,
@@ -442,16 +442,16 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = Dropies;
+				INFOPLIST_KEY_CFBundleDisplayName = Droopies;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Dropies utilise la caméra pour scanner les QR codes de connexion des élèves.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Dropies accède aux photos pour importer des devoirs ou étiquettes.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Droopies utilise la caméra pour scanner les QR codes de connexion des élèves.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Droopies accède aux photos pour importer des devoirs ou étiquettes.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = fr.education.dropies;
+				PRODUCT_BUNDLE_IDENTIFIER = fr.education.droopies;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
@@ -471,16 +471,16 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = Dropies;
+				INFOPLIST_KEY_CFBundleDisplayName = Droopies;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Dropies utilise la caméra pour scanner les QR codes de connexion des élèves.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Dropies accède aux photos pour importer des devoirs ou étiquettes.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Droopies utilise la caméra pour scanner les QR codes de connexion des élèves.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Droopies accède aux photos pour importer des devoirs ou étiquettes.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = fr.education.dropies;
+				PRODUCT_BUNDLE_IDENTIFIER = fr.education.droopies;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
@@ -493,7 +493,7 @@
 		};
 /* End XCBuildConfiguration section */
 /* Begin XCConfigurationList section */
-		4B67305DF9144D1BB9248BC4 /* Build configuration list for PBXProject "Dropies" */ = {
+		4B67305DF9144D1BB9248BC4 /* Build configuration list for PBXProject "Droopies" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C6EE82E0232C41309BB7D0DA /* Debug */,

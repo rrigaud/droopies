@@ -1,8 +1,8 @@
 //
-//  DropiesMascotView.swift
-//  Dropies
+//  DroopiesMascotView.swift
+//  Droopies
 //
-//  Composant d'affichage de la mascotte officielle Droopy v5 / Dropies.
+//  Composant d'affichage de la mascotte officielle Droopy v5 / Droopies.
 //  Affiche l'image vectorielle/PNG officielle avec coins arrondis et ombre portée douce.
 //
 
@@ -14,7 +14,7 @@ import UIKit
 import AppKit
 #endif
 
-public struct DropiesMascotView: View {
+public struct DroopiesMascotView: View {
     public var size: CGFloat
     public var hasShadow: Bool
     public var isAnimated: Bool

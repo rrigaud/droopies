@@ -1,10 +1,10 @@
 //
 //  CloudFolderPickerSheet.swift
-//  Dropies
+//  Droopies
 //
 //  Explorateur et sélecteur de dossier Source dans le Cloud.
 //  Permet de parcourir l'arborescence, de créer un nouveau dossier
-//  à la volée et de choisir n'importe quel dossier comme racine pour Dropies.
+//  à la volée et de choisir n'importe quel dossier comme racine pour Droopies.
 //
 
 import SwiftUI

@@ -1,4 +1,4 @@
-# 🐶 Dropies — Studio de Correction & Distribution de Copies
+# 🐶 Droopies — Studio de Correction & Distribution de Copies
 
 > **Application native Universal (iPadOS & macOS) écrite en Swift 6 & SwiftUI**  
 > Successeur moderne de Droopy, conçu « iPad-First » avec Apple Pencil et le Neural Engine d'Apple.
@@ -47,9 +47,9 @@
 ## 📁 Structure du Projet
 
 ```text
-Dropies/
+Droopies/
 ├── App/
-│   └── DropiesApp.swift                 # Point d'entrée principal (@main)
+│   └── DroopiesApp.swift                 # Point d'entrée principal (@main)
 ├── Models/                              # Modèles métier compatibles eleves.json & settings.json
 │   ├── Student.swift
 │   ├── ClassGroup.swift

@@ -1,6 +1,6 @@
 //
 //  Step2LoadingView.swift
-//  Dropies
+//  Droopies
 //
 //  Étape 2 : Chargement des copies & Préparation de l'évaluation.
 //  Gère à la fois les nouvelles évaluations et les rattrapages d'élèves absents
@@ -103,7 +103,7 @@ public struct Step2LoadingView: View {
                                     .font(.headline)
                             }
 
-                            Text("Choisissez le devoir déjà distribué. Dropies pré-remplira automatiquement la classe, la date et le titre, et fusionnera ce nouveau scan à la fin du backup existant.")
+                            Text("Choisissez le devoir déjà distribué. Droopies pré-remplira automatiquement la classe, la date et le titre, et fusionnera ce nouveau scan à la fin du backup existant.")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
 
