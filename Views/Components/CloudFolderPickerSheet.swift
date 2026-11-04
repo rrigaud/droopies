@@ -75,6 +75,39 @@ public struct CloudFolderPickerSheet: View {
                 .padding(.vertical, 12)
                 .background(.ultraThinMaterial)
 
+                // Raccourci 1-Clic automatique : /Droopies
+                Button {
+                    onSelect("/Droopies")
+                    dismiss()
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "sparkles")
+                            .foregroundColor(.orange)
+                        Text("Créer ou utiliser le dossier standard /Droopies")
+                            .font(.subheadline.bold())
+                            .foregroundColor(.primary)
+                        Spacer()
+                        Text("Recommandé")
+                            .font(.caption2.bold())
+                            .foregroundColor(.blue)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Color.blue.opacity(0.15))
+                            .clipShape(Capsule())
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(Color.primary.opacity(0.04))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+
                 Divider()
 
                 // MARK: - Liste des sous-dossiers
@@ -213,8 +246,13 @@ public struct CloudFolderPickerSheet: View {
         defer { isLoading = false }
 
         do {
-            let items = try await provider.listContents(at: currentPath)
-            self.folders = items.filter { $0.isDirectory }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+            if let dropbox = provider as? DropboxStorageProvider {
+                let items = try await dropbox.listAccountFolders(at: currentPath)
+                self.folders = items.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+            } else {
+                let items = try await provider.listContents(at: currentPath)
+                self.folders = items.filter { $0.isDirectory }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+            }
         } catch {
             self.errorMessage = "Impossible de lister les dossiers : \(error.localizedDescription)"
         }
@@ -254,7 +292,11 @@ public struct CloudFolderPickerSheet: View {
 
         Task {
             do {
-                try await provider.createDirectory(at: targetPath)
+                if let dropbox = provider as? DropboxStorageProvider {
+                    try await dropbox.createAccountFolder(at: targetPath)
+                } else {
+                    try await provider.createDirectory(at: targetPath)
+                }
                 await loadFolders()
             } catch {
                 await MainActor.run {

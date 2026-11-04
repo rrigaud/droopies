@@ -12,6 +12,7 @@
 
 import SwiftUI
 import AuthenticationServices
+import UniformTypeIdentifiers
 
 public struct SplashSetupView: View {
     @Bindable public var appState: AppState
@@ -20,8 +21,11 @@ public struct SplashSetupView: View {
     @State private var selectedProviderType: AppSettings.StorageProviderType = .dropbox
     @State private var rootFolder: String = ""
 
-    // Boîte de dialogue de sélection du dossier
+    // Boîte de dialogue de sélection du dossier Dropbox
     @State private var showFolderPicker: Bool = false
+
+    // Sélecteur natif Apple (Fichiers / Finder)
+    @State private var showNativeFolderPicker: Bool = false
 
     // États de connexion Cloud
     @State private var isConnectingCloud: Bool = false
@@ -160,6 +164,47 @@ public struct SplashSetupView: View {
                 Task {
                     await applyAndValidateSourceFolder(chosenPath)
                 }
+            }
+        }
+        .fileImporter(
+            isPresented: $showNativeFolderPicker,
+            allowedContentTypes: [.folder],
+            allowsMultipleSelection: false
+        ) { result in
+            switch result {
+            case .success(let urls):
+                guard let selectedURL = urls.first else { return }
+                guard selectedURL.startAccessingSecurityScopedResource() else {
+                    self.errorMessage = "Permission d'accès au dossier refusée par Apple."
+                    return
+                }
+
+                // Persistance du bookmark de sécurité
+                #if os(macOS)
+                let creationOptions: URL.BookmarkCreationOptions = .withSecurityScope
+                #else
+                let creationOptions: URL.BookmarkCreationOptions = []
+                #endif
+                if let bookmarkData = try? selectedURL.bookmarkData(options: creationOptions, includingResourceValuesForKeys: nil, relativeTo: nil) {
+                    UserDefaults.standard.set(bookmarkData, forKey: "droopies_local_folder_bookmark")
+                }
+
+                let localProvider = LocalStorageProvider(rootURL: selectedURL)
+                self.appState.storageManager.setProvider(localProvider)
+                self.selectedProviderType = .local
+                UserDefaults.standard.set("local", forKey: "droopies_selected_provider")
+
+                self.isCloudConnected = true
+                self.connectedUserDisplayName = selectedURL.lastPathComponent
+                self.connectedUserEmail = "Dossier synchronisé (Finder / Fichiers)"
+                self.cloudStatusMessage = "\(selectedURL.lastPathComponent) (Accès système)"
+
+                Task {
+                    await applyAndValidateSourceFolder(selectedURL.path)
+                }
+
+            case .failure(let error):
+                self.errorMessage = "Impossible de sélectionner le dossier : \(error.localizedDescription)"
             }
         }
         .task {
@@ -388,7 +433,7 @@ public struct SplashSetupView: View {
                 }
             }
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 10) {
                 Text("Choisissez librement le dossier qui contiendra vos évaluations et vos élèves :")
                     .font(.caption)
                     .foregroundColor(.secondary)
@@ -413,14 +458,43 @@ public struct SplashSetupView: View {
                     }
 
                     Spacer()
+                }
 
+                // Options de sélection de dossier
+                HStack(spacing: 8) {
+                    if selectedProviderType == .dropbox && isCloudConnected {
+                        // Bouton 1 : 1-clic dossier standard /Droopies
+                        if rootFolder != "/Droopies" {
+                            Button {
+                                Task {
+                                    await applyAndValidateSourceFolder("/Droopies")
+                                }
+                            } label: {
+                                Label("Créer /Droopies (1 clic)", systemImage: "sparkles")
+                                    .font(.caption.bold())
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(.blue)
+                        }
+
+                        // Bouton 2 : Parcourir Dropbox (Web API)
+                        Button {
+                            showFolderPicker = true
+                        } label: {
+                            Label("Parcourir Dropbox...", systemImage: "folder.badge.plus")
+                                .font(.caption.bold())
+                        }
+                        .buttonStyle(.bordered)
+                    }
+
+                    // Bouton 3 : Sélecteur Natif Apple (Finder sur Mac, Fichiers sur iPad)
                     Button {
-                        showFolderPicker = true
+                        showNativeFolderPicker = true
                     } label: {
-                        Label(rootFolder.isEmpty ? "Parcourir le Cloud..." : "Changer de dossier...", systemImage: "folder.badge.plus")
+                        Label("Choisir via Fichiers / Finder (Natif)", systemImage: "folder")
                             .font(.caption.bold())
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.bordered)
                 }
 
                 if let msg = folderStatusMessage {
@@ -474,7 +548,32 @@ public struct SplashSetupView: View {
         isCheckingCloud = true
         defer { isCheckingCloud = false }
 
-        // Récupérer le type de cloud mémorisé
+        // 1. Vérifier si un dossier local (Finder / Fichiers Apple) a été configuré
+        if let bookmarkData = UserDefaults.standard.data(forKey: "droopies_local_folder_bookmark") {
+            var isStale = false
+            #if os(macOS)
+            let resolutionOptions: URL.BookmarkResolutionOptions = .withSecurityScope
+            #else
+            let resolutionOptions: URL.BookmarkResolutionOptions = []
+            #endif
+            if let resolvedURL = try? URL(resolvingBookmarkData: bookmarkData, options: resolutionOptions, relativeTo: nil, bookmarkDataIsStale: &isStale),
+               resolvedURL.startAccessingSecurityScopedResource() {
+                let localProvider = LocalStorageProvider(rootURL: resolvedURL)
+                await MainActor.run {
+                    self.appState.storageManager.setProvider(localProvider)
+                    self.selectedProviderType = .local
+                    self.isCloudConnected = true
+                    self.connectedUserDisplayName = resolvedURL.lastPathComponent
+                    self.connectedUserEmail = "Dossier local / synchronisé"
+                    self.cloudStatusMessage = "\(resolvedURL.lastPathComponent) (Accès système)"
+                    self.rootFolder = resolvedURL.path
+                }
+                await applyAndValidateSourceFolder(resolvedURL.path)
+                return
+            }
+        }
+
+        // 2. Récupérer le type de cloud mémorisé
         if let savedType = UserDefaults.standard.string(forKey: "droopies_selected_provider"),
            let prov = AppSettings.StorageProviderType(rawValue: savedType) {
             self.selectedProviderType = prov
@@ -492,9 +591,8 @@ public struct SplashSetupView: View {
                     self.cloudStatusMessage = "\(info.name) (\(info.email))"
                     self.rootFolder = provider.rootFolderPath
                 }
-                if !provider.rootFolderPath.isEmpty && provider.rootFolderPath != "/Droopy" {
-                    await applyAndValidateSourceFolder(provider.rootFolderPath)
-                }
+                let folderToValidate = provider.rootFolderPath.isEmpty ? "/Droopies" : provider.rootFolderPath
+                await applyAndValidateSourceFolder(folderToValidate)
             } catch {
                 await MainActor.run {
                     self.isCloudConnected = false
@@ -513,7 +611,8 @@ public struct SplashSetupView: View {
                 let session = try await DropboxOAuthManager.shared.signInWithDropbox(customAppKey: keyToUse)
 
                 let provider = DropboxStorageProvider()
-                provider.configure(session: session, rootFolderPath: rootFolder)
+                let targetFolder = rootFolder.isEmpty ? "/Droopies" : rootFolder
+                provider.configure(session: session, rootFolderPath: targetFolder)
 
                 await MainActor.run {
                     self.appState.storageManager.setProvider(provider)
@@ -521,17 +620,12 @@ public struct SplashSetupView: View {
                     self.connectedUserDisplayName = session.displayName
                     self.connectedUserEmail = session.email
                     self.cloudStatusMessage = "\(session.displayName) (\(session.email))"
+                    self.rootFolder = targetFolder
                     self.isConnectingCloud = false
                 }
 
-                if !rootFolder.isEmpty && rootFolder != "/Droopy" {
-                    await applyAndValidateSourceFolder(rootFolder)
-                } else {
-                    // Ouvrir automatiquement l'explorateur de dossiers
-                    await MainActor.run {
-                        self.showFolderPicker = true
-                    }
-                }
+                // Configurer et valider automatiquement le dossier
+                await applyAndValidateSourceFolder(targetFolder)
             } catch {
                 await MainActor.run {
                     self.isConnectingCloud = false
@@ -564,14 +658,14 @@ public struct SplashSetupView: View {
         defer { isCheckingFolder = false }
 
         let cleanPath = folderPath.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let dropbox = appState.storageManager.activeProvider as? DropboxStorageProvider else { return }
-
-        dropbox.configure(
-            appKey: dropbox.appKey,
-            refreshToken: dropbox.refreshToken,
-            accessToken: dropbox.accessToken,
-            rootFolderPath: cleanPath
-        )
+        if let dropbox = appState.storageManager.activeProvider as? DropboxStorageProvider {
+            dropbox.configure(
+                appKey: dropbox.appKey,
+                refreshToken: dropbox.refreshToken,
+                accessToken: dropbox.accessToken,
+                rootFolderPath: cleanPath
+            )
+        }
 
         do {
             // S'assurer que les 4 dossiers obligatoires existent dans le dossier source

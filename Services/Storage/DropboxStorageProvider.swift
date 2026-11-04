@@ -35,7 +35,7 @@ public final class DropboxStorageProvider: StorageProvider, @unchecked Sendable 
         appKey: String = "",
         refreshToken: String = "",
         accessToken: String? = nil,
-        rootFolderPath: String = "/Droopy",
+        rootFolderPath: String = "/Droopies",
         accountDisplayName: String? = nil,
         accountEmail: String? = nil
     ) {
@@ -43,7 +43,7 @@ public final class DropboxStorageProvider: StorageProvider, @unchecked Sendable 
         let savedToken = UserDefaults.standard.string(forKey: Self.kTokenKey)
         let savedRefresh = UserDefaults.standard.string(forKey: Self.kRefreshTokenKey)
         let savedAppKey = UserDefaults.standard.string(forKey: Self.kAppKey)
-        let savedRoot = UserDefaults.standard.string(forKey: Self.kRootPathKey) ?? "/Droopy"
+        let savedRoot = UserDefaults.standard.string(forKey: Self.kRootPathKey) ?? "/Droopies"
 
         self.accessToken = accessToken ?? savedToken
         self.refreshToken = refreshToken.isEmpty ? (savedRefresh ?? "") : refreshToken
@@ -53,7 +53,7 @@ public final class DropboxStorageProvider: StorageProvider, @unchecked Sendable 
         self.accountEmail = accountEmail
     }
 
-    public func configure(appKey: String = "", refreshToken: String = "", accessToken: String? = nil, rootFolderPath: String = "/Droopy") {
+    public func configure(appKey: String = "", refreshToken: String = "", accessToken: String? = nil, rootFolderPath: String = "/Droopies") {
         self.appKey = appKey
         self.refreshToken = refreshToken
         self.accessToken = accessToken
@@ -216,6 +216,70 @@ public final class DropboxStorageProvider: StorageProvider, @unchecked Sendable 
                 isDirectory: entry.tag == "folder",
                 size: entry.size
             )
+        }
+    }
+
+    /// Liste les dossiers à la racine ou dans un sous-dossier absolu du compte Dropbox (utilisé pour le sélecteur de dossier racine).
+    public func listAccountFolders(at absolutePath: String = "") async throws -> [CloudItem] {
+        let token = try await getValidAccessToken()
+        let clean = absolutePath.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let reqPath = clean.isEmpty ? "" : "/\(clean)"
+
+        var request = URLRequest(url: URL(string: "https://api.dropboxapi.com/2/files/list_folder")!)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["path": reqPath, "recursive": false])
+
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
+            return []
+        }
+
+        struct ListFolderResponse: Decodable {
+            struct Entry: Decodable {
+                let tag: String
+                let name: String
+                let path_lower: String?
+                let path_display: String?
+
+                enum CodingKeys: String, CodingKey {
+                    case tag = ".tag"
+                    case name
+                    case path_lower
+                    case path_display
+                }
+            }
+            let entries: [Entry]
+        }
+
+        let decoded = try JSONDecoder().decode(ListFolderResponse.self, from: data)
+        return decoded.entries.compactMap { entry in
+            guard entry.tag == "folder" else { return nil }
+            let folderPath = entry.path_display ?? entry.path_lower ?? "/\(entry.name)"
+            return CloudItem(
+                name: entry.name,
+                path: folderPath,
+                isDirectory: true
+            )
+        }
+    }
+
+    /// Crée un dossier absolu à la racine du compte Dropbox
+    public func createAccountFolder(at absolutePath: String) async throws {
+        let token = try await getValidAccessToken()
+        let clean = absolutePath.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let reqPath = "/\(clean)"
+
+        var request = URLRequest(url: URL(string: "https://api.dropboxapi.com/2/files/create_folder_v2")!)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["path": reqPath, "autorename": false])
+
+        let (_, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) || httpResponse.statusCode == 409 else {
+            throw StorageError.unknown("Impossible de créer le dossier : \(reqPath)")
         }
     }
 
