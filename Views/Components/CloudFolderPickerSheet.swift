@@ -2,7 +2,7 @@
 //  CloudFolderPickerSheet.swift
 //  Droopies
 //
-//  Explorateur et sélecteur de dossier Source dans le Cloud.
+//  Explorateur et sélecteur de dossier Source natif dans le Cloud Dropbox.
 //  Permet de parcourir l'arborescence, de créer un nouveau dossier
 //  à la volée et de choisir n'importe quel dossier comme racine pour Droopies.
 //
@@ -18,13 +18,15 @@ public struct CloudFolderPickerSheet: View {
     @State private var folders: [CloudItem] = []
     @State private var isLoading: Bool = false
     @State private var errorMessage: String? = nil
+    @State private var searchText: String = ""
 
     @State private var showCreateFolderDialog: Bool = false
     @State private var newFolderName: String = ""
 
     public init(provider: StorageProvider, initialPath: String = "", onSelect: @escaping (String) -> Void) {
         self.provider = provider
-        self._currentPath = State(initialValue: initialPath.isEmpty ? "" : initialPath)
+        let clean = initialPath.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        self._currentPath = State(initialValue: clean.isEmpty ? "" : "/\(clean)")
         self.onSelect = onSelect
     }
 
@@ -32,166 +34,307 @@ public struct CloudFolderPickerSheet: View {
         currentPath.isEmpty ? "/" : (currentPath.hasPrefix("/") ? currentPath : "/\(currentPath)")
     }
 
+    private var currentFolderName: String {
+        if currentPath.isEmpty || currentPath == "/" {
+            return "Racine Dropbox"
+        }
+        return URL(fileURLWithPath: currentPath).lastPathComponent
+    }
+
+    private var filteredFolders: [CloudItem] {
+        let q = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if q.isEmpty {
+            return folders
+        }
+        return folders.filter { $0.name.lowercased().contains(q) }
+    }
+
+    /// Découpe le chemin actuel en segments interactifs pour le fil d'Ariane
+    private var pathSegments: [(title: String, fullPath: String)] {
+        var segments: [(title: String, fullPath: String)] = [("Dropbox", "")]
+        let parts = currentPath.split(separator: "/").map(String.init)
+        var cumulative = ""
+        for part in parts {
+            cumulative += "/\(part)"
+            segments.append((part, cumulative))
+        }
+        return segments
+    }
+
     public var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // MARK: - Barre de navigation dans l'arborescence
-                HStack(spacing: 10) {
-                    Button {
-                        navigateUp()
-                    } label: {
-                        Image(systemName: "arrow.up.circle.fill")
-                            .font(.title3)
-                            .foregroundColor(currentPath.isEmpty ? .secondary.opacity(0.3) : .blue)
-                    }
-                    .disabled(currentPath.isEmpty)
-                    .buttonStyle(.plain)
+                // MARK: - En-tête : Fil d'Ariane interactif & actions de navigation
+                VStack(spacing: 8) {
+                    HStack(spacing: 10) {
+                        Button {
+                            navigateUp()
+                        } label: {
+                            Image(systemName: "arrow.up.circle.fill")
+                                .font(.title2)
+                                .foregroundColor(currentPath.isEmpty || currentPath == "/" ? .secondary.opacity(0.3) : .blue)
+                        }
+                        .disabled(currentPath.isEmpty || currentPath == "/")
+                        .buttonStyle(.plain)
+                        .help("Remonter d'un niveau")
 
-                    HStack(spacing: 6) {
-                        Image(systemName: provider.providerType.iconName)
-                            .foregroundColor(.blue)
-                        Text(cleanDisplayPath)
-                            .font(.system(.subheadline, design: .monospaced, weight: .bold))
-                            .lineLimit(1)
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(Color.primary.opacity(0.06))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                        // Fil d'Ariane cliquable avec défilement horizontal
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 6) {
+                                ForEach(Array(pathSegments.enumerated()), id: \.offset) { index, segment in
+                                    let isLast = index == pathSegments.count - 1
+                                    Button {
+                                        if !isLast {
+                                            currentPath = segment.fullPath
+                                            Task { await loadFolders() }
+                                        }
+                                    } label: {
+                                        HStack(spacing: 4) {
+                                            if index == 0 {
+                                                Image(systemName: "shippingbox.fill")
+                                                    .font(.caption2)
+                                                    .foregroundColor(.blue)
+                                            } else {
+                                                Image(systemName: "folder.fill")
+                                                    .font(.caption2)
+                                                    .foregroundColor(isLast ? .blue : .secondary)
+                                            }
+                                            Text(segment.title)
+                                                .font(.system(.subheadline, design: .rounded, weight: isLast ? .bold : .medium))
+                                                .foregroundColor(isLast ? .primary : .secondary)
+                                        }
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 5)
+                                        .background(isLast ? Color.blue.opacity(0.12) : Color.primary.opacity(0.04))
+                                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                    }
+                                    .buttonStyle(.plain)
 
-                    Spacer()
+                                    if !isLast {
+                                        Image(systemName: "chevron.right")
+                                            .font(.caption2.bold())
+                                            .foregroundColor(.secondary.opacity(0.4))
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, 2)
+                        }
 
-                    // Bouton Créer un nouveau dossier
-                    Button {
-                        newFolderName = ""
-                        showCreateFolderDialog = true
-                    } label: {
-                        Label("Nouveau dossier", systemImage: "folder.badge.plus")
-                            .font(.caption.bold())
-                    }
-                    .buttonStyle(.bordered)
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background(.ultraThinMaterial)
-
-                // Raccourci 1-Clic automatique : /Droopies
-                Button {
-                    onSelect("/Droopies")
-                    dismiss()
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "sparkles")
-                            .foregroundColor(.orange)
-                        Text("Créer ou utiliser le dossier standard /Droopies")
-                            .font(.subheadline.bold())
-                            .foregroundColor(.primary)
                         Spacer()
-                        Text("Recommandé")
-                            .font(.caption2.bold())
-                            .foregroundColor(.blue)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(Color.blue.opacity(0.15))
-                            .clipShape(Capsule())
-                    }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .background(Color.primary.opacity(0.04))
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-                    )
-                }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
 
-                Divider()
-
-                // MARK: - Liste des sous-dossiers
-                if isLoading {
-                    VStack(spacing: 12) {
-                        Spacer()
-                        ProgressView()
-                            .scaleEffect(1.2)
-                        Text("Chargement des dossiers...")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Spacer()
-                    }
-                } else if folders.isEmpty {
-                    VStack(spacing: 14) {
-                        Spacer()
-                        Image(systemName: "folder")
-                            .font(.system(size: 44))
-                            .foregroundColor(.secondary.opacity(0.6))
-                        Text("Aucun sous-dossier à cet emplacement")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
+                        // Bouton Nouveau Dossier
                         Button {
                             newFolderName = ""
                             showCreateFolderDialog = true
                         } label: {
-                            Label("Créer un dossier ici", systemImage: "plus.circle.fill")
+                            Label("Nouveau", systemImage: "folder.badge.plus")
+                                .font(.caption.bold())
                         }
-                        .buttonStyle(.borderedProminent)
-                        Spacer()
+                        .buttonStyle(.bordered)
+                        .tint(.blue)
                     }
-                } else {
-                    List {
-                        ForEach(folders) { item in
-                            Button {
-                                navigateInto(folder: item)
-                            } label: {
-                                HStack(spacing: 12) {
-                                    Image(systemName: "folder.fill")
-                                        .font(.title3)
-                                        .foregroundColor(.blue)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+                    .padding(.bottom, 6)
 
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(item.name)
-                                            .font(.system(size: 14, weight: .medium))
-                                            .foregroundColor(.primary)
-                                    }
+                    // Raccourci 1-Clic pratique : /Droopies
+                    if currentPath.isEmpty || currentPath == "/" {
+                        Button {
+                            onSelect("/Droopies")
+                            dismiss()
+                        } label: {
+                            HStack(spacing: 10) {
+                                Image(systemName: "sparkles")
+                                    .font(.subheadline)
+                                    .foregroundColor(.orange)
 
-                                    Spacer()
-
-                                    Image(systemName: "chevron.right")
-                                        .font(.caption2.bold())
-                                        .foregroundColor(.secondary.opacity(0.5))
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text("Créer ou utiliser le dossier standard /Droopies")
+                                        .font(.subheadline.bold())
+                                        .foregroundColor(.primary)
+                                    Text("Dossier dédié recommandé à la racine de votre compte")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
                                 }
-                                .padding(.vertical, 4)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .listStyle(.plain)
-                }
 
-                if let err = errorMessage {
-                    HStack(spacing: 8) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundColor(.red)
-                        Text(err)
-                            .font(.caption)
-                            .foregroundColor(.red)
+                                Spacer()
+
+                                Text("1 clic")
+                                    .font(.caption2.bold())
+                                    .foregroundColor(.blue)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color.blue.opacity(0.12))
+                                    .clipShape(Capsule())
+                            }
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(Color.blue.opacity(0.05))
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .stroke(Color.blue.opacity(0.18), lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 6)
                     }
-                    .padding(8)
+                }
+                .background(.ultraThinMaterial)
+
+                Divider()
+
+                // MARK: - Liste des sous-dossiers
+                Group {
+                    if isLoading {
+                        VStack(spacing: 14) {
+                            Spacer()
+                            ProgressView()
+                                .scaleEffect(1.2)
+                            Text("Chargement de vos dossiers Dropbox...")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            Spacer()
+                        }
+                    } else if let err = errorMessage {
+                        VStack(spacing: 16) {
+                            Spacer()
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.system(size: 42))
+                                .foregroundColor(.orange)
+                            Text("Impossible de charger les dossiers")
+                                .font(.headline)
+                            Text(err)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 32)
+                            Button {
+                                Task { await loadFolders() }
+                            } label: {
+                                Label("Réessayer", systemImage: "arrow.clockwise")
+                                    .font(.caption.bold())
+                            }
+                            .buttonStyle(.borderedProminent)
+                            Spacer()
+                        }
+                    } else if filteredFolders.isEmpty {
+                        VStack(spacing: 16) {
+                            Spacer()
+                            ZStack {
+                                Circle()
+                                    .fill(Color.blue.opacity(0.1))
+                                    .frame(width: 72, height: 72)
+                                Image(systemName: "folder")
+                                    .font(.system(size: 34))
+                                    .foregroundColor(.blue)
+                            }
+
+                            VStack(spacing: 4) {
+                                Text(searchText.isEmpty ? "Aucun sous-dossier ici" : "Aucun dossier correspondant")
+                                    .font(.headline)
+                                Text(searchText.isEmpty
+                                     ? "Vous pouvez créer un nouveau dossier ou sélectionner le dossier actuel ci-dessous."
+                                     : "Modifiez votre recherche pour trouver votre dossier.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 32)
+                            }
+
+                            if searchText.isEmpty {
+                                Button {
+                                    newFolderName = ""
+                                    showCreateFolderDialog = true
+                                } label: {
+                                    Label("Créer un dossier ici", systemImage: "folder.badge.plus")
+                                        .font(.subheadline.bold())
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .tint(.blue)
+                            }
+                            Spacer()
+                        }
+                    } else {
+                        List {
+                            ForEach(filteredFolders) { item in
+                                Button {
+                                    navigateInto(folder: item)
+                                } label: {
+                                    HStack(spacing: 12) {
+                                        ZStack {
+                                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                                .fill(Color.blue.opacity(0.12))
+                                                .frame(width: 38, height: 38)
+                                            Image(systemName: "folder.fill")
+                                                .font(.system(size: 18))
+                                                .foregroundColor(.blue)
+                                        }
+
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(item.name)
+                                                .font(.system(size: 15, weight: .semibold))
+                                                .foregroundColor(.primary)
+                                            Text("Appuyer pour ouvrir")
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                        }
+
+                                        Spacer()
+
+                                        // Bouton direct pour sélectionner immédiatement ce dossier sans y entrer
+                                        Button {
+                                            let chosen = item.path.hasPrefix("/") ? item.path : "/\(item.path)"
+                                            onSelect(chosen)
+                                            dismiss()
+                                        } label: {
+                                            Text("Choisir")
+                                                .font(.caption2.bold())
+                                                .foregroundColor(.blue)
+                                                .padding(.horizontal, 10)
+                                                .padding(.vertical, 5)
+                                                .background(Color.blue.opacity(0.12))
+                                                .clipShape(Capsule())
+                                        }
+                                        .buttonStyle(.plain)
+
+                                        Image(systemName: "chevron.right")
+                                            .font(.caption.bold())
+                                            .foregroundColor(.secondary.opacity(0.4))
+                                    }
+                                    .padding(.vertical, 4)
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        #if os(iOS)
+                        .listStyle(.insetGrouped)
+                        #else
+                        .listStyle(.inset(alternatesRowBackgrounds: true))
+                        #endif
+                    }
                 }
 
                 Divider()
 
-                // MARK: - Barre d'action inférieure (Sélection finale)
-                HStack {
+                // MARK: - Barre d'action inférieure (Validation de la sélection)
+                HStack(spacing: 14) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Dossier Source qui sera utilisé :")
+                        Text("Dossier actif sélectionné :")
                             .font(.caption2)
                             .foregroundColor(.secondary)
-                        Text(cleanDisplayPath)
-                            .font(.subheadline.bold())
-                            .foregroundColor(.blue)
+
+                        HStack(spacing: 6) {
+                            Image(systemName: "folder.fill")
+                                .font(.caption)
+                                .foregroundColor(.blue)
+                            Text(currentFolderName)
+                                .font(.system(.subheadline, design: .rounded, weight: .bold))
+                                .foregroundColor(.primary)
+                                .lineLimit(1)
+                        }
                     }
 
                     Spacer()
@@ -200,24 +343,36 @@ public struct CloudFolderPickerSheet: View {
                         onSelect(cleanDisplayPath)
                         dismiss()
                     } label: {
-                        Text("Sélectionner ce dossier")
-                            .font(.subheadline.bold())
+                        HStack(spacing: 6) {
+                            Image(systemName: "checkmark.circle.fill")
+                            Text(currentPath.isEmpty || currentPath == "/" ? "Choisir la Racine Dropbox" : "Choisir ce dossier")
+                                .font(.subheadline.bold())
+                        }
                     }
                     .buttonStyle(VibrantGradientButtonStyle(gradient: .emeraldGreen, isCompact: true))
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+                .padding(.horizontal, 18)
+                .padding(.vertical, 14)
                 .background(.ultraThinMaterial)
             }
-            .navigationTitle("Choisir le dossier Source")
+            .navigationTitle("Parcourir Dropbox")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
+            .searchable(text: $searchText, prompt: "Filtrer les dossiers...")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Annuler") {
+                    Button("Fermer") {
                         dismiss()
                     }
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        Task { await loadFolders() }
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                    .help("Actualiser la liste")
                 }
             }
             .alert("Nouveau dossier", isPresented: $showCreateFolderDialog) {
@@ -227,14 +382,14 @@ public struct CloudFolderPickerSheet: View {
                 }
                 Button("Annuler", role: .cancel) {}
             } message: {
-                Text("Créez un nouveau dossier dans \(cleanDisplayPath)")
+                Text("Créez un nouveau sous-dossier dans \(cleanDisplayPath)")
             }
             .task {
                 await loadFolders()
             }
         }
         #if os(macOS)
-        .frame(minWidth: 540, minHeight: 460)
+        .frame(minWidth: 580, minHeight: 520)
         #endif
     }
 
@@ -254,7 +409,7 @@ public struct CloudFolderPickerSheet: View {
                 self.folders = items.filter { $0.isDirectory }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
             }
         } catch {
-            self.errorMessage = "Impossible de lister les dossiers : \(error.localizedDescription)"
+            self.errorMessage = "\(error.localizedDescription)"
         }
     }
 
@@ -265,6 +420,7 @@ public struct CloudFolderPickerSheet: View {
         } else {
             currentPath = "\(currentPath)/\(clean)"
         }
+        searchText = ""
         Task { await loadFolders() }
     }
 
@@ -275,6 +431,7 @@ public struct CloudFolderPickerSheet: View {
             components.removeLast()
         }
         currentPath = components.isEmpty ? "" : "/\(components.joined(separator: "/"))"
+        searchText = ""
         Task { await loadFolders() }
     }
 

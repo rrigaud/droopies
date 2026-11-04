@@ -156,11 +156,18 @@ public struct SplashSetupView: View {
             }
         }
         .sheet(isPresented: $showFolderPicker) {
+            let providerToUse: StorageProvider = (appState.storageManager.activeProvider as? DropboxStorageProvider) ?? DropboxStorageProvider()
             CloudFolderPickerSheet(
-                provider: appState.storageManager.activeProvider,
+                provider: providerToUse,
                 initialPath: rootFolder
             ) { chosenPath in
                 self.rootFolder = chosenPath
+                UserDefaults.standard.set(chosenPath, forKey: "droopies_selected_folder")
+                if let dropbox = providerToUse as? DropboxStorageProvider {
+                    self.appState.storageManager.setProvider(dropbox)
+                    self.selectedProviderType = .dropbox
+                    UserDefaults.standard.set("dropbox", forKey: "droopies_selected_provider")
+                }
                 Task {
                     await applyAndValidateSourceFolder(chosenPath)
                 }
@@ -471,33 +478,33 @@ public struct SplashSetupView: View {
 
             VStack(alignment: .leading, spacing: 12) {
                 if rootFolder.isEmpty {
-                    Text("Choisissez le dossier où Droopies créera et synchronisera vos évaluations, vos classes et vos élèves :")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    if selectedProviderType == .dropbox {
+                        Text("Parcourez votre compte Dropbox et choisissez le dossier où Droopies créera et synchronisera vos évaluations :")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
 
-                    // Bouton Principal : Sélecteur Natif Apple
-                    Button {
-                        showNativeFolderPicker = true
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: "folder.badge.plus")
-                                .font(.system(size: 16, weight: .bold))
-                            Text("Sélectionner le dossier Source (Finder / Fichiers Apple)")
-                                .font(.headline.bold())
+                        // Bouton Principal Dropbox : Fenêtre modale native moderne
+                        Button {
+                            showFolderPicker = true
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "shippingbox.fill")
+                                    .font(.system(size: 16, weight: .bold))
+                                Text("Parcourir mes dossiers Dropbox")
+                                    .font(.headline.bold())
+                            }
+                            .frame(maxWidth: .infinity)
                         }
-                        .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(VibrantGradientButtonStyle(gradient: .electricBlue))
+                        .buttonStyle(VibrantGradientButtonStyle(gradient: .electricBlue))
 
-                    if selectedProviderType == .dropbox && isCloudConnected {
                         HStack {
                             Spacer()
                             Button {
-                                showFolderPicker = true
+                                showNativeFolderPicker = true
                             } label: {
                                 HStack(spacing: 5) {
-                                    Image(systemName: "cloud")
-                                    Text("Ou parcourir l'arborescence Dropbox à distance...")
+                                    Image(systemName: "folder")
+                                    Text("Ou choisir un dossier local via Finder / Fichiers...")
                                 }
                                 .font(.caption)
                                 .foregroundColor(.secondary)
@@ -506,14 +513,31 @@ public struct SplashSetupView: View {
                             Spacer()
                         }
                         .padding(.top, 2)
+                    } else {
+                        Text("Sélectionnez le dossier où Droopies créera vos évaluations via le sélecteur natif Apple :")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+
+                        Button {
+                            showNativeFolderPicker = true
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "folder.badge.plus")
+                                    .font(.system(size: 16, weight: .bold))
+                                Text("Sélectionner via Finder / Fichiers Apple")
+                                    .font(.headline.bold())
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(VibrantGradientButtonStyle(gradient: .electricBlue))
                     }
                 } else {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 10) {
                             HStack(spacing: 8) {
-                                Image(systemName: "folder.fill")
+                                Image(systemName: selectedProviderType == .dropbox ? "shippingbox.fill" : "folder.fill")
                                     .foregroundColor(.blue)
-                                Text(URL(fileURLWithPath: rootFolder).lastPathComponent)
+                                Text(URL(fileURLWithPath: rootFolder).lastPathComponent.isEmpty ? "Racine Dropbox" : URL(fileURLWithPath: rootFolder).lastPathComponent)
                                     .font(.system(.subheadline, design: .monospaced, weight: .bold))
                             }
                             .padding(.horizontal, 10)
@@ -523,27 +547,26 @@ public struct SplashSetupView: View {
 
                             Spacer()
 
-                            Button {
-                                showNativeFolderPicker = true
-                            } label: {
-                                Label("Changer (Finder / Fichiers)", systemImage: "folder")
-                                    .font(.caption.bold())
-                            }
-                            .buttonStyle(.bordered)
-
-                            if selectedProviderType == .dropbox && isCloudConnected {
+                            if selectedProviderType == .dropbox {
                                 Button {
                                     showFolderPicker = true
                                 } label: {
-                                    Image(systemName: "cloud")
-                                        .font(.caption)
+                                    Label("Modifier", systemImage: "shippingbox.fill")
+                                        .font(.caption.bold())
                                 }
                                 .buttonStyle(.bordered)
-                                .help("Parcourir Dropbox à distance")
+                            } else {
+                                Button {
+                                    showNativeFolderPicker = true
+                                } label: {
+                                    Label("Changer", systemImage: "folder")
+                                        .font(.caption.bold())
+                                }
+                                .buttonStyle(.bordered)
                             }
                         }
 
-                        Text(rootFolder)
+                        Text(rootFolder.isEmpty ? "/" : rootFolder)
                             .font(.system(.caption2, design: .monospaced))
                             .foregroundColor(.secondary)
                             .lineLimit(1)
@@ -676,9 +699,9 @@ public struct SplashSetupView: View {
                     self.cloudStatusMessage = "\(session.displayName) (\(session.email))"
                     self.isConnectingCloud = false
 
-                    // Si aucun dossier n'est configuré, ouvrir directement le sélecteur natif Apple
+                    // Si aucun dossier n'est configuré, ouvrir directement l'explorateur modal Dropbox
                     if self.rootFolder.isEmpty {
-                        self.showNativeFolderPicker = true
+                        self.showFolderPicker = true
                     }
                 }
 

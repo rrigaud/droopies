@@ -229,11 +229,21 @@ public final class DropboxStorageProvider: StorageProvider, @unchecked Sendable 
         request.httpMethod = "POST"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONSerialization.data(withJSONObject: ["path": reqPath, "recursive": false])
+        let body: [String: Any] = [
+            "path": reqPath,
+            "recursive": false,
+            "include_mounted_folders": true,
+            "limit": 2000
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         let (data, response) = try await session.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
-            return []
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw StorageError.unknown("Réponse invalide du serveur Dropbox")
+        }
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let errorText = String(data: data, encoding: .utf8) ?? "Erreur HTTP \(httpResponse.statusCode)"
+            throw StorageError.serverError(statusCode: httpResponse.statusCode, message: errorText)
         }
 
         struct ListFolderResponse: Decodable {
