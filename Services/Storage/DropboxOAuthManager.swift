@@ -33,7 +33,7 @@ public final class DropboxOAuthManager: NSObject, ASWebAuthenticationPresentatio
     public static let shared = DropboxOAuthManager()
 
     /// Clé d'application Dropbox par défaut pour Dropies (Scoped App officielle).
-    public static let defaultAppKey = "mjjyt774vxkg22i"
+    public static let defaultAppKey = "cpb97d4akmmhn3j"
 
     public static let callbackScheme = "dropies"
     public static let redirectURI = "dropies://oauth-callback"
@@ -45,7 +45,7 @@ public final class DropboxOAuthManager: NSObject, ASWebAuthenticationPresentatio
     public var effectiveAppKey: String {
         get {
             let saved = UserDefaults.standard.string(forKey: Self.kSavedAppKey)?.trimmingCharacters(in: .whitespacesAndNewlines)
-            if let saved = saved, !saved.isEmpty, saved != "34f1m7xkyj0y8wh" {
+            if let saved = saved, !saved.isEmpty, saved != "34f1m7xkyj0y8wh" && saved != "mjjyt774vxkg22i" {
                 return saved
             }
             return Self.defaultAppKey
