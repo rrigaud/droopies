@@ -16,7 +16,7 @@ public final class StorageManager: @unchecked Sendable {
     public var isLoading: Bool = false
     public var lastErrorMessage: String?
 
-    public init(activeProvider: StorageProvider = LocalStorageProvider()) {
+    public init(activeProvider: StorageProvider = DropboxStorageProvider()) {
         self.activeProvider = activeProvider
     }
 

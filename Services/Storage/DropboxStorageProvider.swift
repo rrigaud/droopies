@@ -35,7 +35,7 @@ public final class DropboxStorageProvider: StorageProvider, @unchecked Sendable 
         appKey: String = "",
         refreshToken: String = "",
         accessToken: String? = nil,
-        rootFolderPath: String = "/Droopies",
+        rootFolderPath: String = "",
         accountDisplayName: String? = nil,
         accountEmail: String? = nil
     ) {
@@ -43,7 +43,7 @@ public final class DropboxStorageProvider: StorageProvider, @unchecked Sendable 
         let savedToken = UserDefaults.standard.string(forKey: Self.kTokenKey)
         let savedRefresh = UserDefaults.standard.string(forKey: Self.kRefreshTokenKey)
         let savedAppKey = UserDefaults.standard.string(forKey: Self.kAppKey)
-        let savedRoot = UserDefaults.standard.string(forKey: Self.kRootPathKey) ?? "/Droopies"
+        let savedRoot = UserDefaults.standard.string(forKey: Self.kRootPathKey) ?? ""
 
         self.accessToken = accessToken ?? savedToken
         self.refreshToken = refreshToken.isEmpty ? (savedRefresh ?? "") : refreshToken
@@ -53,7 +53,7 @@ public final class DropboxStorageProvider: StorageProvider, @unchecked Sendable 
         self.accountEmail = accountEmail
     }
 
-    public func configure(appKey: String = "", refreshToken: String = "", accessToken: String? = nil, rootFolderPath: String = "/Droopies") {
+    public func configure(appKey: String = "", refreshToken: String = "", accessToken: String? = nil, rootFolderPath: String = "") {
         self.appKey = appKey
         self.refreshToken = refreshToken
         self.accessToken = accessToken
@@ -161,16 +161,30 @@ public final class DropboxStorageProvider: StorageProvider, @unchecked Sendable 
     public func createDirectory(at path: String) async throws {
         let token = try await getValidAccessToken()
         let remotePath = normalizeRemotePath(path)
+        guard !remotePath.isEmpty && remotePath != "/" else { return }
 
-        var request = URLRequest(url: URL(string: "https://api.dropboxapi.com/2/files/create_folder_v2")!)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONSerialization.data(withJSONObject: ["path": remotePath, "autorename": false])
+        // S'assurer que chaque niveau parent existe successivement
+        let parts = remotePath.split(separator: "/").map(String.init)
+        var cumulative = ""
+        for part in parts {
+            cumulative += "/\(part)"
+            var request = URLRequest(url: URL(string: "https://api.dropboxapi.com/2/files/create_folder_v2")!)
+            request.httpMethod = "POST"
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try JSONSerialization.data(withJSONObject: ["path": cumulative, "autorename": false])
 
-        let (_, response) = try await session.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) || httpResponse.statusCode == 409 else {
-            throw StorageError.unknown("Impossible de créer le dossier Dropbox : \(remotePath)")
+            let (data, response) = try await session.data(for: request)
+            if let http = response as? HTTPURLResponse {
+                if (200...299).contains(http.statusCode) {
+                    continue
+                } else if http.statusCode == 409 {
+                    let bodyStr = String(data: data, encoding: .utf8) ?? ""
+                    if bodyStr.contains("conflict") {
+                        continue
+                    }
+                }
+            }
         }
     }
 
@@ -275,21 +289,33 @@ public final class DropboxStorageProvider: StorageProvider, @unchecked Sendable 
         }
     }
 
-    /// Crée un dossier absolu à la racine du compte Dropbox
+    /// Crée un dossier absolu à la racine ou dans l'arborescence du compte Dropbox
     public func createAccountFolder(at absolutePath: String) async throws {
         let token = try await getValidAccessToken()
         let clean = absolutePath.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        let reqPath = "/\(clean)"
+        guard !clean.isEmpty else { return }
 
-        var request = URLRequest(url: URL(string: "https://api.dropboxapi.com/2/files/create_folder_v2")!)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONSerialization.data(withJSONObject: ["path": reqPath, "autorename": false])
+        let parts = clean.split(separator: "/").map(String.init)
+        var cumulative = ""
+        for part in parts {
+            cumulative += "/\(part)"
+            var request = URLRequest(url: URL(string: "https://api.dropboxapi.com/2/files/create_folder_v2")!)
+            request.httpMethod = "POST"
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try JSONSerialization.data(withJSONObject: ["path": cumulative, "autorename": false])
 
-        let (_, response) = try await session.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) || httpResponse.statusCode == 409 else {
-            throw StorageError.unknown("Impossible de créer le dossier : \(reqPath)")
+            let (data, response) = try await session.data(for: request)
+            if let http = response as? HTTPURLResponse {
+                if (200...299).contains(http.statusCode) {
+                    continue
+                } else if http.statusCode == 409 {
+                    let bodyStr = String(data: data, encoding: .utf8) ?? ""
+                    if bodyStr.contains("conflict") {
+                        continue
+                    }
+                }
+            }
         }
     }
 
