@@ -51,7 +51,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
             case .nextcloud: return "Nextcloud (Nuage Éducation)"
             case .oneDrive: return "Microsoft OneDrive"
             case .googleDrive: return "Google Drive"
-            case .local: return "Dossier Local (Démo)"
+            case .local: return "Fichiers Apple / Finder (Natif)"
             }
         }
 
