@@ -337,7 +337,7 @@ public struct SplashSetupView: View {
                                 .foregroundColor(.secondary)
 
                             HStack {
-                                TextField("App Key personnalisée (ex: 34f1m7xkyj0y8wh)", text: $customAppKey)
+                                TextField("App Key personnalisée (ex: mjjyt774vxkg22i)", text: $customAppKey)
                                     .textFieldStyle(.roundedBorder)
                                     .font(.system(.caption, design: .monospaced))
 
