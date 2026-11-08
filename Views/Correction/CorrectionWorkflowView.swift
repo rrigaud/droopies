@@ -39,7 +39,7 @@ public struct CorrectionWorkflowView: View {
                             .font(.system(size: 22, weight: .bold, design: .rounded))
                             .foregroundColor(.primary)
 
-                        Text("La distribution consiste à découper, identifier et déposer individuellement chaque devoir annoté dans le dossier Cloud de chaque élève.\nCette opération requiert une connexion Internet active pour synchroniser avec Dropbox.")
+                        Text("La distribution consiste à découper, identifier et déposer individuellement chaque devoir annoté dans le dossier Cloud de chaque élève.\nCette opération requiert une connexion Internet active pour synchroniser avec le Cloud.")
                             .font(.system(size: 14))
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
@@ -51,7 +51,7 @@ public struct CorrectionWorkflowView: View {
                             Image(systemName: "checkmark.circle.fill")
                                 .foregroundColor(.green)
                                 .font(.system(size: 16))
-                            Text("L'Atelier de Correction au stylet reste 100 % opérationnel hors-ligne.")
+                            Text("La correction de copies reste 100 % opérationnelle hors-ligne.")
                                 .font(.system(size: 13, weight: .medium))
                                 .foregroundColor(.primary)
                         }
@@ -60,7 +60,7 @@ public struct CorrectionWorkflowView: View {
                             Image(systemName: "wifi")
                                 .foregroundColor(.blue)
                                 .font(.system(size: 16))
-                            Text("Dès la reconnexion au Wi-Fi, la distribution sera immédiatement débloquée.")
+                            Text("Dès la reconnexion à Internet, la distribution sera immédiatement débloquée.")
                                 .font(.system(size: 13, weight: .medium))
                                 .foregroundColor(.primary)
                         }

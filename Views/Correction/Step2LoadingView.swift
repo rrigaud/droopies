@@ -6,8 +6,8 @@
 //  Chargement des copies & Préparation de l'évaluation (Découpage, métadonnées et prévisualisation continue).
 //  Architecture compacte à 4 blocs optimisée pour visionOS / iPadOS 18 :
 //  1. Fonctionnement de la distribution (explication claire)
-//  2. Sélection de l'évaluation corrigée + Pages par copie (selectbutton 1 à 4 avec bouton '+' popover)
-//  3. Informations sur l'évaluation (Date YYYY-MM-DD, Classe, Nom, Barème)
+//  2. Sélection de l'évaluation corrigée (Picker natif) + Pages par copie (selectbutton 1..4 avec '+' puis 'pages / copie')
+//  3. Informations sur l'évaluation (Date YYYY-MM-DD avec fermeture auto, Classe via Picker natif, Nom)
 //  4. Prévisualisation plein écran à 100% de la largeur avec défilement continu
 //
 
@@ -43,6 +43,7 @@ public struct Step2LoadingView: View {
     @State private var selectedClassId: String? = nil
     @State private var evalTitle: String = ""
     @State private var evalDate: Date = Date()
+    @State private var showDatePickerPopover: Bool = false
     @State private var evalMaxScore: Double = 20.0
 
     // Découpage et options de pages
@@ -201,58 +202,42 @@ public struct Step2LoadingView: View {
 
     private var evaluationSelectionBar: some View {
         HStack(spacing: 14) {
-            // Menulist natif proposant les évaluations corrigées
+            // Picker natif proposant les évaluations corrigées
             HStack(spacing: 6) {
                 Image(systemName: "checkmark.seal.fill")
                     .foregroundColor(Color(hex: "10B981"))
                     .font(.system(size: 13))
 
-                Menu {
+                Picker("Évaluation corrigée", selection: $selectedScan) {
                     if correctedScans.isEmpty {
-                        Text("Aucune évaluation corrigée trouvée").foregroundColor(.secondary)
+                        Text("Aucune évaluation corrigée").tag(nil as StorageManager.ScanItem?)
                     } else {
                         ForEach(correctedScans) { scan in
-                            Button {
-                                selectScan(scan)
-                            } label: {
-                                HStack {
-                                    Text(scan.cleanTitle)
-                                    if selectedScan?.id == scan.id {
-                                        Image(systemName: "checkmark")
-                                    }
-                                }
-                            }
+                            Text(scan.cleanTitle).tag(scan as StorageManager.ScanItem?)
                         }
                     }
-
-                    Divider()
-
-                    Button {
-                        isExternalPickerPresented = true
-                    } label: {
-                        Label("Importer un autre PDF depuis le disque...", systemImage: "plus.rectangle.on.folder")
+                }
+                .pickerStyle(.menu)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .onChange(of: selectedScan) { _, newScan in
+                    if let scan = newScan {
+                        selectScan(scan)
                     }
+                }
+
+                Button {
+                    isExternalPickerPresented = true
                 } label: {
-                    HStack(spacing: 6) {
-                        Text(selectedScan?.cleanTitle ?? (correctedScans.isEmpty ? "Aucune évaluation corrigée" : "Sélectionner une évaluation corrigée..."))
-                            .font(.system(size: 12.5, weight: .semibold))
-                            .foregroundColor(selectedScan != nil ? .primary : .secondary)
-                            .lineLimit(1)
-                            .frame(maxWidth: 290, alignment: .leading)
-
-                        Image(systemName: "chevron.up.chevron.down")
-                            .font(.system(size: 8.5, weight: .bold))
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(Color.primary.opacity(0.05))
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    Image(systemName: "folder.badge.plus")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)
+                .help("Importer un autre PDF depuis le disque...")
             }
 
-            // En mode rattrapage : choix du backup existant
+            // En mode rattrapage : choix du backup existant avec Picker natif
             if mode == .catchUpAbsents {
                 HStack(spacing: 6) {
                     Image(systemName: "arrow.triangle.merge")
@@ -276,13 +261,13 @@ public struct Step2LoadingView: View {
 
             Spacer()
 
-            // À droite : "Nombre de pages par copies :" + selectbutton glissant 1..4 avec bouton '+'
+            // À droite : selectbutton glissant 1..4 avec '+' PUIS 'pages / copie'
             HStack(spacing: 8) {
-                Text("Nombre de pages par copies :")
+                pagesPerCopySlidingSelector
+
+                Text("pages / copie")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(.secondary)
-
-                pagesPerCopySlidingSelector
             }
         }
         .padding(.horizontal, 14)
@@ -377,7 +362,7 @@ public struct Step2LoadingView: View {
 
     private var evaluationMetadataBar: some View {
         HStack(spacing: 16) {
-            // 1. Date (Datepicker natif, date du jour par défaut)
+            // 1. Date (DatePicker graphique dans un popover qui se ferme dès la sélection)
             HStack(spacing: 6) {
                 Image(systemName: "calendar")
                     .foregroundColor(.purple)
@@ -387,13 +372,39 @@ public struct Step2LoadingView: View {
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(.secondary)
 
-                DatePicker("", selection: $evalDate, displayedComponents: .date)
-                    .labelsHidden()
+                Button {
+                    showDatePickerPopover = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(Evaluation.dateFormatter.string(from: evalDate))
+                            .font(.system(size: 12.5, weight: .semibold))
+                            .foregroundColor(.primary)
+
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
+                    .background(Color.primary.opacity(0.06))
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .popover(isPresented: $showDatePickerPopover) {
+                    DatePicker("", selection: $evalDate, displayedComponents: .date)
+                        .datePickerStyle(.graphical)
+                        .labelsHidden()
+                        .padding(10)
+                        .frame(width: 320, height: 330)
+                        .onChange(of: evalDate) { _, _ in
+                            showDatePickerPopover = false
+                        }
+                }
             }
 
             Divider().frame(height: 18)
 
-            // 2. Classe (Menulist natif)
+            // 2. Classe (Picker natif Apple .pickerStyle(.menu))
             HStack(spacing: 6) {
                 Image(systemName: "person.2.fill")
                     .foregroundColor(.blue)
@@ -403,39 +414,20 @@ public struct Step2LoadingView: View {
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(.secondary)
 
-                Menu {
+                Picker("Classe", selection: $selectedClassId) {
+                    Text("— Choisir une classe —").tag(nil as String?)
                     ForEach(appState.classes) { cls in
-                        Button {
-                            selectedClassId = cls.id
-                            if let doc = loadedPDFDoc {
-                                autoSelectPagesPerCopy(for: doc)
-                            }
-                        } label: {
-                            HStack {
-                                Text("\(cls.name) (\(cls.studentCount) élèves)")
-                                if selectedClassId == cls.id {
-                                    Image(systemName: "checkmark")
-                                }
-                            }
-                        }
+                        Text("\(cls.name) (\(cls.studentCount) élèves)").tag(cls.id as String?)
                     }
-                } label: {
-                    HStack(spacing: 5) {
-                        let currentClass = appState.classes.first(where: { $0.id == selectedClassId })
-                        Text(currentClass != nil ? "\(currentClass!.name) (\(currentClass!.studentCount) élèves)" : "— Choisir une classe —")
-                            .font(.system(size: 12.5, weight: .semibold))
-                            .foregroundColor(currentClass != nil ? .primary : .secondary)
-
-                        Image(systemName: "chevron.up.chevron.down")
-                            .font(.system(size: 8.5, weight: .bold))
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(Color.primary.opacity(0.05))
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
-                .buttonStyle(.plain)
+                .pickerStyle(.menu)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .onChange(of: selectedClassId) { _, _ in
+                    if let doc = loadedPDFDoc {
+                        autoSelectPagesPerCopy(for: doc)
+                    }
+                }
             }
 
             Divider().frame(height: 18)
@@ -453,22 +445,6 @@ public struct Step2LoadingView: View {
                 TextField("Nom de l'évaluation...", text: $evalTitle)
                     .font(.system(size: 12.5))
                     .textFieldStyle(.roundedBorder)
-            }
-
-            // Note maximale (Barème)
-            HStack(spacing: 4) {
-                Text("/")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(.secondary)
-
-                TextField("20", value: $evalMaxScore, format: .number)
-                    .font(.system(size: 12, weight: .semibold))
-                    .textFieldStyle(.roundedBorder)
-                    .frame(width: 44)
-
-                Text("pts")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
             }
         }
         .padding(.horizontal, 14)
