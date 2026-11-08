@@ -320,17 +320,18 @@ public struct Step1CorrectionStudioView: View {
         .task {
             let autoOpen = CommandLine.arguments.contains("-testOpenScan")
             let multiTabs = CommandLine.arguments.contains("-testMultipleTabs")
-            await refreshAvailableScans(autoSelectFirst: autoOpen)
             if multiTabs {
-                for scan in availableScans.prefix(3) {
+                let scans = appState.storageManager.listLocalScansSync()
+                for scan in scans.prefix(3) {
                     if !appState.openCorrectionScans.contains(where: { $0.id == scan.id }) {
                         appState.openCorrectionScans.append(scan)
                     }
                 }
-                if appState.activeCorrectionScan == nil, let first = availableScans.first {
+                if appState.activeCorrectionScan == nil, let first = scans.first {
                     openScanInStudio(first)
                 }
             }
+            await refreshAvailableScans(autoSelectFirst: autoOpen)
             if CommandLine.arguments.contains("-testDockRight") {
                 isDockOnRight = true
             } else if CommandLine.arguments.contains("-testDockLeft") {
@@ -2470,6 +2471,37 @@ private struct PageThumbnailMiniView: View {
 // MARK: - ===============================================================
 
 #if canImport(UIKit)
+final class CenteringScrollView: UIScrollView {
+    weak var containerView: UIView?
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        centerContent()
+    }
+
+    func centerContent() {
+        guard let container = containerView else { return }
+        let boundsSize = bounds.size
+        guard boundsSize.width > 0, boundsSize.height > 0 else { return }
+
+        var frameToCenter = container.frame
+
+        if frameToCenter.size.width < boundsSize.width {
+            frameToCenter.origin.x = (boundsSize.width - frameToCenter.size.width) * 0.5
+        } else {
+            frameToCenter.origin.x = 0
+        }
+
+        if frameToCenter.size.height < boundsSize.height {
+            frameToCenter.origin.y = (boundsSize.height - frameToCenter.size.height) * 0.5
+        } else {
+            frameToCenter.origin.y = 0
+        }
+
+        container.frame = frameToCenter
+    }
+}
+
 public struct InteractivePDFCanvasView: UIViewRepresentable {
     public let document: PDFDocument?
     public let pageIndex: Int
@@ -2497,7 +2529,7 @@ public struct InteractivePDFCanvasView: UIViewRepresentable {
     }
 
     public func makeUIView(context: Context) -> UIScrollView {
-        let scrollView = UIScrollView()
+        let scrollView = CenteringScrollView()
         scrollView.minimumZoomScale = 1.0
         scrollView.maximumZoomScale = 4.0
         scrollView.bouncesZoom = true
@@ -2510,10 +2542,11 @@ public struct InteractivePDFCanvasView: UIViewRepresentable {
         let containerView = UIView()
         containerView.backgroundColor = .white
         containerView.layer.shadowColor = UIColor.black.cgColor
-        containerView.layer.shadowOpacity = 0.18
-        containerView.layer.shadowRadius = 14
+        containerView.layer.shadowOpacity = 0.22
+        containerView.layer.shadowRadius = 16
         containerView.layer.shadowOffset = CGSize(width: 0, height: 6)
         scrollView.addSubview(containerView)
+        scrollView.containerView = containerView
         context.coordinator.containerView = containerView
 
         let imageView = UIImageView()
@@ -2567,9 +2600,13 @@ public struct InteractivePDFCanvasView: UIViewRepresentable {
         let coordinator = context.coordinator
 
         // 1. Mise à jour de la page affichée
-        if coordinator.lastLoadedPageIndex != pageIndex || coordinator.lastDocument !== doc {
+        let shouldRender = (coordinator.lastLoadedPageIndex != pageIndex || coordinator.lastDocument !== doc) || (coordinator.lastViewportSize == .zero && scrollView.bounds.size != .zero)
+        if shouldRender {
             coordinator.lastLoadedPageIndex = pageIndex
             coordinator.lastDocument = doc
+            if scrollView.bounds.size != .zero {
+                coordinator.lastViewportSize = scrollView.bounds.size
+            }
             scrollView.setZoomScale(1.0, animated: false)
 
             renderPage(page, in: scrollView, coordinator: coordinator)
@@ -2615,8 +2652,13 @@ public struct InteractivePDFCanvasView: UIViewRepresentable {
         guard pageBounds.width > 0, pageBounds.height > 0 else { return }
 
         let screenBounds = UIScreen.main.bounds
-        let availableW = screenBounds.width - 120 // Dégagement pour le dock vertical et marges
-        let availableH = screenBounds.height - 120 // Dégagement pour la barre supérieure (54pt) et le HUD
+        let viewportW = scrollView.bounds.width > 0 ? scrollView.bounds.width : screenBounds.width
+        let viewportH = scrollView.bounds.height > 0 ? scrollView.bounds.height : screenBounds.height
+
+        // On maximise la copie avec une marge propre et régulière tout autour :
+        // ~48pt horizontalement (24pt de chaque côté), ~110pt verticalement (55pt en haut pour la barre d'onglets, 55pt en bas pour le HUD)
+        let availableW = viewportW - 48
+        let availableH = viewportH - 110
         let fitScale = min(availableW / pageBounds.width, availableH / pageBounds.height)
         let displayW = round(pageBounds.width * fitScale)
         let displayH = round(pageBounds.height * fitScale)
@@ -2627,11 +2669,9 @@ public struct InteractivePDFCanvasView: UIViewRepresentable {
         coordinator.canvasView?.frame = targetFrame
         coordinator.stampsOverlay?.frame = targetFrame
         scrollView.contentSize = targetFrame.size
+        scrollView.contentInset = .zero
 
-        scrollView.contentInset = UIEdgeInsets(top: 54, left: 16, bottom: 54, right: 16)
-        let offsetX = max((scrollView.bounds.width - displayW) * 0.5, 0.0)
-        let offsetY = max((scrollView.bounds.height - displayH) * 0.5, 0.0)
-        coordinator.containerView?.center = CGPoint(x: displayW * 0.5 + offsetX, y: displayH * 0.5 + offsetY)
+        (scrollView as? CenteringScrollView)?.centerContent()
 
         // Rendu Retina net
         let format = UIGraphicsImageRendererFormat()
@@ -2659,6 +2699,7 @@ public struct InteractivePDFCanvasView: UIViewRepresentable {
         weak var stampsOverlay: UIView?
         var lastLoadedPageIndex: Int = -1
         weak var lastDocument: PDFDocument?
+        var lastViewportSize: CGSize = .zero
         var committedDrawing: PKDrawing = PKDrawing()
         var isProgrammaticUpdate: Bool = false
         weak var swipeLeft: UISwipeGestureRecognizer?
@@ -2675,13 +2716,7 @@ public struct InteractivePDFCanvasView: UIViewRepresentable {
         }
 
         public func scrollViewDidZoom(_ scrollView: UIScrollView) {
-            guard let container = containerView else { return }
-            let offsetX = max((scrollView.bounds.width - scrollView.contentSize.width) * 0.5, 0.0)
-            let offsetY = max((scrollView.bounds.height - scrollView.contentSize.height) * 0.5, 0.0)
-            container.center = CGPoint(
-                x: scrollView.contentSize.width * 0.5 + offsetX,
-                y: scrollView.contentSize.height * 0.5 + offsetY
-            )
+            (scrollView as? CenteringScrollView)?.centerContent()
         }
 
         public func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {

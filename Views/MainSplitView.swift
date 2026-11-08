@@ -177,6 +177,11 @@ public struct MainSplitView: View {
         .task {
             await appState.loadInitialData()
         }
+        .onAppear {
+            if CommandLine.arguments.contains("-testCorrectionStudio") || CommandLine.arguments.contains("-testMultipleTabs") {
+                activeScreen = .correction
+            }
+        }
     }
 
     // MARK: - Outils Contextuels Centraux
@@ -473,17 +478,12 @@ public struct MainSplitView: View {
             Button {
                 appState.undoCorrectionTrigger += 1
             } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "arrow.uturn.backward")
-                        .font(.system(size: 13, weight: .semibold))
-                    Text("Annuler")
-                        .font(.system(size: 12.5, weight: .medium))
-                }
-                .foregroundColor(appState.canUndoCorrection ? .primary : .secondary.opacity(0.35))
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Color.primary.opacity(0.04))
-                .clipShape(Capsule())
+                Image(systemName: "arrow.uturn.backward")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(appState.canUndoCorrection ? .primary : .secondary.opacity(0.35))
+                    .frame(width: 30, height: 30)
+                    .background(Color.primary.opacity(0.04))
+                    .clipShape(Circle())
             }
             .buttonStyle(.plain)
             .disabled(!appState.canUndoCorrection)
@@ -497,17 +497,12 @@ public struct MainSplitView: View {
             Button {
                 appState.redoCorrectionTrigger += 1
             } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "arrow.uturn.forward")
-                        .font(.system(size: 13, weight: .semibold))
-                    Text("Rétablir")
-                        .font(.system(size: 12.5, weight: .medium))
-                }
-                .foregroundColor(appState.canRedoCorrection ? .primary : .secondary.opacity(0.35))
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Color.primary.opacity(0.04))
-                .clipShape(Capsule())
+                Image(systemName: "arrow.uturn.forward")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(appState.canRedoCorrection ? .primary : .secondary.opacity(0.35))
+                    .frame(width: 30, height: 30)
+                    .background(Color.primary.opacity(0.04))
+                    .clipShape(Circle())
             }
             .buttonStyle(.plain)
             .disabled(!appState.canRedoCorrection)
