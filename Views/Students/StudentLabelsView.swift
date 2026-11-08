@@ -243,6 +243,7 @@ public struct StudentLabelsView: View {
         defer { isRenderingPDF = false }
 
         let targets = studentsToDisplay
+        let url = portalURL
         guard !targets.isEmpty else {
             generatedPDFDocument = nil
             return
@@ -252,7 +253,7 @@ public struct StudentLabelsView: View {
         let doc = await Task.detached(priority: .userInitiated) {
             StudentLabelsPDFGenerator.generatePDFDocument(
                 students: targets,
-                portalURL: portalURL
+                portalURL: url
             )
         }.value
 
