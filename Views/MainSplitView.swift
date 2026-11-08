@@ -106,7 +106,7 @@ public struct MainSplitView: View {
                 // MARK: - 3. Barres d'Outils Flottantes Supérieures (Liquid Glass Bars)
                 HStack(alignment: .center, spacing: 0) {
                     // Toolbar 1 : Gauche (Bouton Sidebar + Sélecteur Correction / Distribution)
-                    topLeadingToolbar
+                    topLeadingToolbar(isCompact: isCompact)
                         .glassCapsule(strokeOpacity: 0.4)
 
                     Spacer(minLength: 12)
@@ -250,7 +250,7 @@ public struct MainSplitView: View {
 
     // MARK: - Toolbar 1 : Haut-Gauche (Sidebar Toggle + Correction / Onglets Dynamiques / Distribution)
 
-    private var topLeadingToolbar: some View {
+    private func topLeadingToolbar(isCompact: Bool) -> some View {
         HStack(spacing: 8) {
             // Bouton Sidebar (Icone qui ouvre / referme la sidebar)
             Button {
@@ -279,8 +279,12 @@ public struct MainSplitView: View {
 
                 // 2. Onglets dynamiques des évaluations ouvertes
                 if !appState.openCorrectionScans.isEmpty {
-                    ForEach(appState.openCorrectionScans) { scan in
-                        evaluationTabButton(for: scan)
+                    if isCompact && appState.openCorrectionScans.count > 2 {
+                        compactEvaluationsMenuPill
+                    } else {
+                        ForEach(appState.openCorrectionScans) { scan in
+                            evaluationTabButton(for: scan)
+                        }
                     }
                 }
 
@@ -396,6 +400,110 @@ public struct MainSplitView: View {
             }
         )
         .clipShape(Capsule())
+    }
+
+    private var compactEvaluationsMenuPill: some View {
+        let activeScan = (activeScreen == .correction) ? appState.activeCorrectionScan : nil
+        let isTabActive = (activeScan != nil)
+
+        return HStack(spacing: 4) {
+            Menu {
+                Section("Évaluations ouvertes (\(appState.openCorrectionScans.count))") {
+                    ForEach(appState.openCorrectionScans) { scan in
+                        Button {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                activeScreen = .correction
+                                appState.activeCorrectionScan = scan
+                                if isSidebarOpen {
+                                    isSidebarOpen = false
+                                }
+                            }
+                        } label: {
+                            HStack {
+                                Label(scan.cleanTitle, systemImage: scan.isCorrected ? "checkmark.seal.fill" : "doc.text.fill")
+                                if appState.activeCorrectionScan?.id == scan.id && activeScreen == .correction {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Divider()
+
+                Button(role: .destructive) {
+                    closeAllCorrectionTabs()
+                } label: {
+                    Label("Fermer toutes les évaluations", systemImage: "xmark.circle")
+                }
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: (activeScan?.isCorrected == true) ? "checkmark.seal.fill" : (activeScan != nil ? "doc.text.fill" : "doc.on.doc.fill"))
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(isTabActive ? (activeScan?.isCorrected == true ? Color(hex: "10B981") : .white) : .primary)
+
+                    Text(activeScan?.cleanTitle ?? "\(appState.openCorrectionScans.count) évaluations")
+                        .font(.system(size: 12, weight: isTabActive ? .bold : .medium))
+                        .lineLimit(1)
+                        .frame(maxWidth: 105)
+
+                    Text("\(appState.openCorrectionScans.count)")
+                        .font(.system(size: 10, weight: .bold))
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 1.5)
+                        .background(isTabActive ? Color.white.opacity(0.25) : Color.primary.opacity(0.08))
+                        .foregroundColor(isTabActive ? .white : .secondary)
+                        .clipShape(Capsule())
+
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.system(size: 8.5, weight: .bold))
+                        .foregroundColor(isTabActive ? .white.opacity(0.8) : .secondary)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            // Bouton Croix de fermeture de l'évaluation active
+            if let current = activeScan {
+                Button {
+                    closeCorrectionTab(current)
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 7.5, weight: .bold))
+                        .foregroundColor(isTabActive ? .white.opacity(0.9) : .secondary)
+                        .frame(width: 16, height: 16)
+                        .background(isTabActive ? Color.white.opacity(0.25) : Color.primary.opacity(0.08))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .help("Fermer l'évaluation active \(current.cleanTitle)")
+            }
+        }
+        .foregroundColor(isTabActive ? .white : .primary)
+        .padding(.leading, 10)
+        .padding(.trailing, activeScan != nil ? 6 : 8)
+        .padding(.vertical, 5)
+        .background(
+            Group {
+                if isTabActive {
+                    Capsule()
+                        .fill(LinearGradient.electricBlue)
+                        .matchedGeometryEffect(id: "activeMainPill", in: toolbarNamespace)
+                        .shadow(color: Color.blue.opacity(0.3), radius: 6, y: 2)
+                } else {
+                    Capsule()
+                        .fill(Color.primary.opacity(0.04))
+                }
+            }
+        )
+        .clipShape(Capsule())
+    }
+
+    private func closeAllCorrectionTabs() {
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+            appState.openCorrectionScans.removeAll()
+            appState.activeCorrectionScan = nil
+        }
     }
 
     private func closeCorrectionTab(_ scan: StorageManager.ScanItem) {
