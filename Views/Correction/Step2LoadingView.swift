@@ -218,7 +218,7 @@ public struct Step2LoadingView: View {
     // MARK: - Bloc Compléter une distribution (Sélection de l'évaluation archivée)
 
     private var catchUpBackupBlock: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 8) {
                 Image(systemName: "archivebox.fill")
                     .foregroundColor(.orange)
@@ -227,15 +227,16 @@ public struct Step2LoadingView: View {
                 Text("Compléter une distribution en sélectionnant l'évaluation archivée :")
                     .font(.system(size: 12.5, weight: .bold))
                     .foregroundColor(.primary)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
 
+                Spacer()
+
+                // Picker collé à droite
                 Picker("Évaluation archivée", selection: $selectedBackup) {
-                    if existingBackups.isEmpty {
-                        Text("Aucune évaluation archivée dans /Backup").tag(nil as StorageManager.ExistingBackup?)
-                    } else {
-                        Text("— Choisir une évaluation archivée —").tag(nil as StorageManager.ExistingBackup?)
-                        ForEach(existingBackups) { backup in
-                            Text("\(backup.className) • \(backup.evaluationTitle)").tag(backup as StorageManager.ExistingBackup?)
-                        }
+                    Text("Sélectionner...").tag(nil as StorageManager.ExistingBackup?)
+                    ForEach(existingBackups) { backup in
+                        Text("\(backup.className) • \(backup.evaluationTitle)").tag(backup as StorageManager.ExistingBackup?)
                     }
                 }
                 .pickerStyle(.menu)
@@ -246,29 +247,32 @@ public struct Step2LoadingView: View {
                         applyBackupMetadata(b)
                     }
                 }
+            }
+
+            // Ligne d'information au-dessous
+            HStack(spacing: 6) {
+                Text("Les informations de cette évaluation archivée seront pré-chargées sur la page, et la nouvelle évaluation sera fusionnée à cette dernière.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
 
                 Spacer()
 
                 if let backup = selectedBackup {
                     HStack(spacing: 4) {
                         Image(systemName: "folder")
-                            .font(.system(size: 10.5))
+                            .font(.system(size: 10))
                             .foregroundColor(.secondary)
                         Text("/Backup/\(backup.className)/\(backup.fileName)")
-                            .font(.system(size: 11, design: .monospaced))
+                            .font(.system(size: 10.5, design: .monospaced))
                             .foregroundColor(.secondary)
                     }
                 }
             }
-
-            // Information explicative au-dessous
-            Text("Les informations de cette évaluation archivée seront pré-chargées sur la page, et la nouvelle évaluation sera fusionnée à cette dernière.")
-                .font(.system(size: 11))
-                .foregroundColor(.secondary)
-                .padding(.leading, 21)
+            .padding(.leading, 21)
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, 9)
+        .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(Color.orange.opacity(0.08))
