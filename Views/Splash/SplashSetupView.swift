@@ -42,6 +42,9 @@ public struct SplashSetupView: View {
     /// Indique si l'appareil est au premier démarrage SANS Internet et SANS cache local
     @State private var isFirstLaunchOfflineBlocked: Bool = false
 
+    /// Indique si l'écran d'assistant de configuration manuel (Mode 2) est affiché
+    @State private var isShowingManualSetup: Bool = false
+
     @State private var isLoadingData: Bool = false
     @State private var isDataLoaded: Bool = false
 
@@ -51,13 +54,8 @@ public struct SplashSetupView: View {
         self.appState = appState
         self.isSwitcherMode = isSwitcherMode
         self.onFinish = onFinish
-        self._isCheckingCloud = State(initialValue: !isSwitcherMode)
-    }
-
-    private var needsManualSetup: Bool {
-        if isSwitcherMode { return true }
-        if isCheckingCloud { return false }
-        return !isCloudConnected || !isFolderValidated || rootFolder.isEmpty
+        self._isCheckingCloud = State(initialValue: false)
+        self._isShowingManualSetup = State(initialValue: isSwitcherMode)
     }
 
     // Progression fluide et dynamique échelonnée étape par étape (0.05 -> 1.0)
@@ -80,7 +78,7 @@ public struct SplashSetupView: View {
                 // MARK: - Mode 0 : Premier Lancement Hors-Ligne (Bloqué au splashscreen avec explications)
                 firstLaunchOfflineBlockedView
                     .transition(.opacity)
-            } else if !needsManualSetup {
+            } else if !isShowingManualSetup {
                 // MARK: - Mode 1 : Splashscreen Épuré Plein Écran (Lancements normaux)
                 VStack(spacing: 24) {
                     Spacer()
@@ -386,12 +384,13 @@ public struct SplashSetupView: View {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                 selectedProviderType = type
                 UserDefaults.standard.set(type.rawValue, forKey: "droopies_selected_provider")
-                if type == .dropbox {
-                    Task { await autoDetectExistingConnection() }
-                } else {
+                if type != .dropbox {
                     isCloudConnected = false
                     cloudStatusMessage = "\(label) sera activé très prochainement. Veuillez utiliser Dropbox pour le moment."
                 }
+            }
+            if type == .dropbox {
+                Task { await autoDetectExistingConnection() }
             }
         } label: {
             VStack(spacing: 8) {
@@ -739,7 +738,7 @@ public struct SplashSetupView: View {
                             .foregroundColor(isFolderValidated ? .green : .secondary)
                     }
 
-                    if isSwitcherMode && isFolderValidated && isCloudConnected {
+                    if isFolderValidated && isCloudConnected {
                         Button {
                             Task {
                                 await applyAndValidateSourceFolder(rootFolder)
@@ -747,7 +746,7 @@ public struct SplashSetupView: View {
                         } label: {
                             HStack(spacing: 8) {
                                 Image(systemName: "checkmark.circle.fill")
-                                Text("Basculer sur ce Cloud & Charger l'environnement")
+                                Text(isSwitcherMode ? "Basculer sur ce Cloud & Charger l'environnement" : "Ouvrir Droopies avec cet environnement")
                                     .font(.subheadline.bold())
                             }
                             .frame(maxWidth: .infinity)
@@ -763,6 +762,7 @@ public struct SplashSetupView: View {
 
     // MARK: - Logique d'initialisation & actions
 
+    @MainActor
     private func autoDetectExistingConnection() async {
         isCheckingCloud = true
         defer { isCheckingCloud = false }
@@ -783,50 +783,49 @@ public struct SplashSetupView: View {
             print("[SplashSetupView] Démarrage hors-ligne détecté.")
             if hasCache || hasSession {
                 // Mode Hors-Ligne normal en classe : lecture du cache local
-                await updateProgress(value: 0.40, label: "Mode Hors-Ligne • Lecture du cache local...")
+                updateProgress(value: 0.40, label: "Mode Hors-Ligne • Lecture du cache local...")
                 await appState.loadInitialData { progress, label in
                     Task { @MainActor in
                         self.updateProgress(value: 0.40 + (progress * 0.60), label: label)
                     }
                 }
-                await updateProgress(value: 1.0, label: "Mode Hors-Ligne prêt • Studio de correction actif")
+                updateProgress(value: 1.0, label: "Mode Hors-Ligne prêt • Studio de correction actif")
                 try? await Task.sleep(nanoseconds: 200_000_000)
-                await MainActor.run {
-                    self.onFinish()
-                }
+                self.onFinish()
                 return
             } else {
                 // Premier Lancement Hors-Ligne (appareil vierge sans compte ni cache local)
                 print("[SplashSetupView] Premier lancement hors-ligne sans données : attente de connexion Internet.")
-                await MainActor.run {
-                    self.isFirstLaunchOfflineBlocked = true
-                    self.isCheckingCloud = false
-                }
+                self.isFirstLaunchOfflineBlocked = true
+                self.isCheckingCloud = false
                 return
             }
         }
 
         // MARK: - CAS 2 : En Ligne
-        await MainActor.run {
-            self.isFirstLaunchOfflineBlocked = false
-        }
+        self.isFirstLaunchOfflineBlocked = false
 
         // Si aucun compte Cloud n'est encore associé (premier démarrage en ligne)
         if !provider.isConnected {
             print("[SplashSetupView] Premier lancement en ligne : aucun compte Cloud lié, affichage de l'assistant.")
-            await MainActor.run {
-                self.isCloudConnected = false
-                self.isCheckingCloud = false
+            self.isCloudConnected = false
+            self.isCheckingCloud = false
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                self.isShowingManualSetup = true
             }
             return
         }
 
         // Compte déjà associé : vérification du compte et du dossier
-        await updateProgress(value: 0.10, label: "Connexion sécurisée à votre compte Cloud...")
+        if !isShowingManualSetup {
+            updateProgress(value: 0.10, label: "Connexion sécurisée à votre compte Cloud...")
+        }
 
         do {
             let info = try await provider.testConnection()
-            await updateProgress(value: 0.20, label: "Compte Cloud vérifié (\(info.name))")
+            if !isShowingManualSetup {
+                updateProgress(value: 0.20, label: "Compte Cloud vérifié (\(info.name))")
+            }
 
             var savedFolder = provider.rootFolderPath
             if savedFolder.isEmpty {
@@ -846,46 +845,48 @@ public struct SplashSetupView: View {
             // Vérifier si le dossier mémorisé existe RÉELLEMENT sur Dropbox
             var folderExists = false
             if !savedFolder.isEmpty {
-                await updateProgress(value: 0.30, label: "Accès au dossier Source '\(cleanSaved)'...")
+                if !isShowingManualSetup {
+                    updateProgress(value: 0.30, label: "Accès au dossier Source '\(cleanSaved)'...")
+                }
                 folderExists = (try? await provider.folderExists(at: savedFolder)) ?? false
             }
 
-            await MainActor.run {
-                self.appState.storageManager.setProvider(provider)
-                self.isCloudConnected = true
-                self.connectedUserDisplayName = info.name
-                self.connectedUserEmail = info.email
-                self.cloudStatusMessage = "\(info.name) (\(info.email))"
-                self.rootFolder = savedFolder
-                self.isFolderValidated = folderExists
-                if !folderExists {
-                    self.isDataLoaded = false
+            self.appState.storageManager.setProvider(provider)
+            self.isCloudConnected = true
+            self.connectedUserDisplayName = info.name
+            self.connectedUserEmail = info.email
+            self.cloudStatusMessage = "\(info.name) (\(info.email))"
+            self.rootFolder = savedFolder
+            self.isFolderValidated = folderExists
+            if !folderExists {
+                self.isDataLoaded = false
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                    self.isShowingManualSetup = true
                 }
             }
 
             // Transition automatique : uniquement au démarrage initial (Splashscreen froid) !
-            if !isSwitcherMode && folderExists && !savedFolder.isEmpty {
+            if !isShowingManualSetup && !isSwitcherMode && folderExists && !savedFolder.isEmpty {
                 await applyAndValidateSourceFolder(savedFolder)
             }
         } catch {
             print("[SplashSetupView] Test Cloud échoué (\(error.localizedDescription)). Vérification cache local...")
             if hasCache {
-                await updateProgress(value: 0.50, label: "Réseau distant indisponible • Basculement Hors-Ligne...")
+                updateProgress(value: 0.50, label: "Réseau distant indisponible • Basculement Hors-Ligne...")
                 await appState.loadInitialData { progress, label in
                     Task { @MainActor in
                         self.updateProgress(value: 0.50 + (progress * 0.50), label: label)
                     }
                 }
-                await updateProgress(value: 1.0, label: "Mode Hors-Ligne prêt • Studio de correction actif")
+                updateProgress(value: 1.0, label: "Mode Hors-Ligne prêt • Studio de correction actif")
                 try? await Task.sleep(nanoseconds: 200_000_000)
-                await MainActor.run {
-                    self.onFinish()
-                }
+                self.onFinish()
                 return
             }
 
-            await MainActor.run {
-                self.isCloudConnected = false
+            self.isCloudConnected = false
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                self.isShowingManualSetup = true
             }
         }
     }
@@ -947,6 +948,7 @@ public struct SplashSetupView: View {
         }
     }
 
+    @MainActor
     private func applyAndValidateSourceFolder(_ folderPath: String) async {
         isCheckingFolder = true
         defer { isCheckingFolder = false }
@@ -959,7 +961,7 @@ public struct SplashSetupView: View {
         }
 
         do {
-            await updateProgress(value: 0.40, label: "Vérification de l'arborescence Cloud...")
+            updateProgress(value: 0.40, label: "Vérification de l'arborescence Cloud...")
 
             try await appState.storageManager.ensureSourceFolderStructure { subProgress, stepText in
                 Task { @MainActor in
@@ -968,38 +970,31 @@ public struct SplashSetupView: View {
                 }
             }
 
-            await MainActor.run {
-                self.rootFolder = cleanPath
-                self.isFolderValidated = true
-                self.appState.currentRootFolderPath = cleanPath
-                let displayName = URL(fileURLWithPath: cleanPath).lastPathComponent.isEmpty ? "Racine" : URL(fileURLWithPath: cleanPath).lastPathComponent
-                self.folderStatusMessage = "Dossier Cloud '\(displayName)' initialisé avec succès"
-            }
+            self.rootFolder = cleanPath
+            self.isFolderValidated = true
+            self.appState.currentRootFolderPath = cleanPath
+            let displayName = URL(fileURLWithPath: cleanPath).lastPathComponent.isEmpty ? "Racine" : URL(fileURLWithPath: cleanPath).lastPathComponent
+            self.folderStatusMessage = "Dossier Cloud '\(displayName)' initialisé avec succès"
 
             // Chargement et vérification élève par élève
             await loadEnvironmentData()
 
-            await updateProgress(value: 1.0, label: "Environnement prêt • Ouverture de Droopies...")
+            updateProgress(value: 1.0, label: "Environnement prêt • Ouverture de Droopies...")
 
             // Transition : auto-finish en mode Splashscreen initial, ou fermeture de la modale en mode switcher
             if !isSwitcherMode {
                 try? await Task.sleep(nanoseconds: 350_000_000) // 0.35s pour apprécier la barre à 100%
-                await MainActor.run {
-                    self.onFinish()
-                }
+                self.onFinish()
             } else {
-                await MainActor.run {
-                    self.onFinish()
-                    self.dismiss()
-                }
+                self.onFinish()
+                self.dismiss()
             }
         } catch {
-            await MainActor.run {
-                self.errorMessage = "Erreur configuration dossier Cloud : \(error.localizedDescription)"
-            }
+            self.errorMessage = "Erreur configuration dossier Cloud : \(error.localizedDescription)"
         }
     }
 
+    @MainActor
     private func loadEnvironmentData() async {
         isLoadingData = true
         defer { isLoadingData = false }
@@ -1011,8 +1006,6 @@ public struct SplashSetupView: View {
             }
         }
 
-        await MainActor.run {
-            self.isDataLoaded = true
-        }
+        self.isDataLoaded = true
     }
 }
