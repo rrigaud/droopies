@@ -261,6 +261,7 @@ public struct FloatingGlassBar<Content: View>: View {
 // MARK: - Boutons Vibrants à Dégradés (Vibrant Action Buttons)
 
 public struct VibrantGradientButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled: Bool
     public var gradient: LinearGradient
     public var isCompact: Bool
 
@@ -278,21 +279,29 @@ public struct VibrantGradientButtonStyle: ButtonStyle {
     public func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(isCompact ? .subheadline : .headline, weight: .semibold))
-            .foregroundColor(.white)
+            .foregroundColor(isEnabled ? .white : .secondary)
             .padding(.horizontal, isCompact ? 14 : 20)
             .padding(.vertical, isCompact ? 8 : 12)
-            .background(gradient)
+            .background(
+                Group {
+                    if isEnabled {
+                        gradient
+                    } else {
+                        Color.primary.opacity(0.08)
+                    }
+                }
+            )
             .clipShape(Capsule())
             .overlay(
                 Capsule()
-                    .stroke(Color.white.opacity(0.35), lineWidth: 1)
+                    .stroke(isEnabled ? Color.white.opacity(0.35) : Color.primary.opacity(0.1), lineWidth: 1)
             )
             .shadow(
-                color: Color.blue.opacity(configuration.isPressed ? 0.15 : 0.35),
+                color: isEnabled ? Color.blue.opacity(configuration.isPressed ? 0.15 : 0.35) : Color.clear,
                 radius: configuration.isPressed ? 4 : 10,
                 y: configuration.isPressed ? 1 : 4
             )
-            .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
+            .scaleEffect(configuration.isPressed && isEnabled ? 0.96 : 1.0)
             .animation(.spring(response: 0.25, dampingFraction: 0.65), value: configuration.isPressed)
     }
 }

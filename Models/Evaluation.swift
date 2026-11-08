@@ -64,18 +64,45 @@ public struct Evaluation: Identifiable, Hashable, Sendable {
     }
 
     /// Analyse le nom d'un fichier de sauvegarde pour en extraire la date, la classe et le titre
-    /// Format attendu : "YYYY-MM-DD - Classe - Titre.pdf"
+    /// Formats supportés : "YYYY-MM-DD - Classe - Titre.pdf", "YYYY-MM-DD_Classe_Titre.pdf", etc.
     public static func parseBackupFileName(_ filename: String) -> (date: Date?, className: String, title: String)? {
         let clean = filename.replacingOccurrences(of: ".pdf", with: "", options: .caseInsensitive)
+        
+        // 1. Essai avec séparateur standard " - "
         let parts = clean.components(separatedBy: " - ")
-        guard parts.count >= 3 else { return nil }
-
-        let dateString = parts[0].trimmingCharacters(in: .whitespaces)
-        let parsedDate = dateFormatter.date(from: dateString)
-        let className = parts[1].trimmingCharacters(in: .whitespaces)
-        let title = parts[2...].joined(separator: " - ").trimmingCharacters(in: .whitespaces)
-
-        return (parsedDate, className, title)
+        if parts.count >= 3 {
+            let dateString = parts[0].trimmingCharacters(in: .whitespaces)
+            let parsedDate = dateFormatter.date(from: dateString)
+            let className = parts[1].trimmingCharacters(in: .whitespaces)
+            let title = parts[2...].joined(separator: " - ").trimmingCharacters(in: .whitespaces)
+            return (parsedDate, className, title)
+        }
+        
+        // 2. Essai avec séparateur "_" (ex: 2026-11-08_3e1_Devoir)
+        let underscoreParts = clean.components(separatedBy: "_")
+        if underscoreParts.count >= 3 {
+            let dateString = underscoreParts[0].trimmingCharacters(in: .whitespaces)
+            let parsedDate = dateFormatter.date(from: dateString)
+            let className = underscoreParts[1].trimmingCharacters(in: .whitespaces)
+            let title = underscoreParts[2...].joined(separator: "_").trimmingCharacters(in: .whitespaces)
+            return (parsedDate, className, title)
+        }
+        
+        // 3. Extraction intelligente si préfixe de date ISO YYYY-MM-DD
+        if clean.count >= 10 {
+            let datePrefix = String(clean.prefix(10))
+            if let parsedDate = dateFormatter.date(from: datePrefix) {
+                let remainder = clean.dropFirst(10).trimmingCharacters(in: CharacterSet(charactersIn: " -_"))
+                let remainderParts = remainder.components(separatedBy: " - ")
+                if remainderParts.count >= 2 {
+                    return (parsedDate, remainderParts[0].trimmingCharacters(in: .whitespaces), remainderParts[1...].joined(separator: " - "))
+                } else {
+                    return (parsedDate, "", remainder)
+                }
+            }
+        }
+        
+        return nil
     }
 
     // MARK: - Statistiques calculées

@@ -20,8 +20,8 @@ public struct Step2LoadingView: View {
     @Binding public var currentStep: Int
 
     public enum LoadingMode: String, CaseIterable, Identifiable {
-        case newEvaluation = "Nouvelle évaluation"
-        case catchUpAbsents = "Mode Rattrapage (Élèves absents)"
+        case newEvaluation = "Nouvelle distribution"
+        case catchUpAbsents = "Compléter une distribution"
 
         public var id: String { rawValue }
     }
@@ -69,6 +69,18 @@ public struct Step2LoadingView: View {
         availableScans.filter { $0.isCorrected }
     }
 
+    /// Validation stricte : toutes les informations nécessaires doivent être complétées
+    private var isReadyToProceed: Bool {
+        guard loadedPDFDoc != nil else { return false }
+        guard selectedScan != nil else { return false }
+        guard selectedClassId != nil else { return false }
+        guard !evalTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
+        if mode == .catchUpAbsents {
+            guard selectedBackup != nil else { return false }
+        }
+        return true
+    }
+
     public var body: some View {
         VStack(spacing: 0) {
             // MARK: - Barre d'outils supérieure flottante
@@ -84,7 +96,7 @@ public struct Step2LoadingView: View {
                     Label("Découper puis identifier (2) ➔", systemImage: "scissors")
                 }
                 .buttonStyle(VibrantGradientButtonStyle(gradient: .emeraldGreen, isCompact: true))
-                .disabled(loadedPDFDoc == nil || evalTitle.trimmingCharacters(in: .whitespaces).isEmpty || selectedClassId == nil)
+                .disabled(!isReadyToProceed)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
@@ -142,7 +154,7 @@ public struct Step2LoadingView: View {
                     }
                 } label: {
                     HStack(spacing: 6) {
-                        Image(systemName: m == .newEvaluation ? "doc.badge.plus" : "arrow.triangle.merge")
+                        Image(systemName: m == .newEvaluation ? "doc.badge.plus" : "archivebox.fill")
                             .font(.system(size: 12))
                         Text(m.rawValue)
                             .font(.system(size: 13, weight: isSelected ? .bold : .medium))
@@ -203,53 +215,68 @@ public struct Step2LoadingView: View {
         )
     }
 
-    // MARK: - Bloc Mode Rattrapage (Sélection de l'évaluation archivée)
+    // MARK: - Bloc Compléter une distribution (Sélection de l'évaluation archivée)
 
     private var catchUpBackupBlock: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "arrow.triangle.merge")
-                .foregroundColor(.orange)
-                .font(.system(size: 13, weight: .semibold))
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Image(systemName: "archivebox.fill")
+                    .foregroundColor(.orange)
+                    .font(.system(size: 13, weight: .semibold))
 
-            Text("Mode rattrapage (Sélection de l'évaluation archivée) :")
-                .font(.system(size: 12.5, weight: .bold))
-                .foregroundColor(.primary)
+                Text("Compléter une distribution en sélectionnant l'évaluation archivée :")
+                    .font(.system(size: 12.5, weight: .bold))
+                    .foregroundColor(.primary)
 
-            Picker("Évaluation archivée", selection: $selectedBackup) {
-                if existingBackups.isEmpty {
-                    Text("Aucune évaluation archivée dans /Backup").tag(nil as StorageManager.ExistingBackup?)
-                } else {
-                    Text("— Choisir une évaluation archivée —").tag(nil as StorageManager.ExistingBackup?)
-                    ForEach(existingBackups) { backup in
-                        Text("\(backup.className) • \(backup.evaluationTitle)").tag(backup as StorageManager.ExistingBackup?)
+                Picker("Évaluation archivée", selection: $selectedBackup) {
+                    if existingBackups.isEmpty {
+                        Text("Aucune évaluation archivée dans /Backup").tag(nil as StorageManager.ExistingBackup?)
+                    } else {
+                        Text("— Choisir une évaluation archivée —").tag(nil as StorageManager.ExistingBackup?)
+                        ForEach(existingBackups) { backup in
+                            Text("\(backup.className) • \(backup.evaluationTitle)").tag(backup as StorageManager.ExistingBackup?)
+                        }
+                    }
+                }
+                .pickerStyle(.menu)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .onChange(of: selectedBackup) { _, newBackup in
+                    if let b = newBackup {
+                        applyBackupMetadata(b)
+                    }
+                }
+
+                Spacer()
+
+                if let backup = selectedBackup {
+                    HStack(spacing: 4) {
+                        Image(systemName: "folder")
+                            .font(.system(size: 10.5))
+                            .foregroundColor(.secondary)
+                        Text("/Backup/\(backup.className)/\(backup.fileName)")
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundColor(.secondary)
                     }
                 }
             }
-            .pickerStyle(.menu)
-            .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: false)
-            .onChange(of: selectedBackup) { _, newBackup in
-                if let b = newBackup {
-                    applyBackupMetadata(b)
-                }
-            }
 
-            Spacer()
-
-            if let backup = selectedBackup {
-                HStack(spacing: 4) {
-                    Image(systemName: "folder")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                    Text("/Backup/\(backup.className)/\(backup.fileName)")
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundColor(.secondary)
-                }
-            }
+            // Information explicative au-dessous
+            Text("Les informations de cette évaluation archivée seront pré-chargées sur la page, et la nouvelle évaluation sera fusionnée à cette dernière.")
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
+                .padding(.leading, 21)
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, 8)
-        .glassCard(cornerRadius: 12, strokeOpacity: 0.3)
+        .padding(.vertical, 9)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.orange.opacity(0.08))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(Color.orange.opacity(0.35), lineWidth: 1)
+        )
     }
 
     // MARK: - Bloc 2 : Sélection de l'évaluation corrigée + Pages par copie (1 seule ligne)
@@ -258,11 +285,16 @@ public struct Step2LoadingView: View {
         HStack(spacing: 14) {
             // Picker natif proposant les évaluations corrigées
             HStack(spacing: 6) {
-                Image(systemName: "checkmark.seal.fill")
-                    .foregroundColor(Color(hex: "10B981"))
+                Image(systemName: "doc.text.fill")
+                    .foregroundColor(.blue)
                     .font(.system(size: 13))
 
-                Picker("Évaluation corrigée", selection: $selectedScan) {
+                Text("Évaluation :")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: true, vertical: false)
+
+                Picker("Évaluation", selection: $selectedScan) {
                     if correctedScans.isEmpty {
                         Text("Aucune évaluation corrigée").tag(nil as StorageManager.ScanItem?)
                     } else {
@@ -571,16 +603,42 @@ public struct Step2LoadingView: View {
                 self.selectedBackup = firstBackup
                 applyBackupMetadata(firstBackup)
             }
+        } else {
+            self.selectedBackup = nil
+            if let scan = selectedScan {
+                self.evalTitle = scan.cleanTitle.replacingOccurrences(of: ".pdf", with: "")
+            }
         }
     }
 
     private func applyBackupMetadata(_ backup: StorageManager.ExistingBackup) {
-        self.evalTitle = backup.evaluationTitle
-        if let d = backup.date {
-            self.evalDate = d
-        }
-        if let matchingGroup = appState.classes.first(where: { $0.name.lowercased() == backup.className.lowercased() }) {
-            self.selectedClassId = matchingGroup.id
+        // Pré-remplissage automatique des métadonnées (Date, Classe, Nom) à partir du nom du fichier archivé
+        if let parsed = Evaluation.parseBackupFileName(backup.fileName) {
+            if !parsed.title.isEmpty {
+                self.evalTitle = parsed.title
+            }
+            if let d = parsed.date {
+                self.evalDate = d
+            }
+            if let matchingGroup = appState.classes.first(where: {
+                $0.name.lowercased() == parsed.className.lowercased() ||
+                Student.sanitizeFolderName($0.name).lowercased() == Student.sanitizeFolderName(parsed.className).lowercased()
+            }) {
+                self.selectedClassId = matchingGroup.id
+            }
+        } else {
+            if !backup.evaluationTitle.isEmpty {
+                self.evalTitle = backup.evaluationTitle
+            }
+            if let d = backup.date {
+                self.evalDate = d
+            }
+            if let matchingGroup = appState.classes.first(where: {
+                $0.name.lowercased() == backup.className.lowercased() ||
+                Student.sanitizeFolderName($0.name).lowercased() == Student.sanitizeFolderName(backup.className).lowercased()
+            }) {
+                self.selectedClassId = matchingGroup.id
+            }
         }
     }
 

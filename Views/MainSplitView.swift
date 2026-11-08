@@ -623,8 +623,10 @@ public struct MainSplitView: View {
     private func distributionStepItem(step: Int, title: String, icon: String) -> some View {
         let isActive = (appState.distributionStep == step)
         let isDone = (appState.distributionStep > step)
+        let canNavigateToStep = (step <= appState.distributionStep)
 
         Button {
+            guard canNavigateToStep else { return }
             withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                 appState.distributionStep = step
             }
@@ -659,7 +661,7 @@ public struct MainSplitView: View {
                     .font(.system(size: 11.5, weight: isActive ? .bold : .medium))
                     .lineLimit(1)
                     .fixedSize(horizontal: true, vertical: false)
-                    .foregroundColor(isActive ? .white : (isDone ? .primary : .secondary))
+                    .foregroundColor(isActive ? .white : (isDone ? .primary : .secondary.opacity(0.6)))
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 5)
@@ -681,6 +683,7 @@ public struct MainSplitView: View {
             .clipShape(Capsule())
         }
         .buttonStyle(.plain)
+        .disabled(!canNavigateToStep)
     }
 
     // MARK: - Toolbar 2 : Haut-Droite (Historique Undo/Redo Dédié à la Correction)
