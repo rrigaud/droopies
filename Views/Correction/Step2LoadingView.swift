@@ -96,7 +96,8 @@ public struct Step2LoadingView: View {
                     Label("Découper puis identifier (2) ➔", systemImage: "scissors")
                 }
                 .buttonStyle(VibrantGradientButtonStyle(gradient: .emeraldGreen, isCompact: true))
-                .disabled(!isReadyToProceed)
+                // Temporairement débloqué sans condition pour permettre de travailler directement sur l'interface du Step 2
+                // .disabled(!isReadyToProceed)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
@@ -660,37 +661,64 @@ public struct Step2LoadingView: View {
     }
 
     private func proceedToIdentification() {
-        guard let doc = loadedPDFDoc else { return }
-        let selectedGroup = appState.classes.first(where: { $0.id == selectedClassId })?.name ?? "Classe"
+        if let doc = loadedPDFDoc {
+            let selectedGroup = appState.classes.first(where: { $0.id == selectedClassId })?.name ?? "3e1"
 
-        var eval = Evaluation(
-            title: evalTitle.trimmingCharacters(in: .whitespacesAndNewlines),
-            date: evalDate,
-            className: selectedGroup,
-            maxScore: evalMaxScore,
-            pagesPerCopy: pagesPerCopy,
-            isCatchUp: mode == .catchUpAbsents,
-            existingBackupFileName: selectedBackup?.fileName
-        )
+            var eval = Evaluation(
+                title: evalTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Évaluation" : evalTitle.trimmingCharacters(in: .whitespacesAndNewlines),
+                date: evalDate,
+                className: selectedGroup,
+                maxScore: evalMaxScore,
+                pagesPerCopy: pagesPerCopy,
+                isCatchUp: mode == .catchUpAbsents,
+                existingBackupFileName: selectedBackup?.fileName,
+                sourcePDFURL: selectedScan?.fileURL
+            )
 
-        var copies: [StudentCopy] = []
-        var page = 1
-        var copyIdx = 1
+            var copies: [StudentCopy] = []
+            var page = 1
+            var copyIdx = 1
 
-        while page <= doc.pageCount {
-            let pageEnd = min(page + pagesPerCopy - 1, doc.pageCount)
-            copies.append(StudentCopy(
-                index: copyIdx,
-                pageStart: page,
-                pageEnd: pageEnd
-            ))
-            page += pagesPerCopy
-            copyIdx += 1
+            while page <= doc.pageCount {
+                let pageEnd = min(page + pagesPerCopy - 1, doc.pageCount)
+                copies.append(StudentCopy(
+                    index: copyIdx,
+                    pageStart: page,
+                    pageEnd: pageEnd
+                ))
+                page += pagesPerCopy
+                copyIdx += 1
+            }
+
+            eval.copies = copies
+            appState.currentEvaluation = eval
+            appState.selectedClassId = selectedClassId ?? appState.classes.first?.id
+        } else {
+            // Mode de travail direct : génération de copies mock pour concevoir et itérer sur l'interface du Step 2 (Identification)
+            let defaultClass = appState.classes.first?.name ?? "3e1"
+            let defaultClassId = appState.classes.first?.id
+            let sampleScanURL = appState.storageManager.listLocalScansSync().first?.fileURL
+            var mockEval = Evaluation(
+                title: evalTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Devoir_SVT_Genetique_3e3" : evalTitle,
+                date: evalDate,
+                className: defaultClass,
+                maxScore: 20.0,
+                pagesPerCopy: pagesPerCopy,
+                isCatchUp: mode == .catchUpAbsents,
+                existingBackupFileName: selectedBackup?.fileName,
+                sourcePDFURL: sampleScanURL
+            )
+            mockEval.copies = [
+                StudentCopy(index: 1, pageStart: 1, pageEnd: 2),
+                StudentCopy(index: 2, pageStart: 3, pageEnd: 4),
+                StudentCopy(index: 3, pageStart: 5, pageEnd: 6)
+            ]
+            appState.currentEvaluation = mockEval
+            appState.selectedClassId = defaultClassId
         }
 
-        eval.copies = copies
-        appState.currentEvaluation = eval
-        appState.selectedClassId = selectedClassId
-        currentStep = 2
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+            currentStep = 2
+        }
     }
 }

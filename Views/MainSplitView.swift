@@ -195,6 +195,42 @@ public struct MainSplitView: View {
             } else if CommandLine.arguments.contains("-testDistributionStep2") {
                 activeScreen = .distribution
                 appState.distributionStep = 2
+                if appState.currentEvaluation == nil {
+                    let defaultClass = appState.classes.first?.name ?? "3e1"
+                    let defaultClassId = appState.classes.first?.id
+                    let sampleScanURL = appState.storageManager.listLocalScansSync().first?.fileURL
+                    var mockEval = Evaluation(
+                        title: "Devoir_SVT_Genetique_3e3",
+                        date: Date(),
+                        className: defaultClass,
+                        maxScore: 20.0,
+                        pagesPerCopy: 2,
+                        isCatchUp: CommandLine.arguments.contains("-testCatchUp"),
+                        existingBackupFileName: nil,
+                        sourcePDFURL: sampleScanURL
+                    )
+                    if CommandLine.arguments.contains("-testAllIdentified") {
+                        mockEval.copies = [
+                            StudentCopy(index: 1, pageStart: 1, pageEnd: 2, studentId: 1, studentName: "BERNARD Lucas", grade: 16.5),
+                            StudentCopy(index: 2, pageStart: 3, pageEnd: 4, studentId: 2, studentName: "DUBOIS Chloé", grade: 14.0),
+                            StudentCopy(index: 3, pageStart: 5, pageEnd: 6, studentId: 3, studentName: "DURAND Thomas", grade: 18.0)
+                        ]
+                    } else if CommandLine.arguments.contains("-testPartialIdentified") {
+                        mockEval.copies = [
+                            StudentCopy(index: 1, pageStart: 1, pageEnd: 2, studentId: 1, studentName: "BERNARD Lucas", grade: 16.5),
+                            StudentCopy(index: 2, pageStart: 3, pageEnd: 4),
+                            StudentCopy(index: 3, pageStart: 5, pageEnd: 6)
+                        ]
+                    } else {
+                        mockEval.copies = [
+                            StudentCopy(index: 1, pageStart: 1, pageEnd: 2),
+                            StudentCopy(index: 2, pageStart: 3, pageEnd: 4),
+                            StudentCopy(index: 3, pageStart: 5, pageEnd: 6)
+                        ]
+                    }
+                    appState.currentEvaluation = mockEval
+                    appState.selectedClassId = defaultClassId
+                }
             } else if CommandLine.arguments.contains("-testDistributionStep3") {
                 activeScreen = .distribution
                 appState.distributionStep = 3

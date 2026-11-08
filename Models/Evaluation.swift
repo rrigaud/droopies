@@ -18,6 +18,7 @@ public struct Evaluation: Identifiable, Hashable, Sendable {
     public var copies: [StudentCopy]
     public var isCatchUp: Bool
     public var existingBackupFileName: String?
+    public var sourcePDFURL: URL?
 
     public init(
         id: UUID = UUID(),
@@ -28,7 +29,8 @@ public struct Evaluation: Identifiable, Hashable, Sendable {
         pagesPerCopy: Int = 2,
         copies: [StudentCopy] = [],
         isCatchUp: Bool = false,
-        existingBackupFileName: String? = nil
+        existingBackupFileName: String? = nil,
+        sourcePDFURL: URL? = nil
     ) {
         self.id = id
         self.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -39,6 +41,7 @@ public struct Evaluation: Identifiable, Hashable, Sendable {
         self.copies = copies
         self.isCatchUp = isCatchUp
         self.existingBackupFileName = existingBackupFileName
+        self.sourcePDFURL = sourcePDFURL
     }
 
     // MARK: - Formatage & Parsing de date

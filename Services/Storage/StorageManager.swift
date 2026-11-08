@@ -465,6 +465,11 @@ public final class StorageManager: @unchecked Sendable {
         public var path: String
         public var isCorrected: Bool
 
+        /// URL locale du fichier PDF
+        public var fileURL: URL {
+            URL(fileURLWithPath: path)
+        }
+
         /// Nom de fichier brut sans préfixe d'état (ex: "CORRIGE_DS1.pdf" -> "DS1.pdf")
         public var rawFileName: String {
             if name.hasPrefix("CORRIGE_") {
