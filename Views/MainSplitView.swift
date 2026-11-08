@@ -178,7 +178,18 @@ public struct MainSplitView: View {
             await appState.loadInitialData()
         }
         .onAppear {
-            if CommandLine.arguments.contains("-testCorrectionStudio") || CommandLine.arguments.contains("-testMultipleTabs") {
+            if CommandLine.arguments.contains("-testManyClasses") {
+                if !appState.students.contains(where: { $0.classe == "3e1" }) {
+                    appState.students.append(contentsOf: [
+                        Student(id: 101, name: "Lucas A.", classe: "3e1", login: "la", password: "p1"),
+                        Student(id: 102, name: "Chloé B.", classe: "3e4", login: "cb", password: "p2"),
+                        Student(id: 103, name: "Théo C.", classe: "3e5", login: "tc", password: "p3"),
+                    ])
+                }
+            }
+            if CommandLine.arguments.contains("-testStudents") {
+                activeScreen = .students
+            } else if CommandLine.arguments.contains("-testCorrectionStudio") || CommandLine.arguments.contains("-testMultipleTabs") {
                 activeScreen = .correction
             }
         }
@@ -199,62 +210,37 @@ public struct MainSplitView: View {
     private func topCenterToolbar(isCompact: Bool) -> some View {
         switch activeScreen {
         case .students:
-            HStack(spacing: 3) {
-                // Bouton 1 : Ajouter un élève
+            Menu {
                 Button {
                     if appState.isOnline {
                         appState.showAddStudentSheet = true
                     }
                 } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "person.badge.plus")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(appState.isOnline ? .blue : .secondary)
-
-                        Text(isCompact ? "Ajouter" : "Ajouter un élève")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(appState.isOnline ? .primary : .secondary)
-                    }
-                    .padding(.horizontal, isCompact ? 12 : 14)
-                    .frame(height: 32)
-                    .background(Color.primary.opacity(0.04))
-                    .clipShape(Capsule())
+                    Label("Ajouter un élève", systemImage: "person.badge.plus")
                 }
-                .buttonStyle(.plain)
                 .disabled(!appState.isOnline)
-                .opacity(appState.isOnline ? 1.0 : 0.45)
-                .help(appState.isOnline ? "Ajouter un élève" : "Disponible en ligne uniquement")
 
-                // Bouton 2 : Importer CSV
                 Button {
                     if appState.isOnline {
                         appState.showCSVImportSheet = true
                     }
                 } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "arrow.down.doc")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(appState.isOnline ? .blue : .secondary)
-
-                        Text(isCompact ? "Importer" : "Importer CSV")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(appState.isOnline ? .primary : .secondary)
-                    }
-                    .padding(.horizontal, isCompact ? 12 : 14)
-                    .frame(height: 32)
-                    .background(Color.primary.opacity(0.04))
-                    .clipShape(Capsule())
+                    Label("Importer un fichier CSV", systemImage: "arrow.down.doc")
                 }
-                .buttonStyle(.plain)
                 .disabled(!appState.isOnline)
-                .opacity(appState.isOnline ? 1.0 : 0.45)
-                .help(appState.isOnline ? "Importer un fichier CSV" : "Disponible en ligne uniquement")
+            } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(appState.isOnline ? .blue : .secondary)
+                    .frame(width: 32, height: 32)
+                    .background(Color.primary.opacity(0.04))
+                    .clipShape(Circle())
             }
+            .buttonStyle(.plain)
+            .disabled(!appState.isOnline)
+            .opacity(appState.isOnline ? 1.0 : 0.45)
+            .help(appState.isOnline ? "Ajouter ou importer des élèves" : "Disponible en ligne uniquement")
             .padding(3)
-            .background(Color.primary.opacity(0.04))
-            .clipShape(Capsule())
-            .padding(.horizontal, 6)
-            .padding(.vertical, 4)
             .glassCapsule(strokeOpacity: 0.4)
 
         default:

@@ -240,16 +240,74 @@ public struct StudentsManagementView: View {
                 .frame(height: 18)
                 .opacity(0.4)
 
-            // MARK: - 2. Sélecteur de classes (Puces horizontales défilables)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    classFilterChip(title: "Toutes", count: appState.students.count)
+            // MARK: - 2. Sélecteur de classes (Puces horizontales ou Menulist si Portrait & >4 classes)
+            if isCompact && appState.classes.count > 4 {
+                Menu {
+                    Button {
+                        selectedClassFilter = "Toutes"
+                    } label: {
+                        HStack {
+                            Text("Toutes les classes (\(appState.students.count))")
+                            if selectedClassFilter == "Toutes" {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+
+                    Divider()
 
                     ForEach(appState.classes) { group in
-                        classFilterChip(title: group.name, count: group.students.count)
+                        Button {
+                            selectedClassFilter = group.name
+                        } label: {
+                            HStack {
+                                Text("\(group.name) (\(group.students.count) élèves)")
+                                if selectedClassFilter == group.name {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
                     }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "line.3.horizontal.decrease.circle")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(.blue)
+
+                        let currentCount = selectedClassFilter == "Toutes" ? appState.students.count : (appState.classes.first(where: { $0.name == selectedClassFilter })?.students.count ?? 0)
+                        Text(selectedClassFilter == "Toutes" ? "Toutes les classes" : "Classe : \(selectedClassFilter)")
+                            .font(.system(size: 12.5, weight: .semibold))
+                            .foregroundColor(.primary)
+
+                        Text("\(currentCount)")
+                            .font(.system(size: 11, weight: .bold))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.blue.opacity(0.15))
+                            .foregroundColor(.blue)
+                            .clipShape(Capsule())
+
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.primary.opacity(0.06))
+                    .clipShape(Capsule())
                 }
-                .padding(.vertical, 4)
+                .buttonStyle(.plain)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        classFilterChip(title: "Toutes", count: appState.students.count)
+
+                        ForEach(appState.classes) { group in
+                            classFilterChip(title: group.name, count: group.students.count)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
             }
 
             Spacer(minLength: 4)
@@ -314,7 +372,7 @@ public struct StudentsManagementView: View {
                         HStack(spacing: 5) {
                             Image(systemName: "checklist")
                                 .font(.system(size: 12, weight: .semibold))
-                            Text(isCompact ? "Choisir" : "Sélectionner")
+                            Text("Sélectionner")
                                 .font(.system(size: 12, weight: .semibold))
                         }
                         .padding(.horizontal, 11)
