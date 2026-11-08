@@ -115,11 +115,8 @@ public struct Step2LoadingView: View {
                         .transition(.move(edge: .top).combined(with: .opacity))
                 }
 
-                // Bloc 2 : Sélection de l'évaluation corrigée + Pages par copie (sur 1 seule ligne)
-                evaluationSelectionBar
-
-                // Bloc 3 : Informations sur l'évaluation (sur 1 seule ligne)
-                evaluationMetadataBar
+                // Bloc 2 : Évaluation à distribuer (regroupe sélection du PDF, découpage et métadonnées)
+                evaluationToDistributeCard
 
                 // Bloc 4 : Prévisualisation PDF (prend tout l'espace restant, 100% largeur)
                 pdfPreviewSection
@@ -283,64 +280,148 @@ public struct Step2LoadingView: View {
         )
     }
 
-    // MARK: - Bloc 2 : Sélection de l'évaluation corrigée + Pages par copie (1 seule ligne)
+    // MARK: - Bloc 2 : Évaluation à distribuer (Regroupe sélection du PDF, découpage et métadonnées)
 
-    private var evaluationSelectionBar: some View {
-        HStack(spacing: 14) {
-            // Picker natif proposant les évaluations corrigées
-            HStack(spacing: 6) {
+    private var evaluationToDistributeCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // En-tête : Titre du bloc
+            HStack(spacing: 7) {
                 Image(systemName: "doc.text.fill")
                     .foregroundColor(.blue)
-                    .font(.system(size: 13))
+                    .font(.system(size: 13, weight: .semibold))
 
-                Text("Évaluation :")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.secondary)
+                Text("Évaluation à distribuer")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(.primary)
+
+                Spacer()
+            }
+
+            // Ligne 1 : Sélection de l'évaluation corrigée + Pages par copie
+            HStack(spacing: 14) {
+                HStack(spacing: 6) {
+                    Text("Évaluation :")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: true, vertical: false)
+
+                    Picker("Évaluation", selection: $selectedScan) {
+                        if correctedScans.isEmpty {
+                            Text("Aucune évaluation corrigée").tag(nil as StorageManager.ScanItem?)
+                        } else {
+                            ForEach(correctedScans) { scan in
+                                Text(scan.cleanTitle).tag(scan as StorageManager.ScanItem?)
+                            }
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .lineLimit(1)
                     .fixedSize(horizontal: true, vertical: false)
+                    .onChange(of: selectedScan) { _, newScan in
+                        if let scan = newScan {
+                            selectScan(scan)
+                        }
+                    }
 
-                Picker("Évaluation", selection: $selectedScan) {
-                    if correctedScans.isEmpty {
-                        Text("Aucune évaluation corrigée").tag(nil as StorageManager.ScanItem?)
-                    } else {
-                        ForEach(correctedScans) { scan in
-                            Text(scan.cleanTitle).tag(scan as StorageManager.ScanItem?)
+                    Button {
+                        isExternalPickerPresented = true
+                    } label: {
+                        Image(systemName: "folder.badge.plus")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Importer un autre PDF depuis le disque...")
+                }
+
+                Spacer()
+
+                // À droite : selectbutton glissant 1..4 avec '+' PUIS 'pages / copie'
+                HStack(spacing: 8) {
+                    pagesPerCopySlidingSelector
+
+                    Text("pages / copie")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            Divider()
+
+            // Ligne 2 : Informations sur l'évaluation (Date, Classe, Nom)
+            HStack(spacing: 16) {
+                // 1. Date (DatePicker natif Apple .compact)
+                HStack(spacing: 6) {
+                    Image(systemName: "calendar")
+                        .foregroundColor(.purple)
+                        .font(.system(size: 13))
+
+                    Text("Date :")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+
+                    DatePicker("", selection: $evalDate, displayedComponents: .date)
+                        .labelsHidden()
+                        .datePickerStyle(.compact)
+                }
+                .fixedSize(horizontal: true, vertical: false)
+
+                Divider().frame(height: 18)
+
+                // 2. Classe (Picker natif Apple .pickerStyle(.menu))
+                HStack(spacing: 6) {
+                    Image(systemName: "person.2.fill")
+                        .foregroundColor(.blue)
+                        .font(.system(size: 13))
+
+                    Text("Classe :")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+
+                    Picker("Classe", selection: $selectedClassId) {
+                        Text("— Choisir une classe —").tag(nil as String?)
+                        ForEach(appState.classes) { cls in
+                            Text("\(cls.name) (\(cls.studentCount) élèves)").tag(cls.id as String?)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .onChange(of: selectedClassId) { _, _ in
+                        if let doc = loadedPDFDoc {
+                            autoSelectPagesPerCopy(for: doc)
                         }
                     }
                 }
-                .pickerStyle(.menu)
-                .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
-                .onChange(of: selectedScan) { _, newScan in
-                    if let scan = newScan {
-                        selectScan(scan)
-                    }
-                }
 
-                Button {
-                    isExternalPickerPresented = true
-                } label: {
-                    Image(systemName: "folder.badge.plus")
-                        .font(.system(size: 12))
+                Divider().frame(height: 18)
+
+                // 3. Nom de l'évaluation
+                HStack(spacing: 6) {
+                    Image(systemName: "pencil")
+                        .foregroundColor(.orange)
+                        .font(.system(size: 13))
+
+                    Text("Nom :")
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.secondary)
+                        .fixedSize(horizontal: true, vertical: false)
+
+                    TextField("Nom de l'évaluation...", text: $evalTitle)
+                        .font(.system(size: 12.5))
+                        .textFieldStyle(.roundedBorder)
                 }
-                .buttonStyle(.plain)
-                .help("Importer un autre PDF depuis le disque...")
-            }
-
-            Spacer()
-
-            // À droite : selectbutton glissant 1..4 avec '+' PUIS 'pages / copie'
-            HStack(spacing: 8) {
-                pagesPerCopySlidingSelector
-
-                Text("pages / copie")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.secondary)
             }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
-        .glassCard(cornerRadius: 12, strokeOpacity: 0.3)
+        .background(Color.primary.opacity(0.035))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        )
     }
 
     // MARK: - Sélecteur Glissant de Pages par Copie
@@ -424,78 +505,6 @@ public struct Step2LoadingView: View {
         .padding(3)
         .background(Color.primary.opacity(0.06))
         .clipShape(Capsule())
-    }
-
-    // MARK: - Bloc 3 : Informations sur l'évaluation (1 seule ligne)
-
-    private var evaluationMetadataBar: some View {
-        HStack(spacing: 16) {
-            // 1. Date (DatePicker natif Apple .compact)
-            HStack(spacing: 6) {
-                Image(systemName: "calendar")
-                    .foregroundColor(.purple)
-                    .font(.system(size: 13))
-
-                Text("Date :")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.secondary)
-
-                DatePicker("", selection: $evalDate, displayedComponents: .date)
-                    .labelsHidden()
-                    .datePickerStyle(.compact)
-            }
-            .fixedSize(horizontal: true, vertical: false)
-
-            Divider().frame(height: 18)
-
-            // 2. Classe (Picker natif Apple .pickerStyle(.menu))
-            HStack(spacing: 6) {
-                Image(systemName: "person.2.fill")
-                    .foregroundColor(.blue)
-                    .font(.system(size: 13))
-
-                Text("Classe :")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.secondary)
-
-                Picker("Classe", selection: $selectedClassId) {
-                    Text("— Choisir une classe —").tag(nil as String?)
-                    ForEach(appState.classes) { cls in
-                        Text("\(cls.name) (\(cls.studentCount) élèves)").tag(cls.id as String?)
-                    }
-                }
-                .pickerStyle(.menu)
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
-                .onChange(of: selectedClassId) { _, _ in
-                    if let doc = loadedPDFDoc {
-                        autoSelectPagesPerCopy(for: doc)
-                    }
-                }
-            }
-            .fixedSize(horizontal: true, vertical: false)
-
-            Divider().frame(height: 18)
-
-            // 3. Nom de l'évaluation
-            HStack(spacing: 6) {
-                Image(systemName: "pencil")
-                    .foregroundColor(.orange)
-                    .font(.system(size: 13))
-
-                Text("Nom :")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.secondary)
-                    .fixedSize(horizontal: true, vertical: false)
-
-                TextField("Nom de l'évaluation...", text: $evalTitle)
-                    .font(.system(size: 12.5))
-                    .textFieldStyle(.roundedBorder)
-            }
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
-        .glassCard(cornerRadius: 12, strokeOpacity: 0.3)
     }
 
     // MARK: - Bloc 4 : Prévisualisation PDF Plein Écran Défilable
