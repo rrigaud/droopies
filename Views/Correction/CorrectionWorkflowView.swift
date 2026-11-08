@@ -19,7 +19,7 @@ public struct CorrectionWorkflowView: View {
 
     public var body: some View {
         ZStack(alignment: .top) {
-            if appState.distributionStep == 3 && !appState.isOnline {
+            if !appState.isOnline {
                 // MARK: - Écran Informateur Mode Hors-Ligne pour la Distribution
                 VStack(spacing: 24) {
                     Spacer()
@@ -35,11 +35,11 @@ public struct CorrectionWorkflowView: View {
                     }
 
                     VStack(spacing: 10) {
-                        Text("Distribution suspendue en mode Hors-Ligne")
+                        Text("Distribution indisponible en mode Hors-Ligne")
                             .font(.system(size: 22, weight: .bold, design: .rounded))
                             .foregroundColor(.primary)
 
-                        Text("La distribution consiste à déposer individuellement chaque devoir annoté dans le dossier Cloud de chaque élève.\nCette opération requiert une connexion Internet active.")
+                        Text("La distribution consiste à découper, identifier et déposer individuellement chaque devoir annoté dans le dossier Cloud de chaque élève.\nCette opération requiert une connexion Internet active pour synchroniser avec Dropbox.")
                             .font(.system(size: 14))
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)

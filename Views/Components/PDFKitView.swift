@@ -46,6 +46,30 @@ public struct PDFKitView: NSViewRepresentable {
     }
 }
 
+public struct PDFContinuousPreviewView: NSViewRepresentable {
+    public let document: PDFDocument?
+
+    public init(document: PDFDocument?) {
+        self.document = document
+    }
+
+    public func makeNSView(context: Context) -> PDFView {
+        let pdfView = PDFView()
+        pdfView.autoScales = true
+        pdfView.displayMode = .singlePageContinuous
+        pdfView.displayDirection = .vertical
+        pdfView.displaysPageBreaks = true
+        pdfView.document = document
+        return pdfView
+    }
+
+    public func updateNSView(_ pdfView: PDFView, context: Context) {
+        if pdfView.document !== document {
+            pdfView.document = document
+        }
+    }
+}
+
 #elseif os(iOS)
 import UIKit
 
@@ -80,6 +104,31 @@ public struct PDFKitView: UIViewRepresentable {
             if let targetPage = doc.page(at: currentPageIndex), pdfView.currentPage != targetPage {
                 pdfView.go(to: targetPage)
             }
+        }
+    }
+}
+
+public struct PDFContinuousPreviewView: UIViewRepresentable {
+    public let document: PDFDocument?
+
+    public init(document: PDFDocument?) {
+        self.document = document
+    }
+
+    public func makeUIView(context: Context) -> PDFView {
+        let pdfView = PDFView()
+        pdfView.autoScales = true
+        pdfView.displayMode = .singlePageContinuous
+        pdfView.displayDirection = .vertical
+        pdfView.displaysPageBreaks = true
+        pdfView.document = document
+        pdfView.backgroundColor = .clear
+        return pdfView
+    }
+
+    public func updateUIView(_ pdfView: PDFView, context: Context) {
+        if pdfView.document !== document {
+            pdfView.document = document
         }
     }
 }

@@ -178,6 +178,9 @@ public struct MainSplitView: View {
             await appState.loadInitialData()
         }
         .onAppear {
+            if CommandLine.arguments.contains("-testOffline") {
+                appState.isOnline = false
+            }
             if CommandLine.arguments.contains("-testManyClasses") {
                 if !appState.students.contains(where: { $0.classe == "3e1" }) {
                     appState.students.append(contentsOf: [
@@ -217,7 +220,9 @@ public struct MainSplitView: View {
         switch activeScreen {
         case .correction:
             return !appState.openCorrectionScans.isEmpty
-        case .students, .distribution:
+        case .distribution:
+            return appState.isOnline
+        case .students:
             return true
         default:
             return false
