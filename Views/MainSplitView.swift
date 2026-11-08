@@ -117,9 +117,14 @@ public struct MainSplitView: View {
                         Spacer(minLength: 12)
                     }
 
-                    // Toolbar 2 : Droite (Widget Menu Cloud actif)
-                    topTrailingCloudToolbar
-                        .glassCapsule(strokeOpacity: 0.4)
+                    // Toolbar 2 : Droite (Historique Undo/Redo si copie active, sinon Menu Cloud)
+                    if activeScreen == .correction && appState.activeCorrectionScan != nil {
+                        topTrailingHistoryToolbar
+                            .glassCapsule(strokeOpacity: 0.4)
+                    } else {
+                        topTrailingCloudToolbar
+                            .glassCapsule(strokeOpacity: 0.4)
+                    }
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 10)
@@ -252,7 +257,7 @@ public struct MainSplitView: View {
         }
     }
 
-    // MARK: - Toolbar 1 : Haut-Gauche (Sidebar Toggle + Correction / Distribution)
+    // MARK: - Toolbar 1 : Haut-Gauche (Sidebar Toggle + Correction / Onglets Dynamiques / Distribution)
 
     private var topLeadingToolbar: some View {
         HStack(spacing: 8) {
@@ -276,21 +281,20 @@ public struct MainSplitView: View {
                 .frame(height: 18)
                 .opacity(0.3)
 
-            // Sélecteur Mode Principal : Correction vs Distribution
+            // Sélecteur Mode Principal + Onglets dynamiques des évaluations
             HStack(spacing: 3) {
-                primaryModeButton(
-                    screen: .correction,
-                    title: appState.t(.tabCorrection),
-                    icon: "pencil.and.outline",
-                    gradient: LinearGradient.electricBlue
-                )
+                // 1. Bouton Correction (retour à la mosaïque d'accueil)
+                correctionMainButton
 
-                primaryModeButton(
-                    screen: .distribution,
-                    title: appState.t(.tabDistribution),
-                    icon: "paperplane.fill",
-                    gradient: LinearGradient.emeraldGreen
-                )
+                // 2. Onglets dynamiques des évaluations ouvertes
+                if !appState.openCorrectionScans.isEmpty {
+                    ForEach(appState.openCorrectionScans) { scan in
+                        evaluationTabButton(for: scan)
+                    }
+                }
+
+                // 3. Bouton Distribution (compacté à son icône seule si évaluations ouvertes)
+                distributionMainButton
             }
             .padding(3)
             .background(Color.primary.opacity(0.04))
@@ -300,38 +304,35 @@ public struct MainSplitView: View {
         .padding(.vertical, 4)
     }
 
-    @ViewBuilder
-    private func primaryModeButton(
-        screen: AppScreen,
-        title: String,
-        icon: String,
-        gradient: LinearGradient
-    ) -> some View {
-        let isSelected = activeScreen == screen
+    private var isCorrectionHomeSelected: Bool {
+        activeScreen == .correction && appState.activeCorrectionScan == nil
+    }
 
+    private var correctionMainButton: some View {
         Button {
             withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                activeScreen = screen
+                activeScreen = .correction
+                appState.activeCorrectionScan = nil
                 if isSidebarOpen {
                     isSidebarOpen = false
                 }
             }
         } label: {
             HStack(spacing: 6) {
-                Image(systemName: icon)
+                Image(systemName: "pencil.and.outline")
                     .font(.system(size: 13, weight: .semibold))
 
-                Text(title)
-                    .font(.system(size: 13, weight: isSelected ? .bold : .medium))
+                Text(appState.t(.tabCorrection))
+                    .font(.system(size: 13, weight: isCorrectionHomeSelected ? .bold : .medium))
             }
-            .foregroundColor(isSelected ? .white : .primary)
+            .foregroundColor(isCorrectionHomeSelected ? .white : .primary)
             .padding(.horizontal, 14)
             .padding(.vertical, 7)
             .background(
                 Group {
-                    if isSelected {
+                    if isCorrectionHomeSelected {
                         Capsule()
-                            .fill(gradient)
+                            .fill(LinearGradient.electricBlue)
                             .matchedGeometryEffect(id: "activeMainPill", in: toolbarNamespace)
                             .shadow(color: Color.blue.opacity(0.3), radius: 6, y: 2)
                     } else {
@@ -342,6 +343,177 @@ public struct MainSplitView: View {
             .clipShape(Capsule())
         }
         .buttonStyle(.plain)
+        .help("Accueil de la correction (mosaïque des paquets)")
+    }
+
+    @ViewBuilder
+    private func evaluationTabButton(for scan: StorageManager.ScanItem) -> some View {
+        let isTabActive = (activeScreen == .correction && appState.activeCorrectionScan?.id == scan.id)
+
+        HStack(spacing: 5) {
+            Button {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                    activeScreen = .correction
+                    appState.activeCorrectionScan = scan
+                    if isSidebarOpen {
+                        isSidebarOpen = false
+                    }
+                }
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: scan.isCorrected ? "checkmark.seal.fill" : "doc.text.fill")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(isTabActive ? (scan.isCorrected ? Color(hex: "10B981") : .white) : (scan.isCorrected ? Color(hex: "10B981") : .secondary))
+
+                    Text(scan.cleanTitle)
+                        .font(.system(size: 12, weight: isTabActive ? .bold : .medium))
+                        .lineLimit(1)
+                        .frame(maxWidth: 120)
+                }
+            }
+            .buttonStyle(.plain)
+
+            // Bouton Croix de fermeture
+            Button {
+                closeCorrectionTab(scan)
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 7.5, weight: .bold))
+                    .foregroundColor(isTabActive ? .white.opacity(0.9) : .secondary)
+                    .frame(width: 16, height: 16)
+                    .background(isTabActive ? Color.white.opacity(0.25) : Color.primary.opacity(0.08))
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .help("Fermer l'onglet \(scan.cleanTitle)")
+        }
+        .foregroundColor(isTabActive ? .white : .primary)
+        .padding(.leading, 10)
+        .padding(.trailing, 6)
+        .padding(.vertical, 5)
+        .background(
+            Group {
+                if isTabActive {
+                    Capsule()
+                        .fill(LinearGradient.electricBlue)
+                        .matchedGeometryEffect(id: "activeMainPill", in: toolbarNamespace)
+                        .shadow(color: Color.blue.opacity(0.3), radius: 6, y: 2)
+                } else {
+                    Capsule()
+                        .fill(Color.primary.opacity(0.04))
+                }
+            }
+        )
+        .clipShape(Capsule())
+    }
+
+    private func closeCorrectionTab(_ scan: StorageManager.ScanItem) {
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+            guard let idx = appState.openCorrectionScans.firstIndex(where: { $0.id == scan.id }) else { return }
+            appState.openCorrectionScans.remove(at: idx)
+
+            if appState.activeCorrectionScan?.id == scan.id {
+                if !appState.openCorrectionScans.isEmpty {
+                    let nextIndex = min(idx, appState.openCorrectionScans.count - 1)
+                    appState.activeCorrectionScan = appState.openCorrectionScans[nextIndex]
+                } else {
+                    appState.activeCorrectionScan = nil
+                }
+            }
+        }
+    }
+
+    private var distributionMainButton: some View {
+        let isDistribution = (activeScreen == .distribution)
+        let hasOpenScans = !appState.openCorrectionScans.isEmpty
+
+        return Button {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                activeScreen = .distribution
+                if isSidebarOpen {
+                    isSidebarOpen = false
+                }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "paperplane.fill")
+                    .font(.system(size: 13, weight: .semibold))
+
+                if !hasOpenScans {
+                    Text(appState.t(.tabDistribution))
+                        .font(.system(size: 13, weight: isDistribution ? .bold : .medium))
+                }
+            }
+            .foregroundColor(isDistribution ? .white : .primary)
+            .padding(.horizontal, hasOpenScans ? 10 : 14)
+            .padding(.vertical, 7)
+            .background(
+                Group {
+                    if isDistribution {
+                        Capsule()
+                            .fill(LinearGradient.emeraldGreen)
+                            .matchedGeometryEffect(id: "activeMainPill", in: toolbarNamespace)
+                            .shadow(color: Color.green.opacity(0.3), radius: 6, y: 2)
+                    } else {
+                        Color.clear
+                    }
+                }
+            )
+            .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .help(hasOpenScans ? appState.t(.tabDistribution) : "")
+    }
+
+    // MARK: - Toolbar 2 : Haut-Droite (Historique Undo/Redo Dédié à la Correction)
+
+    private var topTrailingHistoryToolbar: some View {
+        HStack(spacing: 4) {
+            // Bouton Annuler
+            Button {
+                appState.undoCorrectionTrigger += 1
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.uturn.backward")
+                        .font(.system(size: 13, weight: .semibold))
+                    Text("Annuler")
+                        .font(.system(size: 12.5, weight: .medium))
+                }
+                .foregroundColor(appState.canUndoCorrection ? .primary : .secondary.opacity(0.35))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Color.primary.opacity(0.04))
+                .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .disabled(!appState.canUndoCorrection)
+            .help("Annuler la dernière action (tracé, surlignage, tampon, texte)")
+
+            Divider()
+                .frame(height: 16)
+                .opacity(0.3)
+
+            // Bouton Rétablir
+            Button {
+                appState.redoCorrectionTrigger += 1
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.uturn.forward")
+                        .font(.system(size: 13, weight: .semibold))
+                    Text("Rétablir")
+                        .font(.system(size: 12.5, weight: .medium))
+                }
+                .foregroundColor(appState.canRedoCorrection ? .primary : .secondary.opacity(0.35))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Color.primary.opacity(0.04))
+                .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .disabled(!appState.canRedoCorrection)
+            .help("Rétablir la dernière action")
+        }
+        .padding(3)
     }
 
     // MARK: - Toolbar 2 : Haut-Droite (Widget Cloud Déroulant)

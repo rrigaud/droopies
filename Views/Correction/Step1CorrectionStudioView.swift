@@ -113,7 +113,6 @@ public struct Step1CorrectionStudioView: View {
 
     // État Mosaïque Dashboard
     @State private var availableScans: [StorageManager.ScanItem] = []
-    @State private var selectedScan: StorageManager.ScanItem? = nil
     @State private var isImporterPresented: Bool = false
     @State private var showMarkedToast: String? = nil
     @State private var isLoadingScans: Bool = false
@@ -125,9 +124,7 @@ public struct Step1CorrectionStudioView: View {
     @State private var thumbnailCacheVersion: UUID = UUID()
     @State private var thumbnailUpdateTask: Task<Void, Never>? = nil
 
-    // MARK: - État Atelier Plein Écran (Plein Écran Modal)
-    @State private var isStudioPresented: Bool = false
-    @State private var openScans: [StorageManager.ScanItem] = []
+    // MARK: - État Atelier de Correction Intégré (Non-Modal)
     @State private var pdfURL: URL? = nil
     @State private var pdfDocument: PDFDocument? = nil
     @State private var currentPageIndex: Int = 0
@@ -137,6 +134,11 @@ public struct Step1CorrectionStudioView: View {
     @State private var scanDrawings: [String: [Int: PKDrawing]] = [:]
     @State private var scanStamps: [String: [Int: [PlacedStampItem]]] = [:]
     @State private var scanTexts: [String: [Int: [PlacedTextItem]]] = [:]
+
+    // Moteur d'Historique Unifié (Pencil + Surligneur + Tampons + Textes)
+    @State private var scanUndoStacks: [String: [CorrectionAction]] = [:]
+    @State private var scanRedoStacks: [String: [CorrectionAction]] = [:]
+    @State private var isPerformingUndoRedo: Bool = false
 
     // Outils actifs
     @State private var activeTool: CorrectionToolType = .pencil
@@ -155,11 +157,9 @@ public struct Step1CorrectionStudioView: View {
     @State private var isStampPopoverPresented: Bool = false
     @State private var isEraserPopoverPresented: Bool = false
 
-    // Undo / Redo
-    @State private var canUndo: Bool = false
-    @State private var canRedo: Bool = false
-    @State private var undoTrigger: Int = 0
-    @State private var redoTrigger: Int = 0
+    // Dock vertical position & préférence gaucher/droitier
+    @AppStorage("droopies_annotation_dock_on_right") private var isDockOnRight: Bool = false
+    @State private var dockDragTranslationX: CGFloat = 0
 
     // Page HUD & Scrubber
     @State private var isPageHUDVisible: Bool = false
@@ -274,12 +274,27 @@ public struct Step1CorrectionStudioView: View {
         [GridItem(.adaptive(minimum: 220, maximum: 270), spacing: 16)]
     }
 
-    // MARK: - Vue Principale (Dashboard Mosaïque avec Modal Plein Écran)
+    // MARK: - Vue Principale (Mosaïque ou Atelier Intégré)
 
     public var body: some View {
         ZStack {
-            // MARK: - Page d'Accueil : Mosaïque des Paquets de Copies
-            correctionHomeDashboardView
+            if let activeScan = appState.activeCorrectionScan, let doc = pdfDocument {
+                // MARK: - Atelier de Correction Intégré (Non-modal)
+                activeGradingStudioView(scan: activeScan, document: doc)
+            } else if appState.activeCorrectionScan != nil {
+                // État de chargement bref de la copie
+                VStack(spacing: 14) {
+                    ProgressView()
+                        .controlSize(.large)
+                    Text("Chargement de la copie...")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                // MARK: - Page d'Accueil : Mosaïque des Paquets de Copies
+                correctionHomeDashboardView
+            }
 
             // Toast de confirmation d'importation
             if let toast = importSuccessToast {
@@ -303,7 +318,53 @@ public struct Step1CorrectionStudioView: View {
             }
         }
         .task {
-            await refreshAvailableScans(autoSelectFirst: false)
+            let autoOpen = CommandLine.arguments.contains("-testOpenScan")
+            let multiTabs = CommandLine.arguments.contains("-testMultipleTabs")
+            await refreshAvailableScans(autoSelectFirst: autoOpen)
+            if multiTabs {
+                for scan in availableScans.prefix(3) {
+                    if !appState.openCorrectionScans.contains(where: { $0.id == scan.id }) {
+                        appState.openCorrectionScans.append(scan)
+                    }
+                }
+                if appState.activeCorrectionScan == nil, let first = availableScans.first {
+                    openScanInStudio(first)
+                }
+            }
+            if CommandLine.arguments.contains("-testDockRight") {
+                isDockOnRight = true
+            } else if CommandLine.arguments.contains("-testDockLeft") {
+                isDockOnRight = false
+            }
+            if CommandLine.arguments.contains("-testScrubber") {
+                showThumbnailScrubber = true
+            }
+            if CommandLine.arguments.contains("-testStampPopover") {
+                isStampPopoverPresented = true
+            }
+            if let active = appState.activeCorrectionScan {
+                loadScanPDF(active)
+            }
+        }
+        .onChange(of: appState.activeCorrectionScan) { oldScan, newScan in
+            if oldScan?.name != newScan?.name {
+                saveCurrentDrawing()
+                if let newScan = newScan {
+                    loadScanPDF(newScan)
+                    triggerPageHUD()
+                } else {
+                    pdfDocument = nil
+                    pdfURL = nil
+                    appState.canUndoCorrection = false
+                    appState.canRedoCorrection = false
+                }
+            }
+        }
+        .onChange(of: appState.undoCorrectionTrigger) { _, _ in
+            performUndo()
+        }
+        .onChange(of: appState.redoCorrectionTrigger) { _, _ in
+            performRedo()
         }
         .onChange(of: appState.isOnline) { _, _ in
             Task {
@@ -348,9 +409,6 @@ public struct Step1CorrectionStudioView: View {
             } else {
                 Text("Le paquet « \(scan.cleanTitle) » sera classé dans les évaluations corrigées et synchronisé avec Dropbox.")
             }
-        }
-        .fullScreenCover(isPresented: $isStudioPresented) {
-            fullScreenCorrectionStudioView
         }
     }
 
@@ -684,18 +742,16 @@ public struct Step1CorrectionStudioView: View {
     }
 
     // MARK: - ==========================================
-    // MARK: - ATELIER DE CORRECTION MODAL PLEIN ÉCRAN
+    // MARK: - ATELIER DE CORRECTION INTÉGRÉ (NON-MODAL)
     // MARK: - ==========================================
 
-    private var fullScreenCorrectionStudioView: some View {
+    @ViewBuilder
+    private func activeGradingStudioView(scan: StorageManager.ScanItem, document: PDFDocument) -> some View {
         ZStack {
-            // 1. Fond Ambiant Liquid Glass plein écran
-            LiquidGlassBackground()
-
-            // 2. Toile Interactive PDF + Stylet Apple Pencil + Zoom
+            // 1. Toile Interactive PDF + Stylet Apple Pencil + Zoom tactile
             #if canImport(UIKit)
             InteractivePDFCanvasView(
-                document: pdfDocument,
+                document: document,
                 pageIndex: currentPageIndex,
                 drawing: $currentDrawing,
                 tool: activeTool,
@@ -704,19 +760,27 @@ public struct Step1CorrectionStudioView: View {
                 highlighterColor: fluoColors[highlighterColorIndex].color,
                 highlighterWidth: highlighterWidths[highlighterWidthIndex],
                 eraserWidth: eraserStops[eraserWidthIndex].width,
-                canUndo: $canUndo,
-                canRedo: $canRedo,
-                undoTrigger: undoTrigger,
-                redoTrigger: redoTrigger,
                 stamps: currentStampsForActivePage,
                 texts: currentTextsForActivePage,
-                onUpdateStamp: { updated in
+                isPerformingUndoRedo: isPerformingUndoRedo,
+                onStrokeFinished: { oldDrawing, newDrawing in
+                    recordAction(.strokeDrawing(pageIndex: currentPageIndex, oldDrawing: oldDrawing, newDrawing: newDrawing))
+                    currentDrawing = newDrawing
+                    saveCurrentDrawing()
+                },
+                onUpdateStamp: { updated, oldX, oldY in
+                    if abs(oldX - updated.xRatio) > 0.001 || abs(oldY - updated.yRatio) > 0.001 {
+                        recordAction(.moveStamp(pageIndex: currentPageIndex, id: updated.id, fromX: oldX, fromY: oldY, toX: updated.xRatio, toY: updated.yRatio))
+                    }
                     updatePlacedStamp(updated)
                 },
                 onDeleteStamp: { stampId in
                     deletePlacedStamp(id: stampId)
                 },
-                onUpdateText: { updated in
+                onUpdateText: { updated, oldX, oldY in
+                    if abs(oldX - updated.xRatio) > 0.001 || abs(oldY - updated.yRatio) > 0.001 {
+                        recordAction(.moveText(pageIndex: currentPageIndex, id: updated.id, fromX: oldX, fromY: oldY, toX: updated.xRatio, toY: updated.yRatio))
+                    }
                     updatePlacedText(updated)
                 },
                 onDeleteText: { textId in
@@ -740,41 +804,22 @@ public struct Step1CorrectionStudioView: View {
             )
             .edgesIgnoringSafeArea(.all)
             .onChange(of: currentDrawing) { _, newDrawing in
-                guard currentPageIndex == 0, let doc = pdfDocument, let url = pdfURL else { return }
-                schedulePage0ThumbnailUpdate(doc: doc, url: url, drawing: newDrawing)
+                guard currentPageIndex == 0, let url = pdfURL else { return }
+                schedulePage0ThumbnailUpdate(doc: document, url: url, drawing: newDrawing)
             }
             #elseif canImport(AppKit)
             Color.clear
             #endif
 
-            // 3. Barre d'outils supérieure flottante (3 Îlots parfaitement répartis)
-            VStack {
-                ZStack {
-                    HStack(alignment: .center, spacing: 0) {
-                        // ÎLOT 1 : Haut Gauche (Retour chevron + Onglets des paquets ouverts)
-                        topLeftFloatingIsland
+            // 2. Dock Vertical d'Annotation Flottant (Liquid Glass, déplaçable Gauche ↔ Droite)
+            verticalAnnotationDock
 
-                        Spacer()
-
-                        // ÎLOT 3 : Haut Droite (Annuler / Rétablir)
-                        topRightFloatingIsland
-                    }
-
-                    // ÎLOT 2 : Haut Centre (6 Outils & Popovers) - Centrage parfait
-                    topCenterFloatingIsland
-                }
-                .padding(.horizontal, 24)
-                .padding(.top, 14)
-
-                Spacer()
-            }
-
-            // 4. Bulle HUD Numéro de Page (Bas Droite, "3 / 48")
+            // 3. Bulle HUD Numéro de Page (Bas Droite, "3 / 48")
             pageHUDOverlay
 
-            // 5. Ruban horizontal de saut direct de page (Scrubber)
-            if showThumbnailScrubber, let doc = pdfDocument {
-                thumbnailScrubberBar(document: doc)
+            // 4. Ruban horizontal de navigation rapide (Scrubber)
+            if showThumbnailScrubber {
+                thumbnailScrubberBar(document: document)
             }
         }
         .alert(editingTextId == nil ? "Nouvelle annotation texte" : "Modifier l'annotation", isPresented: $newTextAlertPresented) {
@@ -798,228 +843,180 @@ public struct Step1CorrectionStudioView: View {
         }
     }
 
-    // MARK: - Îlot 1 : Haut Gauche (Bouton Retour + Onglets)
+    // MARK: - Dock Vertical d'Annotations Flottant (Liquid Glass & Draggable)
 
-    private var topLeftFloatingIsland: some View {
-        FloatingGlassBar {
-            // Simple Flèche vers la gauche pour fermer et revenir à Correction
-            Button {
-                closeStudio()
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundColor(.primary)
-                    .frame(width: 28, height: 28)
-                    .background(Color.primary.opacity(0.08))
-                    .clipShape(Circle())
+    private var verticalAnnotationDock: some View {
+        HStack {
+            if isDockOnRight {
+                Spacer()
             }
-            .buttonStyle(.plain)
-            .help("Fermer l'atelier et revenir à la mosaïque des devoirs")
 
-            if !openScans.isEmpty {
-                Divider().frame(height: 16)
+            VStack(spacing: 8) {
+                // Poignée de déplacement et bouton bascule Gauche/Droite
+                dockFlipHandle
 
-                // Onglets des devoirs ouverts (Tabs)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 5) {
-                        ForEach(openScans) { scan in
-                            let isActive = (scan.name == selectedScan?.name)
-                            HStack(spacing: 5) {
-                                Image(systemName: scan.isCorrected ? "checkmark.seal.fill" : "doc.text.fill")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(isActive ? (scan.isCorrected ? Color(hex: "10B981") : .white) : .secondary)
+                Divider()
+                    .frame(width: 24)
+                    .opacity(0.3)
 
-                                Text(scan.cleanTitle)
-                                    .font(.system(size: 11, weight: isActive ? .bold : .medium))
-                                    .foregroundColor(isActive ? .white : .primary)
-                                    .lineLimit(1)
-                                    .frame(maxWidth: 105)
+                // 1. Bouton Pastille de Couleur Active
+                Button {
+                    isColorPopoverPresented.toggle()
+                } label: {
+                    Circle()
+                        .fill(activeColor)
+                        .frame(width: 22, height: 22)
+                        .overlay(
+                            Circle().stroke(Color.white, lineWidth: 2)
+                        )
+                        .shadow(color: activeColor.opacity(0.4), radius: 3)
+                }
+                .buttonStyle(.plain)
+                .help("Palette de couleurs")
+                .popover(isPresented: $isColorPopoverPresented, arrowEdge: isDockOnRight ? .trailing : .leading) {
+                    colorPalettePopoverContent
+                }
 
-                                Button {
-                                    closeTab(scan)
-                                } label: {
-                                    Image(systemName: "xmark")
-                                        .font(.system(size: 7.5, weight: .bold))
-                                        .foregroundColor(isActive ? .white.opacity(0.85) : .secondary)
-                                        .padding(2.5)
-                                        .background(isActive ? Color.white.opacity(0.25) : Color.primary.opacity(0.08))
-                                        .clipShape(Circle())
-                                }
-                                .buttonStyle(.plain)
-                                .help("Fermer ce devoir")
+                // 2. Bouton Stylet Apple Pencil
+                Button {
+                    activeTool = .pencil
+                    isPencilPopoverPresented.toggle()
+                } label: {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(activeTool == .pencil ? .blue : .primary)
+                        .frame(width: 32, height: 32)
+                        .background(activeTool == .pencil ? Color.blue.opacity(0.18) : Color.clear)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .help("Stylet Apple Pencil")
+                .popover(isPresented: $isPencilPopoverPresented, arrowEdge: isDockOnRight ? .trailing : .leading) {
+                    pencilPopoverContent
+                }
+
+                // 3. Bouton Surligneur fluo
+                Button {
+                    activeTool = .highlighter
+                    isHighlighterPopoverPresented.toggle()
+                } label: {
+                    Image(systemName: "highlighter")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(activeTool == .highlighter ? Color(hex: "FACC15") : .primary)
+                        .frame(width: 32, height: 32)
+                        .background(activeTool == .highlighter ? Color.yellow.opacity(0.22) : Color.clear)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .help("Surligneur fluo")
+                .popover(isPresented: $isHighlighterPopoverPresented, arrowEdge: isDockOnRight ? .trailing : .leading) {
+                    highlighterPopoverContent
+                }
+
+                // 4. Bouton Texte dactylographié
+                Button {
+                    activeTool = .text
+                    isTextPopoverPresented.toggle()
+                } label: {
+                    Image(systemName: "character.cursor.ibeam")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(activeTool == .text ? .blue : .primary)
+                        .frame(width: 32, height: 32)
+                        .background(activeTool == .text ? Color.blue.opacity(0.18) : Color.clear)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .help("Ajouter une annotation texte")
+                .popover(isPresented: $isTextPopoverPresented, arrowEdge: isDockOnRight ? .trailing : .leading) {
+                    textPopoverContent
+                }
+
+                // 5. Bouton Tampon / Sticker
+                Button {
+                    activeTool = .stamp
+                    isStampPopoverPresented.toggle()
+                } label: {
+                    Image(systemName: "seal.fill")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(activeTool == .stamp ? Color(hex: "10B981") : .primary)
+                        .frame(width: 32, height: 32)
+                        .background(activeTool == .stamp ? Color(hex: "10B981").opacity(0.22) : Color.clear)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .help("Tampons et stickers d'évaluation")
+                .popover(isPresented: $isStampPopoverPresented, arrowEdge: isDockOnRight ? .trailing : .leading) {
+                    stampPopoverContent
+                }
+
+                // 6. Bouton Effaceur / Gomme
+                Button {
+                    activeTool = .eraser
+                    isEraserPopoverPresented.toggle()
+                } label: {
+                    Image(systemName: "eraser.fill")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(activeTool == .eraser ? .red : .primary)
+                        .frame(width: 32, height: 32)
+                        .background(activeTool == .eraser ? Color.red.opacity(0.18) : Color.clear)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .help("Gomme / Effaceur")
+                .popover(isPresented: $isEraserPopoverPresented, arrowEdge: isDockOnRight ? .trailing : .leading) {
+                    eraserPopoverContent
+                }
+            }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 10)
+            .glassCapsule(strokeOpacity: 0.4)
+            .shadow(color: Color.black.opacity(0.16), radius: 12, x: isDockOnRight ? -3 : 3, y: 4)
+            .offset(x: dockDragTranslationX)
+            .gesture(
+                DragGesture()
+                    .onChanged { value in
+                        dockDragTranslationX = value.translation.width
+                    }
+                    .onEnded { value in
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            if !isDockOnRight && value.translation.width > 80 {
+                                isDockOnRight = true
+                            } else if isDockOnRight && value.translation.width < -80 {
+                                isDockOnRight = false
                             }
-                            .padding(.leading, 8)
-                            .padding(.trailing, 4)
-                            .padding(.vertical, 4)
-                            .background(
-                                isActive
-                                    ? LinearGradient.electricBlue
-                                    : LinearGradient(colors: [Color.primary.opacity(0.06), Color.primary.opacity(0.04)], startPoint: .top, endPoint: .bottom)
-                            )
-                            .clipShape(Capsule())
-                            .shadow(color: isActive ? Color.blue.opacity(0.35) : .clear, radius: 3, y: 1)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                switchTab(to: scan)
-                            }
+                            dockDragTranslationX = 0
                         }
                     }
-                }
-                .frame(maxWidth: 180)
+            )
+            .padding(.horizontal, 16)
+
+            if !isDockOnRight {
+                Spacer()
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .allowsHitTesting(true)
     }
 
-    // MARK: - Îlot 2 : Haut Centre (6 Outils & Popovers)
-
-    private var topCenterFloatingIsland: some View {
-        FloatingGlassBar {
-            // 1. Bouton Pastille de Couleur
-            Button {
-                isColorPopoverPresented.toggle()
-            } label: {
-                Circle()
-                    .fill(activeColor)
-                    .frame(width: 20, height: 20)
-                    .overlay(
-                        Circle().stroke(Color.white, lineWidth: 2)
-                    )
-                    .shadow(color: activeColor.opacity(0.4), radius: 2)
+    private var dockFlipHandle: some View {
+        Button {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                isDockOnRight.toggle()
             }
-            .buttonStyle(.plain)
-            .help("Choisir la couleur active")
-            .popover(isPresented: $isColorPopoverPresented) {
-                colorPalettePopoverContent
+        } label: {
+            VStack(spacing: 2) {
+                Capsule()
+                    .fill(Color.primary.opacity(0.3))
+                    .frame(width: 18, height: 3.5)
+                Image(systemName: isDockOnRight ? "arrow.left.to.line" : "arrow.right.to.line")
+                    .font(.system(size: 8.5, weight: .bold))
+                    .foregroundColor(.secondary)
             }
-
-            Divider().frame(height: 16)
-
-            // 2. Bouton Stylo Apple Pencil
-            Button {
-                activeTool = .pencil
-                isPencilPopoverPresented.toggle()
-            } label: {
-                Image(systemName: "pencil")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(activeTool == .pencil ? .blue : .primary)
-                    .frame(width: 28, height: 28)
-                    .background(activeTool == .pencil ? Color.blue.opacity(0.15) : Color.clear)
-                    .clipShape(RoundedRectangle(cornerRadius: 7))
-            }
-            .buttonStyle(.plain)
-            .help("Stylet Apple Pencil")
-            .popover(isPresented: $isPencilPopoverPresented) {
-                pencilPopoverContent
-            }
-
-            // 3. Bouton Surligneur fluo
-            Button {
-                activeTool = .highlighter
-                isHighlighterPopoverPresented.toggle()
-            } label: {
-                Image(systemName: "highlighter")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(activeTool == .highlighter ? Color(hex: "FACC15") : .primary)
-                    .frame(width: 28, height: 28)
-                    .background(activeTool == .highlighter ? Color.yellow.opacity(0.2) : Color.clear)
-                    .clipShape(RoundedRectangle(cornerRadius: 7))
-            }
-            .buttonStyle(.plain)
-            .help("Surligneur fluo")
-            .popover(isPresented: $isHighlighterPopoverPresented) {
-                highlighterPopoverContent
-            }
-
-            // 4. Bouton Texte dactylographié
-            Button {
-                activeTool = .text
-                isTextPopoverPresented.toggle()
-            } label: {
-                Image(systemName: "character.cursor.ibeam")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(activeTool == .text ? .blue : .primary)
-                    .frame(width: 28, height: 28)
-                    .background(activeTool == .text ? Color.blue.opacity(0.15) : Color.clear)
-                    .clipShape(RoundedRectangle(cornerRadius: 7))
-            }
-            .buttonStyle(.plain)
-            .help("Ajouter une annotation texte")
-            .popover(isPresented: $isTextPopoverPresented) {
-                textPopoverContent
-            }
-
-            // 5. Bouton Tampon / Sticker
-            Button {
-                activeTool = .stamp
-                isStampPopoverPresented.toggle()
-            } label: {
-                Image(systemName: "seal.fill")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(activeTool == .stamp ? Color(hex: "10B981") : .primary)
-                    .frame(width: 28, height: 28)
-                    .background(activeTool == .stamp ? Color(hex: "10B981").opacity(0.2) : Color.clear)
-                    .clipShape(RoundedRectangle(cornerRadius: 7))
-            }
-            .buttonStyle(.plain)
-            .help("Tampons et stickers d'évaluation")
-            .popover(isPresented: $isStampPopoverPresented) {
-                stampPopoverContent
-            }
-
-            // 6. Bouton Effaceur / Gomme
-            Button {
-                activeTool = .eraser
-                isEraserPopoverPresented.toggle()
-            } label: {
-                Image(systemName: "eraser.fill")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(activeTool == .eraser ? .red : .primary)
-                    .frame(width: 28, height: 28)
-                    .background(activeTool == .eraser ? Color.red.opacity(0.15) : Color.clear)
-                    .clipShape(RoundedRectangle(cornerRadius: 7))
-            }
-            .buttonStyle(.plain)
-            .help("Gomme / Effaceur")
-            .popover(isPresented: $isEraserPopoverPresented) {
-                eraserPopoverContent
-            }
+            .frame(width: 28, height: 18)
+            .contentShape(Rectangle())
         }
-    }
-
-    // MARK: - Îlot 3 : Haut Droite (Annuler / Rétablir)
-
-    private var topRightFloatingIsland: some View {
-        FloatingGlassBar {
-            // Annuler
-            Button {
-                undoTrigger += 1
-            } label: {
-                Image(systemName: "arrow.uturn.backward")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.primary)
-                    .frame(width: 26, height: 26)
-            }
-            .disabled(!canUndo)
-            .opacity(canUndo ? 1.0 : 0.35)
-            .buttonStyle(.plain)
-            .help("Annuler le dernier tracé")
-
-            Divider().frame(height: 16)
-
-            // Rétablir
-            Button {
-                redoTrigger += 1
-            } label: {
-                Image(systemName: "arrow.uturn.forward")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.primary)
-                    .frame(width: 26, height: 26)
-            }
-            .disabled(!canRedo)
-            .opacity(canRedo ? 1.0 : 0.35)
-            .buttonStyle(.plain)
-            .help("Rétablir le tracé annulé")
-        }
+        .buttonStyle(.plain)
+        .help(isDockOnRight ? "Déplacer la barre d'outils à gauche" : "Déplacer la barre d'outils à droite (pour gauchers)")
     }
 
     // MARK: - Popovers pour chacun des outils
@@ -1434,118 +1431,261 @@ public struct Step1CorrectionStudioView: View {
 
     // MARK: - Actions & Logique Métier
 
+    private var activeScanName: String {
+        appState.activeCorrectionScan?.name ?? ""
+    }
+
     private var currentStampsForActivePage: [PlacedStampItem] {
-        guard let scan = selectedScan else { return [] }
-        return scanStamps[scan.name]?[currentPageIndex] ?? []
+        let name = activeScanName
+        guard !name.isEmpty else { return [] }
+        return scanStamps[name]?[currentPageIndex] ?? []
     }
 
     private var currentTextsForActivePage: [PlacedTextItem] {
-        guard let scan = selectedScan else { return [] }
-        return scanTexts[scan.name]?[currentPageIndex] ?? []
+        let name = activeScanName
+        guard !name.isEmpty else { return [] }
+        return scanTexts[name]?[currentPageIndex] ?? []
+    }
+
+    // MARK: - Moteur d'Historique Unifié (Tracés Pencil + Surligneur + Tampons + Textes)
+
+    private enum CorrectionAction {
+        case strokeDrawing(pageIndex: Int, oldDrawing: PKDrawing, newDrawing: PKDrawing)
+        case addStamp(pageIndex: Int, stamp: PlacedStampItem)
+        case deleteStamp(pageIndex: Int, stamp: PlacedStampItem)
+        case moveStamp(pageIndex: Int, id: UUID, fromX: CGFloat, fromY: CGFloat, toX: CGFloat, toY: CGFloat)
+        case addText(pageIndex: Int, text: PlacedTextItem)
+        case deleteText(pageIndex: Int, text: PlacedTextItem)
+        case editText(pageIndex: Int, id: UUID, oldText: String, newText: String)
+        case moveText(pageIndex: Int, id: UUID, fromX: CGFloat, fromY: CGFloat, toX: CGFloat, toY: CGFloat)
+    }
+
+    private func recordAction(_ action: CorrectionAction) {
+        let name = activeScanName
+        guard !name.isEmpty else { return }
+        if scanUndoStacks[name] == nil { scanUndoStacks[name] = [] }
+        scanUndoStacks[name]?.append(action)
+        scanRedoStacks[name]?.removeAll()
+        syncUndoRedoState()
+    }
+
+    private func performUndo() {
+        let name = activeScanName
+        guard !name.isEmpty, var undoStack = scanUndoStacks[name], let action = undoStack.popLast() else { return }
+        scanUndoStacks[name] = undoStack
+
+        if scanRedoStacks[name] == nil { scanRedoStacks[name] = [] }
+        scanRedoStacks[name]?.append(action)
+
+        applyAction(action, isUndo: true)
+        syncUndoRedoState()
+    }
+
+    private func performRedo() {
+        let name = activeScanName
+        guard !name.isEmpty, var redoStack = scanRedoStacks[name], let action = redoStack.popLast() else { return }
+        scanRedoStacks[name] = redoStack
+
+        if scanUndoStacks[name] == nil { scanUndoStacks[name] = [] }
+        scanUndoStacks[name]?.append(action)
+
+        applyAction(action, isUndo: false)
+        syncUndoRedoState()
+    }
+
+    private func syncUndoRedoState() {
+        let name = activeScanName
+        appState.canUndoCorrection = !(scanUndoStacks[name]?.isEmpty ?? true)
+        appState.canRedoCorrection = !(scanRedoStacks[name]?.isEmpty ?? true)
+    }
+
+    private func applyAction(_ action: CorrectionAction, isUndo: Bool) {
+        let name = activeScanName
+        guard !name.isEmpty else { return }
+
+        isPerformingUndoRedo = true
+        defer { isPerformingUndoRedo = false }
+
+        switch action {
+        case .strokeDrawing(let pageIndex, let oldDrawing, let newDrawing):
+            if currentPageIndex != pageIndex {
+                changePage(to: pageIndex)
+            }
+            let targetDrawing = isUndo ? oldDrawing : newDrawing
+            currentDrawing = targetDrawing
+            if scanDrawings[name] == nil { scanDrawings[name] = [:] }
+            scanDrawings[name]?[pageIndex] = targetDrawing
+
+        case .addStamp(let pageIndex, let stamp):
+            if currentPageIndex != pageIndex {
+                changePage(to: pageIndex)
+            }
+            if isUndo {
+                scanStamps[name]?[pageIndex]?.removeAll(where: { $0.id == stamp.id })
+            } else {
+                if scanStamps[name] == nil { scanStamps[name] = [:] }
+                if scanStamps[name]?[pageIndex] == nil { scanStamps[name]?[pageIndex] = [] }
+                scanStamps[name]?[pageIndex]?.append(stamp)
+            }
+
+        case .deleteStamp(let pageIndex, let stamp):
+            if currentPageIndex != pageIndex {
+                changePage(to: pageIndex)
+            }
+            if isUndo {
+                if scanStamps[name] == nil { scanStamps[name] = [:] }
+                if scanStamps[name]?[pageIndex] == nil { scanStamps[name]?[pageIndex] = [] }
+                scanStamps[name]?[pageIndex]?.append(stamp)
+            } else {
+                scanStamps[name]?[pageIndex]?.removeAll(where: { $0.id == stamp.id })
+            }
+
+        case .moveStamp(let pageIndex, let id, let fromX, let fromY, let toX, let toY):
+            if currentPageIndex != pageIndex {
+                changePage(to: pageIndex)
+            }
+            if let idx = scanStamps[name]?[pageIndex]?.firstIndex(where: { $0.id == id }) {
+                scanStamps[name]?[pageIndex]?[idx].xRatio = isUndo ? fromX : toX
+                scanStamps[name]?[pageIndex]?[idx].yRatio = isUndo ? fromY : toY
+            }
+
+        case .addText(let pageIndex, let text):
+            if currentPageIndex != pageIndex {
+                changePage(to: pageIndex)
+            }
+            if isUndo {
+                scanTexts[name]?[pageIndex]?.removeAll(where: { $0.id == text.id })
+            } else {
+                if scanTexts[name] == nil { scanTexts[name] = [:] }
+                if scanTexts[name]?[pageIndex] == nil { scanTexts[name]?[pageIndex] = [] }
+                scanTexts[name]?[pageIndex]?.append(text)
+            }
+
+        case .deleteText(let pageIndex, let text):
+            if currentPageIndex != pageIndex {
+                changePage(to: pageIndex)
+            }
+            if isUndo {
+                if scanTexts[name] == nil { scanTexts[name] = [:] }
+                if scanTexts[name]?[pageIndex] == nil { scanTexts[name]?[pageIndex] = [] }
+                scanTexts[name]?[pageIndex]?.append(text)
+            } else {
+                scanTexts[name]?[pageIndex]?.removeAll(where: { $0.id == text.id })
+            }
+
+        case .editText(let pageIndex, let id, let oldText, let newText):
+            if currentPageIndex != pageIndex {
+                changePage(to: pageIndex)
+            }
+            if let idx = scanTexts[name]?[pageIndex]?.firstIndex(where: { $0.id == id }) {
+                scanTexts[name]?[pageIndex]?[idx].text = isUndo ? oldText : newText
+            }
+
+        case .moveText(let pageIndex, let id, let fromX, let fromY, let toX, let toY):
+            if currentPageIndex != pageIndex {
+                changePage(to: pageIndex)
+            }
+            if let idx = scanTexts[name]?[pageIndex]?.firstIndex(where: { $0.id == id }) {
+                scanTexts[name]?[pageIndex]?[idx].xRatio = isUndo ? fromX : toX
+                scanTexts[name]?[pageIndex]?[idx].yRatio = isUndo ? fromY : toY
+            }
+        }
     }
 
     private func addStamp(_ stamp: StampDefinition) {
-        guard let scan = selectedScan else { return }
-        var list = scanStamps[scan.name]?[currentPageIndex] ?? []
-        let newItem = PlacedStampItem(stamp: stamp, xRatio: 0.5, yRatio: 0.5)
+        let name = activeScanName
+        guard !name.isEmpty else { return }
+        var list = scanStamps[name]?[currentPageIndex] ?? []
+        let newItem = PlacedStampItem(stamp: stamp, xRatio: 0.5, yRatio: 0.4)
+        recordAction(.addStamp(pageIndex: currentPageIndex, stamp: newItem))
         list.append(newItem)
-        if scanStamps[scan.name] == nil { scanStamps[scan.name] = [:] }
-        scanStamps[scan.name]?[currentPageIndex] = list
+        if scanStamps[name] == nil { scanStamps[name] = [:] }
+        scanStamps[name]?[currentPageIndex] = list
     }
 
     private func updatePlacedStamp(_ item: PlacedStampItem) {
-        guard let scan = selectedScan, var list = scanStamps[scan.name]?[currentPageIndex] else { return }
+        let name = activeScanName
+        guard !name.isEmpty, var list = scanStamps[name]?[currentPageIndex] else { return }
         if let idx = list.firstIndex(where: { $0.id == item.id }) {
             list[idx] = item
-            scanStamps[scan.name]?[currentPageIndex] = list
+            scanStamps[name]?[currentPageIndex] = list
         }
     }
 
     private func deletePlacedStamp(id: UUID) {
-        guard let scan = selectedScan, var list = scanStamps[scan.name]?[currentPageIndex] else { return }
+        let name = activeScanName
+        guard !name.isEmpty, var list = scanStamps[name]?[currentPageIndex] else { return }
+        if let item = list.first(where: { $0.id == id }) {
+            recordAction(.deleteStamp(pageIndex: currentPageIndex, stamp: item))
+        }
         list.removeAll(where: { $0.id == id })
-        scanStamps[scan.name]?[currentPageIndex] = list
+        scanStamps[name]?[currentPageIndex] = list
     }
 
     private func addTextAnnotation(_ text: String) {
-        guard let scan = selectedScan else { return }
-        var list = scanTexts[scan.name]?[currentPageIndex] ?? []
+        let name = activeScanName
+        guard !name.isEmpty else { return }
+        var list = scanTexts[name]?[currentPageIndex] ?? []
         let hex = studioColors.first(where: { $0.color == activeColor })?.hex ?? "EF4444"
         let newItem = PlacedTextItem(
             text: text,
             fontSize: textStops[textFontSizeIndex].size,
             colorHex: hex,
             xRatio: 0.5,
-            yRatio: 0.5
+            yRatio: 0.45
         )
+        recordAction(.addText(pageIndex: currentPageIndex, text: newItem))
         list.append(newItem)
-        if scanTexts[scan.name] == nil { scanTexts[scan.name] = [:] }
-        scanTexts[scan.name]?[currentPageIndex] = list
+        if scanTexts[name] == nil { scanTexts[name] = [:] }
+        scanTexts[name]?[currentPageIndex] = list
     }
 
     private func updatePlacedText(_ item: PlacedTextItem) {
-        guard let scan = selectedScan, var list = scanTexts[scan.name]?[currentPageIndex] else { return }
+        let name = activeScanName
+        guard !name.isEmpty, var list = scanTexts[name]?[currentPageIndex] else { return }
         if let idx = list.firstIndex(where: { $0.id == item.id }) {
             list[idx] = item
-            scanTexts[scan.name]?[currentPageIndex] = list
+            scanTexts[name]?[currentPageIndex] = list
         }
     }
 
     private func updateTextContent(id: UUID, newText: String) {
-        guard let scan = selectedScan, var list = scanTexts[scan.name]?[currentPageIndex] else { return }
+        let name = activeScanName
+        guard !name.isEmpty, var list = scanTexts[name]?[currentPageIndex] else { return }
         if let idx = list.firstIndex(where: { $0.id == id }) {
+            let oldText = list[idx].text
+            if oldText != newText {
+                recordAction(.editText(pageIndex: currentPageIndex, id: id, oldText: oldText, newText: newText))
+            }
             list[idx].text = newText
-            scanTexts[scan.name]?[currentPageIndex] = list
+            scanTexts[name]?[currentPageIndex] = list
         }
     }
 
     private func deletePlacedText(id: UUID) {
-        guard let scan = selectedScan, var list = scanTexts[scan.name]?[currentPageIndex] else { return }
+        let name = activeScanName
+        guard !name.isEmpty, var list = scanTexts[name]?[currentPageIndex] else { return }
+        if let item = list.first(where: { $0.id == id }) {
+            recordAction(.deleteText(pageIndex: currentPageIndex, text: item))
+        }
         list.removeAll(where: { $0.id == id })
-        scanTexts[scan.name]?[currentPageIndex] = list
+        scanTexts[name]?[currentPageIndex] = list
     }
 
     private func openScanInStudio(_ scan: StorageManager.ScanItem) {
         saveCurrentDrawing()
-        if !openScans.contains(where: { $0.name == scan.name }) {
-            openScans.append(scan)
+        if !appState.openCorrectionScans.contains(where: { $0.id == scan.id }) {
+            appState.openCorrectionScans.append(scan)
         }
-        selectedScan = scan
-        let url = appState.storageManager.localURL(for: "Evaluations/A corriger/\(scan.name)")
-        loadPDFFromURL(url)
-        isStudioPresented = true
+        appState.activeCorrectionScan = scan
+        loadScanPDF(scan)
+        syncUndoRedoState()
         triggerPageHUD()
     }
 
-    private func switchTab(to scan: StorageManager.ScanItem) {
-        guard scan.name != selectedScan?.name else { return }
-        saveCurrentDrawing()
-        selectedScan = scan
-        let url = appState.storageManager.localURL(for: "Evaluations/A corriger/\(scan.name)")
+    private func loadScanPDF(_ scan: StorageManager.ScanItem) {
+        let url = appState.storageManager.localURL(for: scan.path)
         loadPDFFromURL(url)
-        triggerPageHUD()
-    }
-
-    private func closeTab(_ scan: StorageManager.ScanItem) {
-        saveCurrentDrawing()
-        openScans.removeAll(where: { $0.name == scan.name })
-        if openScans.isEmpty {
-            closeStudio()
-        } else if selectedScan?.name == scan.name {
-            if let next = openScans.first {
-                switchTab(to: next)
-            }
-        }
-    }
-
-    private func closeStudio() {
-        saveCurrentDrawing()
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-            isStudioPresented = false
-        }
-        Task {
-            await refreshAvailableScans(autoSelectFirst: false)
-        }
     }
 
     private func triggerPageHUD() {
@@ -1580,7 +1720,7 @@ public struct Step1CorrectionStudioView: View {
                     }
                 }
 
-                if autoSelectFirst && selectedScan == nil, let first = localList.first {
+                if autoSelectFirst && appState.activeCorrectionScan == nil, let first = localList.first {
                     openScanInStudio(first)
                 }
             }
@@ -1625,7 +1765,7 @@ public struct Step1CorrectionStudioView: View {
             self.pdfURL = url
             self.pdfDocument = doc
             self.currentPageIndex = 0
-            if let scan = selectedScan {
+            if let scan = appState.activeCorrectionScan {
                 self.currentDrawing = scanDrawings[scan.name]?[0] ?? PKDrawing()
             } else {
                 self.currentDrawing = PKDrawing()
@@ -1637,14 +1777,14 @@ public struct Step1CorrectionStudioView: View {
         guard newIndex >= 0, newIndex < totalPages else { return }
         saveCurrentDrawing()
         currentPageIndex = newIndex
-        if let scan = selectedScan {
+        if let scan = appState.activeCorrectionScan {
             currentDrawing = scanDrawings[scan.name]?[newIndex] ?? PKDrawing()
         }
         triggerPageHUD()
     }
 
     private func saveCurrentDrawing() {
-        guard let scan = selectedScan else { return }
+        guard let scan = appState.activeCorrectionScan else { return }
         if scanDrawings[scan.name] == nil {
             scanDrawings[scan.name] = [:]
         }
@@ -1672,8 +1812,8 @@ public struct Step1CorrectionStudioView: View {
         thumbnailUpdateTask = Task {
             try? await Task.sleep(nanoseconds: 1_200_000_000)
             guard !Task.isCancelled else { return }
-            let stamps = selectedScan.flatMap { scanStamps[$0.name]?[0] } ?? []
-            let texts = selectedScan.flatMap { scanTexts[$0.name]?[0] } ?? []
+            let stamps = appState.activeCorrectionScan.flatMap { scanStamps[$0.name]?[0] } ?? []
+            let texts = appState.activeCorrectionScan.flatMap { scanTexts[$0.name]?[0] } ?? []
             await generateAndCachePage0Thumbnail(doc: doc, url: url, drawing: drawing, stamps: stamps, texts: texts)
         }
     }
@@ -1814,7 +1954,12 @@ public struct Step1CorrectionStudioView: View {
                     self.processingScanId = nil
                 }
                 if let updated = availableScans.first(where: { $0.cleanTitle == scan.cleanTitle }) {
-                    self.selectedScan = updated
+                    if self.appState.activeCorrectionScan?.id == scan.id {
+                        self.appState.activeCorrectionScan = updated
+                    }
+                    if let idx = self.appState.openCorrectionScans.firstIndex(where: { $0.id == scan.id }) {
+                        self.appState.openCorrectionScans[idx] = updated
+                    }
                     self.showMarkedToast = targetState ? "Marqué comme CORRIGÉ !" : "Remis en cours"
                     DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                         self.showMarkedToast = nil
@@ -2335,15 +2480,13 @@ public struct InteractivePDFCanvasView: UIViewRepresentable {
     public let highlighterColor: Color
     public let highlighterWidth: CGFloat
     public let eraserWidth: CGFloat
-    @Binding public var canUndo: Bool
-    @Binding public var canRedo: Bool
-    public let undoTrigger: Int
-    public let redoTrigger: Int
     public let stamps: [PlacedStampItem]
     public let texts: [PlacedTextItem]
-    public let onUpdateStamp: (PlacedStampItem) -> Void
+    public let isPerformingUndoRedo: Bool
+    public let onStrokeFinished: (PKDrawing, PKDrawing) -> Void
+    public let onUpdateStamp: (PlacedStampItem, CGFloat, CGFloat) -> Void
     public let onDeleteStamp: (UUID) -> Void
-    public let onUpdateText: (PlacedTextItem) -> Void
+    public let onUpdateText: (PlacedTextItem, CGFloat, CGFloat) -> Void
     public let onDeleteText: (UUID) -> Void
     public let onTapText: (PlacedTextItem) -> Void
     public let onNextPage: () -> Void
@@ -2435,7 +2578,10 @@ public struct InteractivePDFCanvasView: UIViewRepresentable {
         // 2. Synchronisation du tracé PencilKit
         if let canvasView = coordinator.canvasView {
             if canvasView.drawing != drawing {
+                coordinator.isProgrammaticUpdate = true
                 canvasView.drawing = drawing
+                coordinator.committedDrawing = drawing
+                coordinator.isProgrammaticUpdate = false
             }
 
             // Outil actif
@@ -2458,23 +2604,9 @@ public struct InteractivePDFCanvasView: UIViewRepresentable {
             case .text, .stamp:
                 canvasView.isUserInteractionEnabled = false
             }
-
-            // 3. Gestion Undo / Redo
-            if coordinator.lastUndoTrigger != undoTrigger {
-                coordinator.lastUndoTrigger = undoTrigger
-                canvasView.undoManager?.undo()
-                canUndo = canvasView.undoManager?.canUndo ?? false
-                canRedo = canvasView.undoManager?.canRedo ?? false
-            }
-            if coordinator.lastRedoTrigger != redoTrigger {
-                coordinator.lastRedoTrigger = redoTrigger
-                canvasView.undoManager?.redo()
-                canUndo = canvasView.undoManager?.canUndo ?? false
-                canRedo = canvasView.undoManager?.canRedo ?? false
-            }
         }
 
-        // 4. Synchronisation des tampons et textes
+        // 3. Synchronisation des tampons et textes
         coordinator.syncStampsAndTexts(stamps: stamps, texts: texts)
     }
 
@@ -2483,8 +2615,8 @@ public struct InteractivePDFCanvasView: UIViewRepresentable {
         guard pageBounds.width > 0, pageBounds.height > 0 else { return }
 
         let screenBounds = UIScreen.main.bounds
-        let availableW = screenBounds.width - 48
-        let availableH = screenBounds.height - 150 // Dégagement pour les îlots supérieurs (64pt) et le HUD inférieur
+        let availableW = screenBounds.width - 120 // Dégagement pour le dock vertical et marges
+        let availableH = screenBounds.height - 120 // Dégagement pour la barre supérieure (54pt) et le HUD
         let fitScale = min(availableW / pageBounds.width, availableH / pageBounds.height)
         let displayW = round(pageBounds.width * fitScale)
         let displayH = round(pageBounds.height * fitScale)
@@ -2496,7 +2628,7 @@ public struct InteractivePDFCanvasView: UIViewRepresentable {
         coordinator.stampsOverlay?.frame = targetFrame
         scrollView.contentSize = targetFrame.size
 
-        scrollView.contentInset = UIEdgeInsets(top: 68, left: 16, bottom: 68, right: 16)
+        scrollView.contentInset = UIEdgeInsets(top: 54, left: 16, bottom: 54, right: 16)
         let offsetX = max((scrollView.bounds.width - displayW) * 0.5, 0.0)
         let offsetY = max((scrollView.bounds.height - displayH) * 0.5, 0.0)
         coordinator.containerView?.center = CGPoint(x: displayW * 0.5 + offsetX, y: displayH * 0.5 + offsetY)
@@ -2527,27 +2659,15 @@ public struct InteractivePDFCanvasView: UIViewRepresentable {
         weak var stampsOverlay: UIView?
         var lastLoadedPageIndex: Int = -1
         weak var lastDocument: PDFDocument?
-        var lastUndoTrigger: Int = 0
-        var lastRedoTrigger: Int = 0
+        var committedDrawing: PKDrawing = PKDrawing()
+        var isProgrammaticUpdate: Bool = false
         weak var swipeLeft: UISwipeGestureRecognizer?
         weak var swipeRight: UISwipeGestureRecognizer?
 
         init(_ parent: InteractivePDFCanvasView) {
             self.parent = parent
-            self.lastUndoTrigger = parent.undoTrigger
-            self.lastRedoTrigger = parent.redoTrigger
+            self.committedDrawing = parent.drawing
             super.init()
-
-            NotificationCenter.default.addObserver(self, selector: #selector(undoManagerDidUpdate), name: .NSUndoManagerCheckpoint, object: nil)
-            NotificationCenter.default.addObserver(self, selector: #selector(undoManagerDidUpdate), name: .NSUndoManagerDidUndoChange, object: nil)
-            NotificationCenter.default.addObserver(self, selector: #selector(undoManagerDidUpdate), name: .NSUndoManagerDidRedoChange, object: nil)
-        }
-
-        @objc func undoManagerDidUpdate() {
-            DispatchQueue.main.async {
-                self.parent.canUndo = self.canvasView?.undoManager?.canUndo ?? false
-                self.parent.canRedo = self.canvasView?.undoManager?.canRedo ?? false
-            }
         }
 
         public func viewForZooming(in scrollView: UIScrollView) -> UIView? {
@@ -2565,9 +2685,14 @@ public struct InteractivePDFCanvasView: UIViewRepresentable {
         }
 
         public func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
-            parent.drawing = canvasView.drawing
-            parent.canUndo = canvasView.undoManager?.canUndo ?? false
-            parent.canRedo = canvasView.undoManager?.canRedo ?? false
+            guard !isProgrammaticUpdate, !parent.isPerformingUndoRedo else { return }
+            let oldDrawing = committedDrawing
+            let newDrawing = canvasView.drawing
+            if oldDrawing != newDrawing {
+                committedDrawing = newDrawing
+                parent.drawing = newDrawing
+                parent.onStrokeFinished(oldDrawing, newDrawing)
+            }
         }
 
         @objc func handleDoubleTap(_ gesture: UITapGestureRecognizer) {
@@ -2621,9 +2746,11 @@ public struct InteractivePDFCanvasView: UIViewRepresentable {
             for item in stamps {
                 let badge = StampBadgeUIKitView(item: item, containerBounds: container.bounds) { [weak self] newX, newY in
                     var updated = item
+                    let oldX = item.xRatio
+                    let oldY = item.yRatio
                     updated.xRatio = newX
                     updated.yRatio = newY
-                    self?.parent.onUpdateStamp(updated)
+                    self?.parent.onUpdateStamp(updated, oldX, oldY)
                 } onDelete: { [weak self] in
                     self?.parent.onDeleteStamp(item.id)
                 }
@@ -2634,9 +2761,11 @@ public struct InteractivePDFCanvasView: UIViewRepresentable {
             for item in texts {
                 let textBadge = TextBadgeUIKitView(item: item, containerBounds: container.bounds) { [weak self] newX, newY in
                     var updated = item
+                    let oldX = item.xRatio
+                    let oldY = item.yRatio
                     updated.xRatio = newX
                     updated.yRatio = newY
-                    self?.parent.onUpdateText(updated)
+                    self?.parent.onUpdateText(updated, oldX, oldY)
                 } onDelete: { [weak self] in
                     self?.parent.onDeleteText(item.id)
                 } onTap: { [weak self] in

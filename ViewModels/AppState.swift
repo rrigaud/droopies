@@ -31,6 +31,16 @@ public final class AppState: @unchecked Sendable {
     public var showAddStudentSheet: Bool = false
     public var showCSVImportSheet: Bool = false
 
+    // MARK: - Atelier de Correction Multi-Onglets (Sans Modale)
+    public var openCorrectionScans: [StorageManager.ScanItem] = []
+    public var activeCorrectionScan: StorageManager.ScanItem? = nil
+
+    // État d'historique Undo / Redo unifié pour la barre supérieure
+    public var canUndoCorrection: Bool = false
+    public var canRedoCorrection: Bool = false
+    public var undoCorrectionTrigger: Int = 0
+    public var redoCorrectionTrigger: Int = 0
+
     public var currentRootFolderName: String {
         let clean = currentRootFolderPath.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         return clean.isEmpty ? "Racine" : URL(fileURLWithPath: clean).lastPathComponent
