@@ -109,12 +109,12 @@ public struct MainSplitView: View {
                     topLeadingToolbar(isCompact: isCompact)
                         .glassCapsule(strokeOpacity: 0.4)
 
-                    Spacer(minLength: 12)
+                    Spacer(minLength: 8)
 
                     // Toolbar Centrale Flottante (Outils contextuels selon l'écran actif)
                     if hasCenterToolbar {
                         topCenterToolbar(isCompact: isCompact)
-                        Spacer(minLength: 12)
+                        Spacer(minLength: 8)
                     }
 
                     // Toolbar 2 : Droite (Historique Undo/Redo si copie active, sinon Menu Cloud)
@@ -215,6 +215,8 @@ public struct MainSplitView: View {
 
     private var hasCenterToolbar: Bool {
         switch activeScreen {
+        case .correction:
+            return !appState.openCorrectionScans.isEmpty
         case .students, .distribution:
             return true
         default:
@@ -225,49 +227,72 @@ public struct MainSplitView: View {
     @ViewBuilder
     private func topCenterToolbar(isCompact: Bool) -> some View {
         switch activeScreen {
-        case .students:
-            Menu {
-                Button {
-                    if appState.isOnline {
-                        appState.showAddStudentSheet = true
-                    }
-                } label: {
-                    Label("Ajouter un élève", systemImage: "person.badge.plus")
-                }
-                .disabled(!appState.isOnline)
-
-                Button {
-                    if appState.isOnline {
-                        appState.showCSVImportSheet = true
-                    }
-                } label: {
-                    Label("Importer un fichier CSV", systemImage: "arrow.down.doc")
-                }
-                .disabled(!appState.isOnline)
-            } label: {
-                Image(systemName: "plus")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(appState.isOnline ? .blue : .secondary)
-                    .frame(width: 32, height: 32)
-                    .background(Color.primary.opacity(0.04))
-                    .clipShape(Circle())
-            }
-            .buttonStyle(.plain)
-            .disabled(!appState.isOnline)
-            .opacity(appState.isOnline ? 1.0 : 0.45)
-            .help(appState.isOnline ? "Ajouter ou importer des élèves" : "Disponible en ligne uniquement")
-            .padding(3)
-            .glassCapsule(strokeOpacity: 0.4)
+        case .correction:
+            correctionCenterTabsToolbar(isCompact: isCompact)
 
         case .distribution:
             distributionStepperToolbar(isCompact: isCompact)
+
+        case .students:
+            studentsCenterActionToolbar
 
         default:
             EmptyView()
         }
     }
 
-    // MARK: - Toolbar 1 : Haut-Gauche (Sidebar Toggle + Correction / Onglets Dynamiques / Distribution)
+    private var studentsCenterActionToolbar: some View {
+        Menu {
+            Button {
+                if appState.isOnline {
+                    appState.showAddStudentSheet = true
+                }
+            } label: {
+                Label("Ajouter un élève", systemImage: "person.badge.plus")
+            }
+            .disabled(!appState.isOnline)
+
+            Button {
+                if appState.isOnline {
+                    appState.showCSVImportSheet = true
+                }
+            } label: {
+                Label("Importer un fichier CSV", systemImage: "arrow.down.doc")
+            }
+            .disabled(!appState.isOnline)
+        } label: {
+            Image(systemName: "plus")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundColor(appState.isOnline ? .blue : .secondary)
+                .frame(width: 32, height: 32)
+                .background(Color.primary.opacity(0.04))
+                .clipShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!appState.isOnline)
+        .opacity(appState.isOnline ? 1.0 : 0.45)
+        .help(appState.isOnline ? "Ajouter ou importer des élèves" : "Disponible en ligne uniquement")
+        .padding(3)
+        .glassCapsule(strokeOpacity: 0.4)
+    }
+
+    // MARK: - Center Toolbar : Onglets d'Évaluations (Correction)
+
+    private func correctionCenterTabsToolbar(isCompact: Bool) -> some View {
+        HStack(spacing: 4) {
+            if isCompact && appState.openCorrectionScans.count > 2 {
+                compactEvaluationsMenuPill
+            } else {
+                ForEach(appState.openCorrectionScans) { scan in
+                    evaluationTabButton(for: scan)
+                }
+            }
+        }
+        .padding(3)
+        .glassCapsule(strokeOpacity: 0.4)
+    }
+
+    // MARK: - Toolbar 1 : Haut-Gauche (Sidebar Toggle + Navigation Correction / Distribution)
 
     private func topLeadingToolbar(isCompact: Bool) -> some View {
         HStack(spacing: 8) {
@@ -291,23 +316,9 @@ public struct MainSplitView: View {
                 .frame(height: 18)
                 .opacity(0.3)
 
-            // Sélecteur Mode Principal + Onglets dynamiques des évaluations
+            // Sélecteur Mode Principal (Voie 2 : Taille 100% stable et fixe)
             HStack(spacing: 3) {
-                // 1. Bouton Correction (retour à la mosaïque d'accueil)
                 correctionMainButton
-
-                // 2. Onglets dynamiques des évaluations ouvertes (masqués en Distribution)
-                if activeScreen != .distribution && !appState.openCorrectionScans.isEmpty {
-                    if isCompact && appState.openCorrectionScans.count > 2 {
-                        compactEvaluationsMenuPill
-                    } else {
-                        ForEach(appState.openCorrectionScans) { scan in
-                            evaluationTabButton(for: scan)
-                        }
-                    }
-                }
-
-                // 3. Bouton Distribution (compacté à son icône seule si évaluations ouvertes en Correction)
                 distributionMainButton
             }
             .padding(3)
@@ -318,14 +329,12 @@ public struct MainSplitView: View {
         .padding(.vertical, 4)
     }
 
-    private var isCorrectionHomeSelected: Bool {
-        activeScreen == .correction && appState.activeCorrectionScan == nil
+    private var isCorrectionSelected: Bool {
+        activeScreen == .correction
     }
 
     private var correctionMainButton: some View {
-        let isDistribution = (activeScreen == .distribution)
-
-        return Button {
+        Button {
             withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                 activeScreen = .correction
                 appState.activeCorrectionScan = nil
@@ -338,17 +347,15 @@ public struct MainSplitView: View {
                 Image(systemName: "pencil.and.outline")
                     .font(.system(size: 13, weight: .semibold))
 
-                if !isDistribution {
-                    Text(appState.t(.tabCorrection))
-                        .font(.system(size: 13, weight: isCorrectionHomeSelected ? .bold : .medium))
-                }
+                Text(appState.t(.tabCorrection))
+                    .font(.system(size: 13, weight: isCorrectionSelected ? .bold : .medium))
             }
-            .foregroundColor(isCorrectionHomeSelected ? .white : .primary)
-            .padding(.horizontal, isDistribution ? 10 : 14)
+            .foregroundColor(isCorrectionSelected ? .white : .primary)
+            .padding(.horizontal, 11)
             .padding(.vertical, 7)
             .background(
                 Group {
-                    if isCorrectionHomeSelected {
+                    if isCorrectionSelected {
                         Capsule()
                             .fill(LinearGradient.electricBlue)
                             .matchedGeometryEffect(id: "activeMainPill", in: toolbarNamespace)
@@ -361,7 +368,7 @@ public struct MainSplitView: View {
             .clipShape(Capsule())
         }
         .buttonStyle(.plain)
-        .help(isDistribution ? appState.t(.tabCorrection) : "Accueil de la correction (mosaïque des paquets)")
+        .help(appState.activeCorrectionScan != nil ? "Retourner à la mosaïque des devoirs" : "Accueil de la correction")
     }
 
     @ViewBuilder
@@ -414,7 +421,7 @@ public struct MainSplitView: View {
                 if isTabActive {
                     Capsule()
                         .fill(LinearGradient.electricBlue)
-                        .matchedGeometryEffect(id: "activeMainPill", in: toolbarNamespace)
+                        .matchedGeometryEffect(id: "activeCenterTabPill", in: toolbarNamespace)
                         .shadow(color: Color.blue.opacity(0.3), radius: 6, y: 2)
                 } else {
                     Capsule()
@@ -511,7 +518,7 @@ public struct MainSplitView: View {
                 if isTabActive {
                     Capsule()
                         .fill(LinearGradient.electricBlue)
-                        .matchedGeometryEffect(id: "activeMainPill", in: toolbarNamespace)
+                        .matchedGeometryEffect(id: "activeCenterTabPill", in: toolbarNamespace)
                         .shadow(color: Color.blue.opacity(0.3), radius: 6, y: 2)
                 } else {
                     Capsule()
@@ -545,11 +552,12 @@ public struct MainSplitView: View {
         }
     }
 
-    private var distributionMainButton: some View {
-        let isDistribution = (activeScreen == .distribution)
-        let hasOpenScans = !appState.openCorrectionScans.isEmpty
+    private var isDistributionSelected: Bool {
+        activeScreen == .distribution
+    }
 
-        return Button {
+    private var distributionMainButton: some View {
+        Button {
             withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                 activeScreen = .distribution
                 if isSidebarOpen {
@@ -561,17 +569,15 @@ public struct MainSplitView: View {
                 Image(systemName: "paperplane.fill")
                     .font(.system(size: 13, weight: .semibold))
 
-                if !hasOpenScans || isDistribution {
-                    Text(appState.t(.tabDistribution))
-                        .font(.system(size: 13, weight: isDistribution ? .bold : .medium))
-                }
+                Text(appState.t(.tabDistribution))
+                    .font(.system(size: 13, weight: isDistributionSelected ? .bold : .medium))
             }
-            .foregroundColor(isDistribution ? .white : .primary)
-            .padding(.horizontal, (hasOpenScans && !isDistribution) ? 10 : 14)
+            .foregroundColor(isDistributionSelected ? .white : .primary)
+            .padding(.horizontal, 11)
             .padding(.vertical, 7)
             .background(
                 Group {
-                    if isDistribution {
+                    if isDistributionSelected {
                         Capsule()
                             .fill(LinearGradient.emeraldGreen)
                             .matchedGeometryEffect(id: "activeMainPill", in: toolbarNamespace)
@@ -584,7 +590,7 @@ public struct MainSplitView: View {
             .clipShape(Capsule())
         }
         .buttonStyle(.plain)
-        .help((hasOpenScans && !isDistribution) ? appState.t(.tabDistribution) : "")
+        .help("Distribution et envoi des devoirs")
     }
 
     // MARK: - Stepper Flottant de Distribution (Option B)
@@ -618,38 +624,40 @@ public struct MainSplitView: View {
                 appState.distributionStep = step
             }
         } label: {
-            HStack(spacing: 6) {
+            HStack(spacing: 5) {
                 ZStack {
                     if isDone {
                         Circle()
                             .fill(Color(hex: "10B981"))
-                            .frame(width: 18, height: 18)
+                            .frame(width: 17, height: 17)
                         Image(systemName: "checkmark")
-                            .font(.system(size: 9, weight: .bold))
+                            .font(.system(size: 8.5, weight: .bold))
                             .foregroundColor(.white)
                     } else if isActive {
                         Circle()
                             .fill(Color.white)
-                            .frame(width: 18, height: 18)
+                            .frame(width: 17, height: 17)
                         Text("\(step)")
-                            .font(.system(size: 10, weight: .bold))
+                            .font(.system(size: 9.5, weight: .bold))
                             .foregroundColor(Color(hex: "059669"))
                     } else {
                         Circle()
                             .fill(Color.primary.opacity(0.08))
-                            .frame(width: 18, height: 18)
+                            .frame(width: 17, height: 17)
                         Text("\(step)")
-                            .font(.system(size: 10, weight: .semibold))
+                            .font(.system(size: 9.5, weight: .semibold))
                             .foregroundColor(.secondary)
                     }
                 }
 
                 Text(title)
-                    .font(.system(size: 12, weight: isActive ? .bold : .medium))
+                    .font(.system(size: 11.5, weight: isActive ? .bold : .medium))
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
                     .foregroundColor(isActive ? .white : (isDone ? .primary : .secondary))
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
             .background(
                 Group {
                     if isActive {
