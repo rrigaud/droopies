@@ -39,6 +39,9 @@ public struct SplashSetupView: View {
     @State private var folderStatusMessage: String? = nil
     @State private var isFolderValidated: Bool = false
 
+    /// Indique si l'appareil est au premier démarrage SANS Internet et SANS cache local
+    @State private var isFirstLaunchOfflineBlocked: Bool = false
+
     @State private var isLoadingData: Bool = false
     @State private var isDataLoaded: Bool = false
 
@@ -73,7 +76,11 @@ public struct SplashSetupView: View {
         ZStack {
             LiquidGlassBackground()
 
-            if !needsManualSetup {
+            if isFirstLaunchOfflineBlocked {
+                // MARK: - Mode 0 : Premier Lancement Hors-Ligne (Bloqué au splashscreen avec explications)
+                firstLaunchOfflineBlockedView
+                    .transition(.opacity)
+            } else if !needsManualSetup {
                 // MARK: - Mode 1 : Splashscreen Épuré Plein Écran (Lancements normaux)
                 VStack(spacing: 24) {
                     Spacer()
@@ -203,6 +210,18 @@ public struct SplashSetupView: View {
         .task {
             await autoDetectExistingConnection()
         }
+        .onChange(of: NetworkMonitor.shared.isOnline) { _, isOnline in
+            if isOnline && isFirstLaunchOfflineBlocked {
+                print("[SplashSetupView] 🟢 Connexion Internet rétablie : tentative d'initialisation automatique.")
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                    isFirstLaunchOfflineBlocked = false
+                    isCheckingCloud = true
+                }
+                Task {
+                    await autoDetectExistingConnection()
+                }
+            }
+        }
         .toolbar {
             if isSwitcherMode {
                 ToolbarItem(placement: .cancellationAction) {
@@ -212,6 +231,77 @@ public struct SplashSetupView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Mode 0 : Premier Lancement Hors-Ligne (Bloqué avec explications bienveillantes)
+
+    private var firstLaunchOfflineBlockedView: some View {
+        VStack(spacing: 24) {
+            Spacer()
+
+            DroopiesMascotView(size: 150, hasShadow: true, isAnimated: true)
+
+            VStack(spacing: 6) {
+                Text("Droopies")
+                    .font(.system(size: 34, weight: .bold, design: .rounded))
+
+                Text("Studio Numérique Enseignant • 100% Cloud")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+
+            VStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(Color.orange.opacity(0.15))
+                        .frame(width: 64, height: 64)
+
+                    Image(systemName: "wifi.slash")
+                        .font(.system(size: 28, weight: .semibold))
+                        .foregroundColor(.orange)
+                }
+
+                VStack(spacing: 8) {
+                    Text("Connexion Internet requise pour l'initialisation")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(.primary)
+                        .multilineTextAlignment(.center)
+
+                    Text("Droopies fonctionne directement avec votre espace Cloud. Lors du tout premier lancement sur cet appareil, une connexion Internet est indispensable pour configurer votre dossier enseignant et synchroniser vos classes.")
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(3)
+                }
+
+                Divider()
+
+                HStack(spacing: 8) {
+                    ProgressView().scaleEffect(0.8)
+                    Text("En attente d'une connexion réseau (Wi-Fi ou câble)...")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.vertical, 4)
+
+                Button {
+                    Task {
+                        await autoDetectExistingConnection()
+                    }
+                } label: {
+                    Label("Réessayer la connexion", systemImage: "arrow.clockwise")
+                        .font(.system(size: 13, weight: .semibold))
+                }
+                .buttonStyle(VibrantGradientButtonStyle(gradient: .electricBlue, isCompact: true))
+            }
+            .padding(22)
+            .glassCard(cornerRadius: 20, strokeOpacity: 0.35)
+            .frame(maxWidth: 480)
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.horizontal, 24)
     }
 
     // MARK: - Barre de Progression Native (Hauteur Doublée à 8pt)
@@ -677,15 +767,22 @@ public struct SplashSetupView: View {
         isCheckingCloud = true
         defer { isCheckingCloud = false }
 
+        if CommandLine.arguments.contains("-testOfflineFirstLaunch") {
+            NetworkMonitor.shared.isForcedOffline = true
+        }
+
+        let isSimulatedFresh = CommandLine.arguments.contains("-testOfflineFirstLaunch")
+        let isOnline = isSimulatedFresh ? false : NetworkMonitor.shared.isOnline
+
         let provider = DropboxStorageProvider()
+        let hasCache = isSimulatedFresh ? false : ((try? await appState.storageManager.localCacheProvider.itemExists(at: "Configuration/eleves.json")) ?? false)
+        let hasSession = isSimulatedFresh ? false : provider.isConnected
 
-        // MARK: - 1. Démarrage Instantané Hors-Ligne (iPad en classe ou sans réseau)
-        if !NetworkMonitor.shared.isOnline {
+        // MARK: - CAS 1 : Hors-Ligne
+        if !isOnline {
             print("[SplashSetupView] Démarrage hors-ligne détecté.")
-            let hasCache = (try? await appState.storageManager.localCacheProvider.itemExists(at: "Configuration/eleves.json")) ?? false
-            let hasSession = provider.isConnected
-
             if hasCache || hasSession {
+                // Mode Hors-Ligne normal en classe : lecture du cache local
                 await updateProgress(value: 0.40, label: "Mode Hors-Ligne • Lecture du cache local...")
                 await appState.loadInitialData { progress, label in
                     Task { @MainActor in
@@ -698,76 +795,97 @@ public struct SplashSetupView: View {
                     self.onFinish()
                 }
                 return
+            } else {
+                // Premier Lancement Hors-Ligne (appareil vierge sans compte ni cache local)
+                print("[SplashSetupView] Premier lancement hors-ligne sans données : attente de connexion Internet.")
+                await MainActor.run {
+                    self.isFirstLaunchOfflineBlocked = true
+                    self.isCheckingCloud = false
+                }
+                return
             }
         }
 
+        // MARK: - CAS 2 : En Ligne
+        await MainActor.run {
+            self.isFirstLaunchOfflineBlocked = false
+        }
+
+        // Si aucun compte Cloud n'est encore associé (premier démarrage en ligne)
+        if !provider.isConnected {
+            print("[SplashSetupView] Premier lancement en ligne : aucun compte Cloud lié, affichage de l'assistant.")
+            await MainActor.run {
+                self.isCloudConnected = false
+                self.isCheckingCloud = false
+            }
+            return
+        }
+
+        // Compte déjà associé : vérification du compte et du dossier
         await updateProgress(value: 0.10, label: "Connexion sécurisée à votre compte Cloud...")
 
-        if provider.isConnected {
-            do {
-                let info = try await provider.testConnection()
-                await updateProgress(value: 0.20, label: "Compte Cloud vérifié (\(info.name))")
+        do {
+            let info = try await provider.testConnection()
+            await updateProgress(value: 0.20, label: "Compte Cloud vérifié (\(info.name))")
 
-                var savedFolder = provider.rootFolderPath
-                if savedFolder.isEmpty {
-                    savedFolder = UserDefaults.standard.string(forKey: "droopies_selected_folder") ?? ""
+            var savedFolder = provider.rootFolderPath
+            if savedFolder.isEmpty {
+                savedFolder = UserDefaults.standard.string(forKey: "droopies_selected_folder") ?? ""
+            }
+            let cleanSaved = savedFolder.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+
+            // Si le chemin sauvegardé est vide, "/", ou un ancien dossier par défaut obsolète,
+            // il n'est pas considéré comme un sous-dossier source valide.
+            if cleanSaved.isEmpty || savedFolder == "/Droopies" || savedFolder == "Droopies" || savedFolder == "/Droopy" || savedFolder == "Droopy" {
+                savedFolder = ""
+                provider.setRootFolderPath("")
+                UserDefaults.standard.removeObject(forKey: "droopies_dropbox_root_path")
+                UserDefaults.standard.removeObject(forKey: "droopies_selected_folder")
+            }
+
+            // Vérifier si le dossier mémorisé existe RÉELLEMENT sur Dropbox
+            var folderExists = false
+            if !savedFolder.isEmpty {
+                await updateProgress(value: 0.30, label: "Accès au dossier Source '\(cleanSaved)'...")
+                folderExists = (try? await provider.folderExists(at: savedFolder)) ?? false
+            }
+
+            await MainActor.run {
+                self.appState.storageManager.setProvider(provider)
+                self.isCloudConnected = true
+                self.connectedUserDisplayName = info.name
+                self.connectedUserEmail = info.email
+                self.cloudStatusMessage = "\(info.name) (\(info.email))"
+                self.rootFolder = savedFolder
+                self.isFolderValidated = folderExists
+                if !folderExists {
+                    self.isDataLoaded = false
                 }
-                let cleanSaved = savedFolder.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            }
 
-                // Si le chemin sauvegardé est vide, "/", ou un ancien dossier par défaut obsolète,
-                // il n'est pas considéré comme un sous-dossier source valide.
-                if cleanSaved.isEmpty || savedFolder == "/Droopies" || savedFolder == "Droopies" || savedFolder == "/Droopy" || savedFolder == "Droopy" {
-                    savedFolder = ""
-                    provider.setRootFolderPath("")
-                    UserDefaults.standard.removeObject(forKey: "droopies_dropbox_root_path")
-                    UserDefaults.standard.removeObject(forKey: "droopies_selected_folder")
+            // Transition automatique : uniquement au démarrage initial (Splashscreen froid) !
+            if !isSwitcherMode && folderExists && !savedFolder.isEmpty {
+                await applyAndValidateSourceFolder(savedFolder)
+            }
+        } catch {
+            print("[SplashSetupView] Test Cloud échoué (\(error.localizedDescription)). Vérification cache local...")
+            if hasCache {
+                await updateProgress(value: 0.50, label: "Réseau distant indisponible • Basculement Hors-Ligne...")
+                await appState.loadInitialData { progress, label in
+                    Task { @MainActor in
+                        self.updateProgress(value: 0.50 + (progress * 0.50), label: label)
+                    }
                 }
-
-                // Vérifier si le dossier mémorisé existe RÉELLEMENT sur Dropbox
-                var folderExists = false
-                if !savedFolder.isEmpty {
-                    await updateProgress(value: 0.30, label: "Accès au dossier Source '\(cleanSaved)'...")
-                    folderExists = (try? await provider.folderExists(at: savedFolder)) ?? false
-                }
-
+                await updateProgress(value: 1.0, label: "Mode Hors-Ligne prêt • Studio de correction actif")
+                try? await Task.sleep(nanoseconds: 200_000_000)
                 await MainActor.run {
-                    self.appState.storageManager.setProvider(provider)
-                    self.isCloudConnected = true
-                    self.connectedUserDisplayName = info.name
-                    self.connectedUserEmail = info.email
-                    self.cloudStatusMessage = "\(info.name) (\(info.email))"
-                    self.rootFolder = savedFolder
-                    self.isFolderValidated = folderExists
-                    if !folderExists {
-                        self.isDataLoaded = false
-                    }
+                    self.onFinish()
                 }
+                return
+            }
 
-                // Transition automatique : uniquement au démarrage initial (Splashscreen froid) !
-                if !isSwitcherMode && folderExists && !savedFolder.isEmpty {
-                    await applyAndValidateSourceFolder(savedFolder)
-                }
-            } catch {
-                print("[SplashSetupView] Test Cloud échoué (\(error.localizedDescription)). Vérification cache local...")
-                let hasCache = (try? await appState.storageManager.localCacheProvider.itemExists(at: "Configuration/eleves.json")) ?? false
-                if hasCache || provider.isConnected {
-                    await updateProgress(value: 0.50, label: "Réseau distant indisponible • Basculement Hors-Ligne...")
-                    await appState.loadInitialData { progress, label in
-                        Task { @MainActor in
-                            self.updateProgress(value: 0.50 + (progress * 0.50), label: label)
-                        }
-                    }
-                    await updateProgress(value: 1.0, label: "Mode Hors-Ligne prêt • Studio de correction actif")
-                    try? await Task.sleep(nanoseconds: 200_000_000)
-                    await MainActor.run {
-                        self.onFinish()
-                    }
-                    return
-                }
-
-                await MainActor.run {
-                    self.isCloudConnected = false
-                }
+            await MainActor.run {
+                self.isCloudConnected = false
             }
         }
     }

@@ -82,8 +82,8 @@ public final class StorageManager: @unchecked Sendable {
         // S'assurer que le dossier Configuration existe dans le cache local
         try? await localCacheProvider.createDirectory(at: "Configuration")
 
-        // 1. Si en ligne avec un compte Cloud distant, interroger Dropbox
-        if NetworkMonitor.shared.isOnline, !(activeProvider is LocalStorageProvider) {
+        // 1. Si en ligne avec un compte Cloud distant et connecté, interroger Dropbox
+        if NetworkMonitor.shared.isOnline, !(activeProvider is LocalStorageProvider), activeProvider.isConnected {
             try? await activeProvider.createDirectory(at: "Configuration")
 
             if let data = try? await activeProvider.readData(at: "Configuration/eleves.json") {
@@ -183,8 +183,8 @@ public final class StorageManager: @unchecked Sendable {
     public func loadSettings() async throws -> AppSettings {
         try? await localCacheProvider.createDirectory(at: "Configuration")
 
-        // 1. Tenter depuis le Cloud si en ligne
-        if NetworkMonitor.shared.isOnline, !(activeProvider is LocalStorageProvider) {
+        // 1. Tenter depuis le Cloud si en ligne et connecté
+        if NetworkMonitor.shared.isOnline, !(activeProvider is LocalStorageProvider), activeProvider.isConnected {
             try? await activeProvider.createDirectory(at: "Configuration")
             if let data = try? await activeProvider.readData(at: "Configuration/settings.json") {
                 try? await localCacheProvider.writeData(data, to: "Configuration/settings.json")
