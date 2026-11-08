@@ -97,6 +97,44 @@ public struct Student: Identifiable, Codable, Hashable, Sendable {
     // MARK: - Propriétés calculées utiles
 
     /// Nom de dossier physique nettoyé de tous les accents et caractères spéciaux
+    
+    /// Alias générique pour l'URL du dossier Cloud partagé (Dropbox, Nextcloud, etc.)
+    public var urlCloud: String {
+        get { urlDropbox }
+        set { urlDropbox = newValue }
+    }
+
+    /// Nombre de copies actuellement archivées
+    public var copiesCount: Int = 0
+
+    /// Nom de famille (en majuscules, ex: "CURIE" ou "DE LA TOUR")
+    public var lastName: String {
+        let parts = name.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }
+        guard parts.count > 1 else { return name }
+        var nonNumeric = parts
+        while let last = nonNumeric.last, Int(last) != nil {
+            nonNumeric.removeLast()
+        }
+        if nonNumeric.count > 1 {
+            return nonNumeric.dropLast().joined(separator: " ")
+        }
+        return nonNumeric.first ?? name
+    }
+
+    /// Prénom (capitalisé, ex: "Marie" ou "Jean 2")
+    public var firstName: String {
+        let parts = name.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }
+        guard parts.count > 1 else { return "" }
+        var nonNumeric = parts
+        var trailing: [String] = []
+        while let last = nonNumeric.last, Int(last) != nil {
+            trailing.insert(last, at: 0)
+            nonNumeric.removeLast()
+        }
+        let fn = nonNumeric.last ?? ""
+        return trailing.isEmpty ? fn : "\(fn) \(trailing.joined(separator: " "))"
+    }
+
     public var folderName: String {
         Student.sanitizeFolderName(name)
     }
@@ -111,16 +149,51 @@ public struct Student: Identifiable, Codable, Hashable, Sendable {
 
     // MARK: - Méthodes de nettoyage de texte
 
-    /// Nettoie les espaces multiples et normalise la casse
+    /// Normalise le nom selon les conventions scolaires : NOM en majuscules, Prénom capitalisé
+    /// Exemple : "atton olivier" -> "ATTON Olivier", "ATTON Olivier 2" -> "ATTON Olivier 2"
     public static func sanitizeName(_ raw: String) -> String {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        let components = trimmed.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }
-        return components.joined(separator: " ")
+        let parts = trimmed.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }
+        guard !parts.isEmpty else { return "" }
+
+        // Isoler d'éventuels suffixes numériques (ex: "ATTON Olivier 2")
+        var nonNumericParts = parts
+        var trailingNumbers: [String] = []
+        while let last = nonNumericParts.last, Int(last) != nil {
+            trailingNumbers.insert(last, at: 0)
+            nonNumericParts.removeLast()
+        }
+
+        if nonNumericParts.isEmpty {
+            return parts.joined(separator: " ")
+        }
+
+        var formattedParts: [String] = []
+        if nonNumericParts.count == 1 {
+            formattedParts.append(nonNumericParts[0].uppercased())
+        } else {
+            // Tous les mots sauf le dernier : NOM DE FAMILLE en MAJUSCULES
+            for i in 0..<(nonNumericParts.count - 1) {
+                formattedParts.append(nonNumericParts[i].uppercased())
+            }
+            // Dernier mot : Prénom (1ère lettre majuscule, reste minuscule, y compris prénoms composés)
+            let prenom = nonNumericParts.last!
+            let prenomComponents = prenom.split(separator: "-").map { comp -> String in
+                let str = String(comp)
+                guard let first = str.first else { return "" }
+                return first.uppercased() + str.dropFirst().lowercased()
+            }
+            formattedParts.append(prenomComponents.joined(separator: "-"))
+        }
+
+        formattedParts.append(contentsOf: trailingNumbers)
+        return formattedParts.joined(separator: " ")
     }
 
-    /// Transforme un nom en nom de dossier sécurisé sans accents
+    /// Transforme un nom en nom de dossier sécurisé sans accents en préservant strictement la casse (NOM Prénom)
     public static func sanitizeFolderName(_ raw: String) -> String {
-        let folded = raw.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
+        // diacriticInsensitive sans caseInsensitive pour préserver les majuscules et minuscules
+        let folded = raw.folding(options: [.diacriticInsensitive], locale: .current)
         let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: " -_"))
         let cleaned = folded.unicodeScalars.filter { allowed.contains($0) }
         let result = String(String.UnicodeScalarView(cleaned)).trimmingCharacters(in: .whitespacesAndNewlines)

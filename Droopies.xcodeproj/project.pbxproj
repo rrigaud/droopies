@@ -6,6 +6,12 @@
 	objectVersion = 56;
 	objects = {
 /* Begin PBXBuildFile section */
+		B00A11B2C3D4E5F6A7B8C9D3 /* PortalGeneratorService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00A11B2C3D4E5F6A7B8C9D1 /* PortalGeneratorService.swift */; };
+		B00A11B2C3D4E5F6A7B8C9D4 /* PortalDefaultIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00A11B2C3D4E5F6A7B8C9D2 /* PortalDefaultIcon.swift */; };
+		480C9D140580414D92918FB9 /* TeacherMemoSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6D42A7EFBC246B4A8FF882B /* TeacherMemoSheet.swift */; };
+		537867D3868D4658AA1A0A15 /* PasswordGenerationSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03E4DA8043C345B9AF8D1E75 /* PasswordGenerationSheet.swift */; };
+		E2CF8DD7E69348BB9171882A /* PasswordGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7A2522629A749F59D1F0BCB /* PasswordGenerator.swift */; };
+		7CDE4742396946B1AEAA9CAB /* L10n.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D1768B6A9FC49B3AFD08FED /* L10n.swift */; };
 		BD9856F89A254B18A95F5F05 /* DroopiesApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF568F9666D143E39D3A7884 /* DroopiesApp.swift */; };
 		684AAD1881BA46FF83C1920B /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 698F5CE7621740A997A33753 /* AppSettings.swift */; };
 		21EBF3AEE3394C2F91F8FE17 /* ClassGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = F559E7A374E1461EAF64806C /* ClassGroup.swift */; };
@@ -17,8 +23,12 @@
 		3FF021A6D64F4B5FB73A92D0 /* DropboxStorageProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDF99EC28CBE483D9F5CF467 /* DropboxStorageProvider.swift */; };
 		5A9CA36F49A04B49882A382C /* LocalStorageProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D823552C1BF84CB6AF694448 /* LocalStorageProvider.swift */; };
 		B0CCE946C3D847F0B9B57C86 /* StorageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C9A4F8AFCE44177AFF5ACA0 /* StorageManager.swift */; };
+		N001A11B2C3D4E5F6A7B8C01 /* NetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = N002A11B2C3D4E5F6A7B8C02 /* NetworkMonitor.swift */; };
+		S001A11B2C3D4E5F6A7B8C01 /* OfflineSyncEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = S002A11B2C3D4E5F6A7B8C02 /* OfflineSyncEngine.swift */; };
 		6CB25701CE334087A5C9B613 /* StorageProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73122792E2E0456382F2E5B1 /* StorageProvider.swift */; };
 		03571DEE227A4306932DB94D /* PDFEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235D8B38335E4AEBB39E055D /* PDFEngine.swift */; };
+		B22C3D4E5F6A7B8C9D0E1F2A /* StudentLabelsPDFGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11B2C3D4E5F6A7B8C9D0E1F /* StudentLabelsPDFGenerator.swift */; };
+		D33E4F5A6B7C8D9E0F1A2B3C /* TeacherMemoPDFGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C22D3E4F5A6B7C8D9E0F1A2B /* TeacherMemoPDFGenerator.swift */; };
 		6875CDCF1B9F4059AFBD90AC /* OCREngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67F1CFDEED5D4C5D8B8F028C /* OCREngine.swift */; };
 		2012EA8E6758470195806EB5 /* StudentMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64922686CF6848C0A2274ADB /* StudentMatcher.swift */; };
 		998E75A688A248A8B3F7E409 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AF983FCF84D43658E6D0925 /* AppState.swift */; };
@@ -28,6 +38,8 @@
 		07364B8A28114FBC9BBC34E5 /* GlassComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F51FD117BE3047188F97D511 /* GlassComponents.swift */; };
 		E69089CC2C504695871623E9 /* DroopiesMascotView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AC6A2CFF646430389A2E6B6 /* DroopiesMascotView.swift */; };
 		3A04BBF8E19B4639940725E2 /* CloudFolderPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C769A07D8F8443889A78CAFF /* CloudFolderPickerSheet.swift */; };
+		A4B1CC77E19B4639940725E2 /* CloudCSVFilePickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C769A07D8F8443889A78CC11 /* CloudCSVFilePickerSheet.swift */; };
+		E8A201A12900010100000001 /* CloudImagePickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8A201A02900010100000001 /* CloudImagePickerSheet.swift */; };
 		F602766BE11D4FF79986BC50 /* KPICard.swift in Sources */ = {isa = PBXBuildFile; fileRef = BABEB20AF8EE4EACAD378710 /* KPICard.swift */; };
 		C1BD89AD319344CCA945EAA5 /* PDFKitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 735A04CF8B914B5697E6498C /* PDFKitView.swift */; };
 		33B68E59151F4364B88C33C4 /* PencilCanvasOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = F903F61DF318405DACF0F956 /* PencilCanvasOverlay.swift */; };
@@ -47,6 +59,12 @@
 		1A08E039EF474DE3B83CC29C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B4E43E30C77745679D9CE033 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 /* Begin PBXFileReference section */
+		B00A11B2C3D4E5F6A7B8C9D1 /* PortalGeneratorService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PortalGeneratorService.swift"; sourceTree = "<group>"; };
+		B00A11B2C3D4E5F6A7B8C9D2 /* PortalDefaultIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PortalDefaultIcon.swift"; sourceTree = "<group>"; };
+		E6D42A7EFBC246B4A8FF882B /* TeacherMemoSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TeacherMemoSheet.swift"; sourceTree = "<group>"; };
+		03E4DA8043C345B9AF8D1E75 /* PasswordGenerationSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PasswordGenerationSheet.swift"; sourceTree = "<group>"; };
+		D7A2522629A749F59D1F0BCB /* PasswordGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PasswordGenerator.swift"; sourceTree = "<group>"; };
+		0D1768B6A9FC49B3AFD08FED /* L10n.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "L10n.swift"; sourceTree = "<group>"; };
 		14B9BDD37D0B4D719674A212 /* Droopies.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Droopies.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CF568F9666D143E39D3A7884 /* DroopiesApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DroopiesApp.swift"; sourceTree = "<group>"; };
 		698F5CE7621740A997A33753 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppSettings.swift"; sourceTree = "<group>"; };
@@ -59,8 +77,12 @@
 		FDF99EC28CBE483D9F5CF467 /* DropboxStorageProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DropboxStorageProvider.swift"; sourceTree = "<group>"; };
 		D823552C1BF84CB6AF694448 /* LocalStorageProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LocalStorageProvider.swift"; sourceTree = "<group>"; };
 		3C9A4F8AFCE44177AFF5ACA0 /* StorageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StorageManager.swift"; sourceTree = "<group>"; };
+		N002A11B2C3D4E5F6A7B8C02 /* NetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NetworkMonitor.swift"; sourceTree = "<group>"; };
+		S002A11B2C3D4E5F6A7B8C02 /* OfflineSyncEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "OfflineSyncEngine.swift"; sourceTree = "<group>"; };
 		73122792E2E0456382F2E5B1 /* StorageProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StorageProvider.swift"; sourceTree = "<group>"; };
 		235D8B38335E4AEBB39E055D /* PDFEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PDFEngine.swift"; sourceTree = "<group>"; };
+		A11B2C3D4E5F6A7B8C9D0E1F /* StudentLabelsPDFGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StudentLabelsPDFGenerator.swift"; sourceTree = "<group>"; };
+		C22D3E4F5A6B7C8D9E0F1A2B /* TeacherMemoPDFGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TeacherMemoPDFGenerator.swift"; sourceTree = "<group>"; };
 		67F1CFDEED5D4C5D8B8F028C /* OCREngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "OCREngine.swift"; sourceTree = "<group>"; };
 		64922686CF6848C0A2274ADB /* StudentMatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StudentMatcher.swift"; sourceTree = "<group>"; };
 		9AF983FCF84D43658E6D0925 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppState.swift"; sourceTree = "<group>"; };
@@ -70,6 +92,8 @@
 		F51FD117BE3047188F97D511 /* GlassComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GlassComponents.swift"; sourceTree = "<group>"; };
 		1AC6A2CFF646430389A2E6B6 /* DroopiesMascotView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DroopiesMascotView.swift"; sourceTree = "<group>"; };
 		C769A07D8F8443889A78CAFF /* CloudFolderPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CloudFolderPickerSheet.swift"; sourceTree = "<group>"; };
+		C769A07D8F8443889A78CC11 /* CloudCSVFilePickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CloudCSVFilePickerSheet.swift"; sourceTree = "<group>"; };
+		E8A201A02900010100000001 /* CloudImagePickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CloudImagePickerSheet.swift"; sourceTree = "<group>"; };
 		BABEB20AF8EE4EACAD378710 /* KPICard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "KPICard.swift"; sourceTree = "<group>"; };
 		735A04CF8B914B5697E6498C /* PDFKitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PDFKitView.swift"; sourceTree = "<group>"; };
 		F903F61DF318405DACF0F956 /* PencilCanvasOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PencilCanvasOverlay.swift"; sourceTree = "<group>"; };
@@ -130,6 +154,8 @@
 		593050D1122B40C38183C737 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				D7A2522629A749F59D1F0BCB /* PasswordGenerator.swift */,
+				0D1768B6A9FC49B3AFD08FED /* L10n.swift */,
 				698F5CE7621740A997A33753 /* AppSettings.swift */,
 				F559E7A374E1461EAF64806C /* ClassGroup.swift */,
 				A282270706FA4F2A8EEE30EC /* Evaluation.swift */,
@@ -142,11 +168,30 @@
 		F7B32C5DFC0845F3829DA75A /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				N003A11B2C3D4E5F6A7B8C03 /* Network */,
+				B00A11B2C3D4E5F6A7B8C9D0 /* PortalEngine */,
 				F18D7C3E2395423FAA69FED2 /* Storage */,
 				749A7A0AB2DD42E484FC6630 /* PDFEngine */,
 				80B8DC2CDACE4ADEA5526D6D /* OCREngine */,
 			);
 			path = "Services";
+			sourceTree = "<group>";
+		};
+		N003A11B2C3D4E5F6A7B8C03 /* Network */ = {
+			isa = PBXGroup;
+			children = (
+				N002A11B2C3D4E5F6A7B8C02 /* NetworkMonitor.swift */,
+			);
+			path = "Network";
+			sourceTree = "<group>";
+		};
+				B00A11B2C3D4E5F6A7B8C9D0 /* PortalEngine */ = {
+			isa = PBXGroup;
+			children = (
+				B00A11B2C3D4E5F6A7B8C9D1 /* PortalGeneratorService.swift */,
+				B00A11B2C3D4E5F6A7B8C9D2 /* PortalDefaultIcon.swift */,
+			);
+			path = "PortalEngine";
 			sourceTree = "<group>";
 		};
 		F18D7C3E2395423FAA69FED2 /* Storage */ = {
@@ -156,6 +201,7 @@
 				2A527B78E81C44B28F4251AE /* DropboxOAuthManager.swift */,
 				FDF99EC28CBE483D9F5CF467 /* DropboxStorageProvider.swift */,
 				D823552C1BF84CB6AF694448 /* LocalStorageProvider.swift */,
+				S002A11B2C3D4E5F6A7B8C02 /* OfflineSyncEngine.swift */,
 				3C9A4F8AFCE44177AFF5ACA0 /* StorageManager.swift */,
 				73122792E2E0456382F2E5B1 /* StorageProvider.swift */,
 			);
@@ -166,6 +212,8 @@
 			isa = PBXGroup;
 			children = (
 				235D8B38335E4AEBB39E055D /* PDFEngine.swift */,
+				A11B2C3D4E5F6A7B8C9D0E1F /* StudentLabelsPDFGenerator.swift */,
+				C22D3E4F5A6B7C8D9E0F1A2B /* TeacherMemoPDFGenerator.swift */,
 			);
 			path = "PDFEngine";
 			sourceTree = "<group>";
@@ -209,6 +257,8 @@
 				F51FD117BE3047188F97D511 /* GlassComponents.swift */,
 				1AC6A2CFF646430389A2E6B6 /* DroopiesMascotView.swift */,
 				C769A07D8F8443889A78CAFF /* CloudFolderPickerSheet.swift */,
+				C769A07D8F8443889A78CC11 /* CloudCSVFilePickerSheet.swift */,
+				E8A201A02900010100000001 /* CloudImagePickerSheet.swift */,
 				BABEB20AF8EE4EACAD378710 /* KPICard.swift */,
 				735A04CF8B914B5697E6498C /* PDFKitView.swift */,
 				F903F61DF318405DACF0F956 /* PencilCanvasOverlay.swift */,
@@ -240,6 +290,8 @@
 		9BEC1EDECAFA473E9C6A7D6C /* Students */ = {
 			isa = PBXGroup;
 			children = (
+				E6D42A7EFBC246B4A8FF882B /* TeacherMemoSheet.swift */,
+				03E4DA8043C345B9AF8D1E75 /* PasswordGenerationSheet.swift */,
 				D4A3090F75DA409BB5E93AE6 /* StudentsManagementView.swift */,
 				155223D2CD5D4E57925E4C13 /* StudentEditSheet.swift */,
 				B47776324BDD4EEA89FAEABB /* CSVImportWizardSheet.swift */,
@@ -297,7 +349,8 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastUpgradeCheck = 1600;
+				LastSwiftUpdateCheck = 2720;
+				LastUpgradeCheck = 2720;
 				TargetAttributes = {
 					577899A6D95C4321B9A058FF = {
 						CreatedOnToolsVersion = 16.0;
@@ -336,6 +389,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B00A11B2C3D4E5F6A7B8C9D3 /* PortalGeneratorService.swift in Sources */,
+				B00A11B2C3D4E5F6A7B8C9D4 /* PortalDefaultIcon.swift in Sources */,
+				480C9D140580414D92918FB9 /* TeacherMemoSheet.swift in Sources */,
+				537867D3868D4658AA1A0A15 /* PasswordGenerationSheet.swift in Sources */,
+				E2CF8DD7E69348BB9171882A /* PasswordGenerator.swift in Sources */,
+				7CDE4742396946B1AEAA9CAB /* L10n.swift in Sources */,
 				BD9856F89A254B18A95F5F05 /* DroopiesApp.swift in Sources */,
 				684AAD1881BA46FF83C1920B /* AppSettings.swift in Sources */,
 				21EBF3AEE3394C2F91F8FE17 /* ClassGroup.swift in Sources */,
@@ -347,8 +406,12 @@
 				3FF021A6D64F4B5FB73A92D0 /* DropboxStorageProvider.swift in Sources */,
 				5A9CA36F49A04B49882A382C /* LocalStorageProvider.swift in Sources */,
 				B0CCE946C3D847F0B9B57C86 /* StorageManager.swift in Sources */,
+				N001A11B2C3D4E5F6A7B8C01 /* NetworkMonitor.swift in Sources */,
+				S001A11B2C3D4E5F6A7B8C01 /* OfflineSyncEngine.swift in Sources */,
 				6CB25701CE334087A5C9B613 /* StorageProvider.swift in Sources */,
 				03571DEE227A4306932DB94D /* PDFEngine.swift in Sources */,
+				B22C3D4E5F6A7B8C9D0E1F2A /* StudentLabelsPDFGenerator.swift in Sources */,
+				D33E4F5A6B7C8D9E0F1A2B3C /* TeacherMemoPDFGenerator.swift in Sources */,
 				6875CDCF1B9F4059AFBD90AC /* OCREngine.swift in Sources */,
 				2012EA8E6758470195806EB5 /* StudentMatcher.swift in Sources */,
 				998E75A688A248A8B3F7E409 /* AppState.swift in Sources */,
@@ -358,6 +421,8 @@
 				07364B8A28114FBC9BBC34E5 /* GlassComponents.swift in Sources */,
 				E69089CC2C504695871623E9 /* DroopiesMascotView.swift in Sources */,
 				3A04BBF8E19B4639940725E2 /* CloudFolderPickerSheet.swift in Sources */,
+				A4B1CC77E19B4639940725E2 /* CloudCSVFilePickerSheet.swift in Sources */,
+				E8A201A12900010100000001 /* CloudImagePickerSheet.swift in Sources */,
 				F602766BE11D4FF79986BC50 /* KPICard.swift in Sources */,
 				C1BD89AD319344CCA945EAA5 /* PDFKitView.swift in Sources */,
 				33B68E59151F4364B88C33C4 /* PencilCanvasOverlay.swift in Sources */,
@@ -391,6 +456,7 @@
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -422,6 +488,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;

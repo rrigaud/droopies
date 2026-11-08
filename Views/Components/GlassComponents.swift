@@ -71,6 +71,12 @@ public extension LinearGradient {
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )
+
+    static let subtleGray = LinearGradient(
+        colors: [Color.gray.opacity(0.35), Color.gray.opacity(0.45)],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
 }
 
 // MARK: - Arrière-plan Ambiant Liquid Glass
@@ -262,6 +268,7 @@ public struct VibrantGradientButtonStyle: ButtonStyle {
     public static let emeraldGreen = LinearGradient.emeraldGreen
     public static let coralOrange = LinearGradient.coralOrange
     public static let violetPurple = LinearGradient.violetPurple
+    public static let subtleGray = LinearGradient.subtleGray
 
     public init(gradient: LinearGradient = .electricBlue, isCompact: Bool = false) {
         self.gradient = gradient
@@ -344,3 +351,17 @@ public struct GlassToolButton: View {
         .buttonStyle(.plain)
     }
 }
+
+// MARK: - Cross-Platform Text Input Helpers
+
+public extension View {
+    @ViewBuilder
+    func disableAutocapitalization() -> some View {
+        #if os(iOS)
+        self.textInputAutocapitalization(.never)
+        #else
+        self
+        #endif
+    }
+}
+

@@ -20,7 +20,45 @@ public struct AppSettings: Codable, Hashable, Sendable {
 
     // Préférences locales d'application (non stockées dans settings.json partagé)
     public var preferredTheme: ThemeMode
+    public var language: AppLanguage
     public var activeStorageProvider: StorageProviderType
+
+
+    public enum AppLanguage: String, Codable, Sendable, CaseIterable, Identifiable {
+        case automatic = "auto"
+        case frenchFR = "fr-FR"
+        case frenchCA = "fr-CA"
+        case english = "en"
+        case spanish = "es"
+        case italian = "it"
+        case german = "de"
+
+        public var id: String { rawValue }
+
+        public var displayName: String {
+            switch self {
+            case .automatic: return "Automatique (Langue de l'OS)"
+            case .frenchFR: return "Français (France) 🇫🇷"
+            case .frenchCA: return "Français (Canada) 🇨🇦"
+            case .english: return "English (US / UK) 🇬🇧"
+            case .spanish: return "Español 🇪🇸"
+            case .italian: return "Italiano 🇮🇹"
+            case .german: return "Deutsch 🇩🇪"
+            }
+        }
+
+        public var locale: Locale? {
+            switch self {
+            case .automatic: return nil
+            case .frenchFR: return Locale(identifier: "fr_FR")
+            case .frenchCA: return Locale(identifier: "fr_CA")
+            case .english: return Locale(identifier: "en_US")
+            case .spanish: return Locale(identifier: "es_ES")
+            case .italian: return Locale(identifier: "it_IT")
+            case .german: return Locale(identifier: "de_DE")
+            }
+        }
+    }
 
     public enum ThemeMode: String, Codable, Sendable, CaseIterable {
         case dark = "dark"
@@ -89,6 +127,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
         studentsLastSyncedAt: String? = nil,
         studentsLastModifiedAt: String? = nil,
         preferredTheme: ThemeMode = .dark,
+        language: AppLanguage = .automatic,
         activeStorageProvider: StorageProviderType = .dropbox
     ) {
         self.portalUrl = portalUrl
@@ -100,6 +139,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
         self.studentsLastSyncedAt = studentsLastSyncedAt
         self.studentsLastModifiedAt = studentsLastModifiedAt
         self.preferredTheme = preferredTheme
+        self.language = language
         self.activeStorageProvider = activeStorageProvider
     }
 
@@ -128,6 +168,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
         self.studentsLastModifiedAt = try? container.decode(String.self, forKey: .studentsLastModifiedAt)
 
         self.preferredTheme = .dark
+        self.language = AppLanguage(rawValue: UserDefaults.standard.string(forKey: "droopies_app_language") ?? "auto") ?? .automatic
         self.activeStorageProvider = .dropbox
     }
 

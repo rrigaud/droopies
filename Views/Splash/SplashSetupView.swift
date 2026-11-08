@@ -12,7 +12,9 @@ import SwiftUI
 import AuthenticationServices
 
 public struct SplashSetupView: View {
+    @Environment(\.dismiss) private var dismiss
     @Bindable public var appState: AppState
+    public var isSwitcherMode: Bool
     public var onFinish: () -> Void
 
     @State private var selectedProviderType: AppSettings.StorageProviderType = .dropbox
@@ -42,39 +44,28 @@ public struct SplashSetupView: View {
 
     @State private var errorMessage: String? = nil
 
-    public init(appState: AppState, onFinish: @escaping () -> Void) {
+    public init(appState: AppState, isSwitcherMode: Bool = false, onFinish: @escaping () -> Void) {
         self.appState = appState
+        self.isSwitcherMode = isSwitcherMode
         self.onFinish = onFinish
+        self._isCheckingCloud = State(initialValue: !isSwitcherMode)
     }
 
-    /// Calcul de progression fluide (0.0 -> 1.0)
-    private var progressValue: Double {
-        if isDataLoaded && isFolderValidated && isCloudConnected {
-            return 1.0
-        } else if isFolderValidated && isCloudConnected {
-            return 0.75
-        } else if isCloudConnected {
-            return 0.50
-        } else {
-            return 0.25
-        }
+    private var needsManualSetup: Bool {
+        if isSwitcherMode { return true }
+        if isCheckingCloud { return false }
+        return !isCloudConnected || !isFolderValidated || rootFolder.isEmpty
     }
 
-    private var progressLabel: String {
-        if isDataLoaded && isFolderValidated && isCloudConnected {
-            return "Environnement prêt • Ouverture de Droopies..."
-        } else if isLoadingData {
-            return "Chargement de vos évaluations et copies..."
-        } else if isCheckingFolder {
-            return "Vérification de l'arborescence du dossier Source dans votre Cloud..."
-        } else if isFolderValidated {
-            return "Dossier Source prêt dans votre Cloud"
-        } else if isConnectingCloud || isCheckingCloud {
-            return "Connexion sécurisée à votre compte Cloud..."
-        } else if isCloudConnected {
-            return "Compte connecté • En attente du dossier Source"
-        } else {
-            return "Veuillez connecter votre compte Cloud pour continuer"
+    // Progression fluide et dynamique échelonnée étape par étape (0.05 -> 1.0)
+    @State private var progressValue: Double = 0.05
+    @State private var progressLabel: String = "Connexion sécurisée à votre compte Cloud..."
+
+    @MainActor
+    private func updateProgress(value: Double, label: String) {
+        withAnimation(.easeOut(duration: 0.25)) {
+            self.progressValue = max(self.progressValue, min(1.0, value))
+            self.progressLabel = label
         }
     }
 
@@ -82,79 +73,115 @@ public struct SplashSetupView: View {
         ZStack {
             LiquidGlassBackground()
 
-            ScrollView {
-                VStack(spacing: 20) {
-                    // MARK: - Barre de progression native supérieure
-                    VStack(spacing: 8) {
-                        ProgressView(value: progressValue, total: 1.0)
-                            .progressViewStyle(LinearProgressViewStyle(tint: .accentColor))
-                            .frame(maxWidth: 460)
+            if !needsManualSetup {
+                // MARK: - Mode 1 : Splashscreen Épuré Plein Écran (Lancements normaux)
+                VStack(spacing: 24) {
+                    Spacer()
 
-                        HStack {
-                            Text(progressLabel)
-                                .font(.system(size: 12, weight: .medium, design: .rounded))
-                                .foregroundColor(.secondary)
+                    // Mascotte Droopies géante (Taille 160, flottante et respirante)
+                    DroopiesMascotView(size: 160, hasShadow: true, isAnimated: true)
 
-                            Spacer()
+                    // Titre et sous-titre
+                    VStack(spacing: 6) {
+                        Text("Droopies")
+                            .font(.system(size: 36, weight: .bold, design: .rounded))
 
-                            Text("\(Int(progressValue * 100)) %")
-                                .font(.system(size: 12, weight: .bold, design: .monospaced))
-                                .foregroundColor(.accentColor)
-                        }
-                        .frame(maxWidth: 460)
-                    }
-                    .padding(.top, 16)
-                    .padding(.horizontal, 24)
-
-                    // MARK: - En-tête avec Mascotte Officielle Droopy
-                    VStack(spacing: 10) {
-                        DroopiesMascotView(size: 80, hasShadow: true, isAnimated: true)
-
-                        VStack(spacing: 4) {
-                            Text("Droopies")
-                                .font(.system(size: 30, weight: .bold, design: .rounded))
-
-                            Text("Studio Numérique Enseignant • 100% Cloud")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
+                        Text("Studio Numérique Enseignant • 100% Cloud")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.secondary)
                     }
 
-                    // MARK: - Carte Principale de Configuration Cloud
-                    VStack(alignment: .leading, spacing: 20) {
-                        // 1. Choix du service Cloud
-                        cloudProviderSelectorSection
+                    // Barre de progression sous l'icône et ses sous-textes (hauteur doublée à 8pt)
+                    splashProgressBar
+                        .padding(.top, 8)
 
-                        Divider()
-
-                        // 2. Connexion au compte Cloud sélectionné
-                        cloudAccountConnectionSection
-
-                        // 3. Choix du dossier Source dans l'arborescence Cloud
-                        if isCloudConnected {
-                            Divider()
-                            sourceFolderPickerSection
-                        }
-
-                        if let error = errorMessage {
-                            HStack(spacing: 8) {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundColor(.red)
-                                Text(error)
-                                    .font(.caption)
-                                    .foregroundColor(.red)
-                            }
-                            .padding(10)
-                            .background(Color.red.opacity(0.1))
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                        }
-                    }
-                    .padding(24)
-                    .glassCard(cornerRadius: 22, strokeOpacity: 0.45)
-                    .frame(maxWidth: 600)
-                    .padding(.bottom, 32)
+                    Spacer()
                 }
-                .padding(.horizontal, 20)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.horizontal, 24)
+                .transition(.opacity)
+            } else {
+                // MARK: - Mode 2 : Configuration Cloud Manuelle (Premier lancement ou Switcher)
+                ScrollView {
+                    VStack(spacing: 24) {
+                        if isSwitcherMode {
+                            // En-tête mode switcher
+                            HStack(spacing: 14) {
+                                DroopiesMascotView(size: 48, hasShadow: true)
+
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text("Changer de Service Cloud")
+                                        .font(.system(size: 22, weight: .bold, design: .rounded))
+
+                                    Text("Sélectionnez votre espace Cloud ou configurez un nouveau serveur")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+
+                                Spacer()
+                            }
+                            .frame(maxWidth: 600)
+                            .padding(.top, 16)
+                            .padding(.horizontal, 6)
+                        } else {
+                            // En-tête premier lancement avec Mascotte
+                            VStack(spacing: 16) {
+                                DroopiesMascotView(size: 160, hasShadow: true, isAnimated: true)
+                                    .padding(.top, 24)
+
+                                VStack(spacing: 4) {
+                                    Text("Droopies")
+                                        .font(.system(size: 32, weight: .bold, design: .rounded))
+
+                                    Text("Studio Numérique Enseignant • 100% Cloud")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                }
+
+                                // Barre de progression
+                                splashProgressBar
+                                    .padding(.top, 4)
+                            }
+                        }
+
+                        // Carte Principale de Configuration Cloud
+                        VStack(alignment: .leading, spacing: 20) {
+                            // 1. Choix du service Cloud
+                            cloudProviderSelectorSection
+
+                            Divider()
+
+                            // 2. Connexion au compte Cloud sélectionné
+                            cloudAccountConnectionSection
+
+                            // 3. Choix du dossier Source dans l'arborescence Cloud
+                            if isCloudConnected {
+                                Divider()
+                                sourceFolderPickerSection
+                            }
+
+                            if let error = errorMessage {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .foregroundColor(.red)
+                                    Text(error)
+                                        .font(.caption)
+                                        .foregroundColor(.red)
+                                }
+                                .padding(10)
+                                .background(Color.red.opacity(0.1))
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                            }
+                        }
+                        .padding(24)
+                        .glassCard(cornerRadius: 22, strokeOpacity: 0.45)
+                        .frame(maxWidth: 600)
+                        .padding(.bottom, 36)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 20)
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
         .sheet(isPresented: $showFolderPicker) {
@@ -176,15 +203,81 @@ public struct SplashSetupView: View {
         .task {
             await autoDetectExistingConnection()
         }
+        .toolbar {
+            if isSwitcherMode {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Fermer") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Barre de Progression Native (Hauteur Doublée à 8pt)
+
+    private var splashProgressBar: some View {
+        VStack(spacing: 10) {
+            GeometryReader { pGeo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.primary.opacity(0.08))
+
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [Color(hex: "0284C7"), Color(hex: "38BDF8")],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(width: max(0, pGeo.size.width * CGFloat(progressValue)))
+                        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: progressValue)
+                }
+            }
+            .frame(maxWidth: 380)
+            .frame(height: 8)
+
+            HStack {
+                Text(progressLabel)
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+
+                Spacer()
+
+                Text("\(Int(progressValue * 100)) %")
+                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    .foregroundColor(Color(hex: "0284C7"))
+            }
+            .frame(maxWidth: 380)
+            .frame(height: 18)
+        }
     }
 
     // MARK: - Section 1 : Choix du Service Cloud
 
     private var cloudProviderSelectorSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("1. Service Cloud :")
-                .font(.subheadline.bold())
-                .foregroundColor(.primary)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                ZStack {
+                    Circle()
+                        .fill(Color.green.opacity(0.15))
+                        .frame(width: 32, height: 32)
+                    Image(systemName: "globe.europe.africa.fill")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundColor(.green)
+                }
+
+                Text("1. Choix du service Cloud")
+                    .font(.subheadline.bold())
+                    .foregroundColor(.primary)
+
+                Spacer()
+
+                BadgeView(selectedProviderType.displayName, style: .success)
+            }
 
             HStack(spacing: 8) {
                 cloudOptionChip(type: .dropbox, label: "Dropbox", color: Color(red: 0.0, green: 0.38, blue: 1.0))
@@ -192,6 +285,7 @@ public struct SplashSetupView: View {
                 cloudOptionChip(type: .oneDrive, label: "OneDrive", color: Color(red: 0.0, green: 0.47, blue: 0.83))
                 cloudOptionChip(type: .googleDrive, label: "Google Drive", color: Color(red: 0.0, green: 0.67, blue: 0.28))
             }
+            .padding(.leading, 36)
         }
     }
 
@@ -272,11 +366,92 @@ public struct SplashSetupView: View {
                 }
             }
 
-            if selectedProviderType != .dropbox {
-                Text("\(selectedProviderType.displayName) sera activé dans la prochaine mise à jour.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .padding(.leading, 36)
+            if selectedProviderType == .nextcloud {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Connecter votre espace Nuage Éducation (Nextcloud WebDAV) :")
+                        .font(.caption.bold())
+                        .foregroundColor(.primary)
+
+                    VStack(spacing: 8) {
+                        TextField("URL du serveur (ex: https://nuage03.apps.education.fr/...)", text: .constant(""))
+                            .textFieldStyle(.roundedBorder)
+                            .font(.caption)
+
+                        HStack(spacing: 8) {
+                            TextField("Identifiant enseignant", text: .constant(""))
+                                .textFieldStyle(.roundedBorder)
+                                .font(.caption)
+
+                            SecureField("Mot de passe d'application", text: .constant(""))
+                                .textFieldStyle(.roundedBorder)
+                                .font(.caption)
+                        }
+                    }
+
+                    HStack(spacing: 6) {
+                        Image(systemName: "sparkles")
+                            .foregroundColor(.blue)
+                        Text("Connecteur Nuage Éducation en cours d'intégration native.")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .padding(14)
+                .background(Color.blue.opacity(0.06))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .padding(.leading, 36)
+            } else if selectedProviderType == .oneDrive {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Connecter votre compte Microsoft 365 Éducation :")
+                        .font(.caption.bold())
+                        .foregroundColor(.primary)
+
+                    Button {} label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "server.rack")
+                            Text("Se connecter avec Microsoft")
+                                .font(.subheadline.bold())
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(VibrantGradientButtonStyle(gradient: .electricBlue, isCompact: true))
+                    .disabled(true)
+                    .opacity(0.6)
+
+                    Text("Le support Microsoft OneDrive sera activé dans la prochaine mise à jour.")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+                .padding(14)
+                .background(Color.blue.opacity(0.06))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .padding(.leading, 36)
+            } else if selectedProviderType == .googleDrive {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Connecter votre compte Google Workspace Éducation :")
+                        .font(.caption.bold())
+                        .foregroundColor(.primary)
+
+                    Button {} label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "triangle.fill")
+                            Text("Se connecter avec Google")
+                                .font(.subheadline.bold())
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(VibrantGradientButtonStyle(gradient: .electricBlue, isCompact: true))
+                    .disabled(true)
+                    .opacity(0.6)
+
+                    Text("Le support Google Drive sera activé dans la prochaine mise à jour.")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+                .padding(14)
+                .background(Color.green.opacity(0.06))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .padding(.leading, 36)
             } else if isCloudConnected {
                 // Compte connecté
                 HStack(spacing: 12) {
@@ -381,9 +556,9 @@ public struct SplashSetupView: View {
                 ZStack {
                     Circle()
                         .fill(isFolderValidated ? Color.green.opacity(0.15) : Color.orange.opacity(0.15))
-                        .frame(width: 28, height: 28)
+                        .frame(width: 32, height: 32)
                     Image(systemName: isFolderValidated ? "checkmark" : "folder.badge.gearshape")
-                        .font(.system(size: 13, weight: .bold))
+                        .font(.system(size: 14, weight: .bold))
                         .foregroundColor(isFolderValidated ? .green : .orange)
                 }
 
@@ -441,9 +616,8 @@ public struct SplashSetupView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 10) {
                             HStack(spacing: 8) {
-                                Image(systemName: "shippingbox.fill")
-                                    .foregroundColor(.blue)
-                                Text(URL(fileURLWithPath: rootFolder).lastPathComponent.isEmpty ? "Racine Dropbox" : URL(fileURLWithPath: rootFolder).lastPathComponent)
+                                CloudBrandIconView(type: selectedProviderType, size: 18)
+                                Text(URL(fileURLWithPath: rootFolder).lastPathComponent.isEmpty ? "Racine \(selectedProviderType.displayName)" : URL(fileURLWithPath: rootFolder).lastPathComponent)
                                     .font(.system(.subheadline, design: .monospaced, weight: .bold))
                             }
                             .padding(.horizontal, 10)
@@ -456,7 +630,7 @@ public struct SplashSetupView: View {
                             Button {
                                 showFolderPicker = true
                             } label: {
-                                Label("Modifier", systemImage: "shippingbox.fill")
+                                Label("Modifier", systemImage: "folder")
                                     .font(.caption.bold())
                             }
                             .buttonStyle(.bordered)
@@ -474,6 +648,23 @@ public struct SplashSetupView: View {
                             .font(.caption)
                             .foregroundColor(isFolderValidated ? .green : .secondary)
                     }
+
+                    if isSwitcherMode && isFolderValidated && isCloudConnected {
+                        Button {
+                            Task {
+                                await applyAndValidateSourceFolder(rootFolder)
+                            }
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "checkmark.circle.fill")
+                                Text("Basculer sur ce Cloud & Charger l'environnement")
+                                    .font(.subheadline.bold())
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(VibrantGradientButtonStyle(gradient: .emeraldGreen, isCompact: true))
+                        .padding(.top, 4)
+                    }
                 }
             }
             .padding(.leading, 36)
@@ -487,23 +678,93 @@ public struct SplashSetupView: View {
         defer { isCheckingCloud = false }
 
         let provider = DropboxStorageProvider()
+
+        // MARK: - 1. Démarrage Instantané Hors-Ligne (iPad en classe ou sans réseau)
+        if !NetworkMonitor.shared.isOnline {
+            print("[SplashSetupView] Démarrage hors-ligne détecté.")
+            let hasCache = (try? await appState.storageManager.localCacheProvider.itemExists(at: "Configuration/eleves.json")) ?? false
+            let hasSession = provider.isConnected
+
+            if hasCache || hasSession {
+                await updateProgress(value: 0.40, label: "Mode Hors-Ligne • Lecture du cache local...")
+                await appState.loadInitialData { progress, label in
+                    Task { @MainActor in
+                        self.updateProgress(value: 0.40 + (progress * 0.60), label: label)
+                    }
+                }
+                await updateProgress(value: 1.0, label: "Mode Hors-Ligne prêt • Studio de correction actif")
+                try? await Task.sleep(nanoseconds: 200_000_000)
+                await MainActor.run {
+                    self.onFinish()
+                }
+                return
+            }
+        }
+
+        await updateProgress(value: 0.10, label: "Connexion sécurisée à votre compte Cloud...")
+
         if provider.isConnected {
             do {
                 let info = try await provider.testConnection()
+                await updateProgress(value: 0.20, label: "Compte Cloud vérifié (\(info.name))")
+
+                var savedFolder = provider.rootFolderPath
+                if savedFolder.isEmpty {
+                    savedFolder = UserDefaults.standard.string(forKey: "droopies_selected_folder") ?? ""
+                }
+                let cleanSaved = savedFolder.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+
+                // Si le chemin sauvegardé est vide, "/", ou un ancien dossier par défaut obsolète,
+                // il n'est pas considéré comme un sous-dossier source valide.
+                if cleanSaved.isEmpty || savedFolder == "/Droopies" || savedFolder == "Droopies" || savedFolder == "/Droopy" || savedFolder == "Droopy" {
+                    savedFolder = ""
+                    provider.setRootFolderPath("")
+                    UserDefaults.standard.removeObject(forKey: "droopies_dropbox_root_path")
+                    UserDefaults.standard.removeObject(forKey: "droopies_selected_folder")
+                }
+
+                // Vérifier si le dossier mémorisé existe RÉELLEMENT sur Dropbox
+                var folderExists = false
+                if !savedFolder.isEmpty {
+                    await updateProgress(value: 0.30, label: "Accès au dossier Source '\(cleanSaved)'...")
+                    folderExists = (try? await provider.folderExists(at: savedFolder)) ?? false
+                }
+
                 await MainActor.run {
                     self.appState.storageManager.setProvider(provider)
                     self.isCloudConnected = true
                     self.connectedUserDisplayName = info.name
                     self.connectedUserEmail = info.email
                     self.cloudStatusMessage = "\(info.name) (\(info.email))"
-                    self.rootFolder = provider.rootFolderPath
+                    self.rootFolder = savedFolder
+                    self.isFolderValidated = folderExists
+                    if !folderExists {
+                        self.isDataLoaded = false
+                    }
                 }
 
-                // Si un dossier était déjà mémorisé, on le vérifie et on bascule directement !
-                if !provider.rootFolderPath.isEmpty && provider.rootFolderPath != "/Droopy" {
-                    await applyAndValidateSourceFolder(provider.rootFolderPath)
+                // Transition automatique : uniquement au démarrage initial (Splashscreen froid) !
+                if !isSwitcherMode && folderExists && !savedFolder.isEmpty {
+                    await applyAndValidateSourceFolder(savedFolder)
                 }
             } catch {
+                print("[SplashSetupView] Test Cloud échoué (\(error.localizedDescription)). Vérification cache local...")
+                let hasCache = (try? await appState.storageManager.localCacheProvider.itemExists(at: "Configuration/eleves.json")) ?? false
+                if hasCache || provider.isConnected {
+                    await updateProgress(value: 0.50, label: "Réseau distant indisponible • Basculement Hors-Ligne...")
+                    await appState.loadInitialData { progress, label in
+                        Task { @MainActor in
+                            self.updateProgress(value: 0.50 + (progress * 0.50), label: label)
+                        }
+                    }
+                    await updateProgress(value: 1.0, label: "Mode Hors-Ligne prêt • Studio de correction actif")
+                    try? await Task.sleep(nanoseconds: 200_000_000)
+                    await MainActor.run {
+                        self.onFinish()
+                    }
+                    return
+                }
+
                 await MainActor.run {
                     self.isCloudConnected = false
                 }
@@ -573,33 +834,46 @@ public struct SplashSetupView: View {
         defer { isCheckingFolder = false }
 
         let cleanPath = folderPath.trimmingCharacters(in: .whitespacesAndNewlines)
+        UserDefaults.standard.set(cleanPath, forKey: "droopies_selected_folder")
+        UserDefaults.standard.set(cleanPath, forKey: "droopies_dropbox_root_path")
         if let dropbox = appState.storageManager.activeProvider as? DropboxStorageProvider {
-            dropbox.configure(
-                appKey: dropbox.appKey,
-                refreshToken: dropbox.refreshToken,
-                accessToken: dropbox.accessToken,
-                rootFolderPath: cleanPath
-            )
+            dropbox.setRootFolderPath(cleanPath)
         }
 
         do {
-            // S'assurer que les 4 dossiers obligatoires existent dans le dossier source sur Dropbox
-            try await appState.storageManager.ensureSourceFolderStructure()
+            await updateProgress(value: 0.40, label: "Vérification de l'arborescence Cloud...")
+
+            try await appState.storageManager.ensureSourceFolderStructure { subProgress, stepText in
+                Task { @MainActor in
+                    let mapped = 0.40 + (subProgress * 0.15) // 40% -> 55%
+                    self.updateProgress(value: mapped, label: stepText)
+                }
+            }
 
             await MainActor.run {
                 self.rootFolder = cleanPath
                 self.isFolderValidated = true
+                self.appState.currentRootFolderPath = cleanPath
                 let displayName = URL(fileURLWithPath: cleanPath).lastPathComponent.isEmpty ? "Racine" : URL(fileURLWithPath: cleanPath).lastPathComponent
                 self.folderStatusMessage = "Dossier Cloud '\(displayName)' initialisé avec succès"
             }
 
-            // Chargement des données d'élèves et réglages
+            // Chargement et vérification élève par élève
             await loadEnvironmentData()
 
-            // TRANSITION AUTOMATIQUE : Si tout est validé, on efface le SplashScreen et on ouvre l'app !
-            try? await Task.sleep(nanoseconds: 400_000_000) // 0.4s pour apprécier la barre à 100%
-            await MainActor.run {
-                self.onFinish()
+            await updateProgress(value: 1.0, label: "Environnement prêt • Ouverture de Droopies...")
+
+            // Transition : auto-finish en mode Splashscreen initial, ou fermeture de la modale en mode switcher
+            if !isSwitcherMode {
+                try? await Task.sleep(nanoseconds: 350_000_000) // 0.35s pour apprécier la barre à 100%
+                await MainActor.run {
+                    self.onFinish()
+                }
+            } else {
+                await MainActor.run {
+                    self.onFinish()
+                    self.dismiss()
+                }
             }
         } catch {
             await MainActor.run {
@@ -612,7 +886,12 @@ public struct SplashSetupView: View {
         isLoadingData = true
         defer { isLoadingData = false }
 
-        await appState.loadInitialData()
+        await appState.loadInitialData { progress, label in
+            Task { @MainActor in
+                let mapped = 0.55 + (progress * 0.40) // 55% -> 95%
+                self.updateProgress(value: mapped, label: label)
+            }
+        }
 
         await MainActor.run {
             self.isDataLoaded = true

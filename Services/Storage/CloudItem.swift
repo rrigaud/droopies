@@ -14,6 +14,7 @@ public struct CloudItem: Identifiable, Hashable, Sendable {
     public var isDirectory: Bool
     public var size: Int64?
     public var modifiedAt: Date?
+    public var modifiedDate: Date? { modifiedAt }
 
     public init(
         name: String,

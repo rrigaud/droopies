@@ -89,11 +89,9 @@ public struct CloudFolderPickerSheet: View {
                                             Task { await loadFolders() }
                                         }
                                     } label: {
-                                        HStack(spacing: 4) {
+                                        HStack(spacing: 5) {
                                             if index == 0 {
-                                                Image(systemName: "shippingbox.fill")
-                                                    .font(.caption2)
-                                                    .foregroundColor(.blue)
+                                                CloudBrandIconView(type: provider.providerType, size: 14)
                                             } else {
                                                 Image(systemName: "folder.fill")
                                                     .font(.caption2)
@@ -340,17 +338,21 @@ public struct CloudFolderPickerSheet: View {
 
                     Spacer()
 
+                    let isAtRoot = currentPath.isEmpty || currentPath == "/"
                     Button {
-                        onSelect(cleanDisplayPath)
-                        dismiss()
+                        if !isAtRoot {
+                            onSelect(cleanDisplayPath)
+                            dismiss()
+                        }
                     } label: {
                         HStack(spacing: 6) {
-                            Image(systemName: "checkmark.circle.fill")
-                            Text(currentPath.isEmpty || currentPath == "/" ? "Choisir la Racine Dropbox" : "Choisir ce dossier")
+                            Image(systemName: isAtRoot ? "folder.badge.gearshape" : "checkmark.circle.fill")
+                            Text(isAtRoot ? "Sélectionnez un sous-dossier" : "Choisir ce dossier")
                                 .font(.subheadline.bold())
                         }
                     }
-                    .buttonStyle(VibrantGradientButtonStyle(gradient: .emeraldGreen, isCompact: true))
+                    .buttonStyle(VibrantGradientButtonStyle(gradient: isAtRoot ? .subtleGray : .emeraldGreen, isCompact: true))
+                    .disabled(isAtRoot)
                 }
                 .padding(.horizontal, 18)
                 .padding(.vertical, 14)

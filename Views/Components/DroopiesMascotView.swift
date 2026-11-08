@@ -20,6 +20,7 @@ public struct DroopiesMascotView: View {
     public var isAnimated: Bool
 
     @State private var isBreathing: Bool = false
+    @State private var isFloating: Bool = false
 
     public init(size: CGFloat = 40, hasShadow: Bool = true, isAnimated: Bool = false) {
         self.size = size
@@ -60,11 +61,19 @@ public struct DroopiesMascotView: View {
                     lineWidth: 1
                 )
         )
-        .shadow(color: Color.blue.opacity(hasShadow ? 0.35 : 0.0), radius: size * 0.15, y: size * 0.06)
-        .scaleEffect(isAnimated && isBreathing ? 1.04 : 1.0)
+        .shadow(
+            color: Color.blue.opacity(hasShadow ? (isFloating ? 0.38 : 0.22) : 0.0),
+            radius: size * (isFloating ? 0.18 : 0.12),
+            y: size * (isFloating ? 0.08 : 0.04)
+        )
+        .offset(y: (isAnimated && isFloating) ? -7 : 7)
+        .scaleEffect((isAnimated && isBreathing) ? 1.05 : 0.98)
         .onAppear {
             if isAnimated {
-                withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true)) {
+                withAnimation(.easeInOut(duration: 2.2).repeatForever(autoreverses: true)) {
+                    isFloating = true
+                }
+                withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) {
                     isBreathing = true
                 }
             }

@@ -14,6 +14,10 @@ struct DroopiesApp: App {
     @State private var appState = AppState()
     @State private var isSetupCompleted: Bool = false
 
+    private var activeLocale: Locale {
+        appState.settings.language.locale ?? Locale.autoupdatingCurrent
+    }
+
     var body: some Scene {
         WindowGroup {
             Group {
@@ -27,6 +31,7 @@ struct DroopiesApp: App {
                     }
                 }
             }
+            .environment(\.locale, activeLocale)
             #if os(macOS)
             .frame(minWidth: 950, minHeight: 650)
             #endif

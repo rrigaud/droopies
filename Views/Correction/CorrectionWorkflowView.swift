@@ -20,27 +20,84 @@ public struct CorrectionWorkflowView: View {
 
     public var body: some View {
         ZStack(alignment: .top) {
-            // MARK: - Vue de l'étape active
-            Group {
-                switch currentStep {
-                case 1:
-                    Step1CorrectionStudioView(appState: appState, currentStep: $currentStep)
-                case 2:
-                    Step2LoadingView(appState: appState, currentStep: $currentStep)
-                case 3:
-                    Step3IdentificationView(appState: appState, currentStep: $currentStep)
-                case 4:
-                    Step4DistributionView(appState: appState, currentStep: $currentStep)
-                default:
-                    Step1CorrectionStudioView(appState: appState, currentStep: $currentStep)
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(.top, 68)
+            if currentStep == 4 && !appState.isOnline {
+                // MARK: - Écran Informateur Mode Hors-Ligne pour la Distribution
+                VStack(spacing: 24) {
+                    Spacer()
 
-            // MARK: - Stepper Flottant VisionOS (Island Capsule)
-            floatingStepper
-                .padding(.top, 14)
+                    ZStack {
+                        Circle()
+                            .fill(Color.orange.opacity(0.12))
+                            .frame(width: 90, height: 90)
+
+                        Image(systemName: "bolt.slash.fill")
+                            .font(.system(size: 38, weight: .bold))
+                            .foregroundColor(.orange)
+                    }
+
+                    VStack(spacing: 10) {
+                        Text("Distribution suspendue en mode Hors-Ligne")
+                            .font(.system(size: 22, weight: .bold, design: .rounded))
+                            .foregroundColor(.primary)
+
+                        Text("La distribution consiste à déposer individuellement chaque devoir annoté dans le dossier Cloud de chaque élève.\nCette opération requiert une connexion Internet active.")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: 520)
+                    }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 10) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                                .font(.system(size: 16))
+                            Text("L'Atelier de Correction au stylet reste 100 % opérationnel hors-ligne.")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.primary)
+                        }
+
+                        HStack(spacing: 10) {
+                            Image(systemName: "wifi")
+                                .foregroundColor(.blue)
+                                .font(.system(size: 16))
+                            Text("Dès la reconnexion au Wi-Fi, la distribution sera immédiatement débloquée.")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.primary)
+                        }
+                    }
+                    .padding(18)
+                    .background(Color.primary.opacity(0.04))
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+                    Spacer()
+                }
+                .padding(.horizontal, 24)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.top, 68)
+            } else {
+                // MARK: - Vue de l'étape active normale
+                Group {
+                    switch currentStep {
+                    case 1:
+                        Step1CorrectionStudioView(appState: appState, currentStep: $currentStep)
+                    case 2:
+                        Step2LoadingView(appState: appState, currentStep: $currentStep)
+                    case 3:
+                        Step3IdentificationView(appState: appState, currentStep: $currentStep)
+                    case 4:
+                        Step4DistributionView(appState: appState, currentStep: $currentStep)
+                    default:
+                        Step1CorrectionStudioView(appState: appState, currentStep: $currentStep)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.top, 68)
+
+                // MARK: - Stepper Flottant VisionOS (Island Capsule)
+                floatingStepper
+                    .padding(.top, 14)
+            }
         }
         .withLiquidGlassBackground()
     }
