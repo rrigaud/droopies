@@ -239,44 +239,69 @@ public struct MainSplitView: View {
             distributionStepperToolbar(isCompact: isCompact)
 
         case .students:
-            studentsCenterActionToolbar
+            studentsCenterActionToolbar(isCompact: isCompact)
 
         default:
             EmptyView()
         }
     }
 
-    private var studentsCenterActionToolbar: some View {
-        Menu {
+    private func studentsCenterActionToolbar(isCompact: Bool) -> some View {
+        HStack(spacing: 3) {
+            // Bouton 1 : Ajouter un élève
             Button {
                 if appState.isOnline {
                     appState.showAddStudentSheet = true
                 }
             } label: {
-                Label("Ajouter un élève", systemImage: "person.badge.plus")
-            }
-            .disabled(!appState.isOnline)
+                HStack(spacing: 6) {
+                    Image(systemName: "person.badge.plus")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(appState.isOnline ? .blue : .secondary)
 
+                    Text(isCompact ? "Ajouter" : "Ajouter un élève")
+                        .font(.system(size: 12.5, weight: .semibold))
+                        .foregroundColor(appState.isOnline ? .primary : .secondary)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                }
+                .padding(.horizontal, isCompact ? 11 : 14)
+                .frame(height: 32)
+                .background(Color.primary.opacity(0.04))
+                .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .disabled(!appState.isOnline)
+            .opacity(appState.isOnline ? 1.0 : 0.45)
+            .help(appState.isOnline ? "Ajouter un élève" : "Disponible en ligne uniquement")
+
+            // Bouton 2 : Importer CSV
             Button {
                 if appState.isOnline {
                     appState.showCSVImportSheet = true
                 }
             } label: {
-                Label("Importer un fichier CSV", systemImage: "arrow.down.doc")
-            }
-            .disabled(!appState.isOnline)
-        } label: {
-            Image(systemName: "plus")
-                .font(.system(size: 14, weight: .bold))
-                .foregroundColor(appState.isOnline ? .blue : .secondary)
-                .frame(width: 32, height: 32)
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.down.doc")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(appState.isOnline ? .blue : .secondary)
+
+                    Text(isCompact ? "Importer" : "Importer CSV")
+                        .font(.system(size: 12.5, weight: .semibold))
+                        .foregroundColor(appState.isOnline ? .primary : .secondary)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                }
+                .padding(.horizontal, isCompact ? 11 : 14)
+                .frame(height: 32)
                 .background(Color.primary.opacity(0.04))
-                .clipShape(Circle())
+                .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .disabled(!appState.isOnline)
+            .opacity(appState.isOnline ? 1.0 : 0.45)
+            .help(appState.isOnline ? "Importer un fichier CSV" : "Disponible en ligne uniquement")
         }
-        .buttonStyle(.plain)
-        .disabled(!appState.isOnline)
-        .opacity(appState.isOnline ? 1.0 : 0.45)
-        .help(appState.isOnline ? "Ajouter ou importer des élèves" : "Disponible en ligne uniquement")
         .padding(3)
         .glassCapsule(strokeOpacity: 0.4)
     }
