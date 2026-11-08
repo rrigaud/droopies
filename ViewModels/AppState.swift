@@ -35,6 +35,9 @@ public final class AppState: @unchecked Sendable {
     public var openCorrectionScans: [StorageManager.ScanItem] = []
     public var activeCorrectionScan: StorageManager.ScanItem? = nil
 
+    // MARK: - Flux de Distribution (3 étapes)
+    public var distributionStep: Int = 1
+
     // État d'historique Undo / Redo unifié pour la barre supérieure
     public var canUndoCorrection: Bool = false
     public var canRedoCorrection: Bool = false

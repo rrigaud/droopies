@@ -41,7 +41,7 @@ public struct Step4DistributionView: View {
             // MARK: - Barre supérieure de navigation
             HStack(spacing: 16) {
                 Button {
-                    currentStep = 3
+                    currentStep = 2
                 } label: {
                     Label("Identification", systemImage: "arrow.left")
                 }

@@ -78,7 +78,7 @@ public struct Step3IdentificationView: View {
             // MARK: - Barre d'outils supérieure
             HStack(spacing: 16) {
                 Button {
-                    currentStep = 2
+                    currentStep = 1
                 } label: {
                     Label("Chargement des copies", systemImage: "arrow.left")
                 }
@@ -115,9 +115,9 @@ public struct Step3IdentificationView: View {
 
                 // Bouton passer à la distribution
                 Button {
-                    currentStep = 4
+                    currentStep = 3
                 } label: {
-                    Label("Distribution (4) ➔", systemImage: "paperplane.fill")
+                    Label("Envoi / Distribution ➔", systemImage: "paperplane.fill")
                 }
                 .buttonStyle(VibrantGradientButtonStyle(gradient: .electricBlue, isCompact: true))
                 .disabled(copies.isEmpty)

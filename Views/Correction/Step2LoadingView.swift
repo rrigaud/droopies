@@ -60,17 +60,6 @@ public struct Step2LoadingView: View {
         VStack(spacing: 0) {
             // MARK: - Barre d'outils supérieure flottante
             HStack(spacing: 16) {
-                Button {
-                    currentStep = 1
-                } label: {
-                    Label("Atelier Stylet", systemImage: "chevron.left")
-                        .font(.system(size: 13, weight: .medium))
-                }
-                .buttonStyle(.plain)
-                .foregroundColor(.secondary)
-
-                Divider().frame(height: 20)
-
                 // Onglets Glissants Liquid Glass
                 modeTabsControl
 
@@ -79,7 +68,7 @@ public struct Step2LoadingView: View {
                 Button {
                     proceedToIdentification()
                 } label: {
-                    Label("Identifier (3) ➔", systemImage: "person.crop.rectangle.badge.plus")
+                    Label("Identifier (\(max(1, estimatedCopiesCount))) ➔", systemImage: "person.crop.rectangle.badge.plus")
                 }
                 .buttonStyle(VibrantGradientButtonStyle(gradient: .emeraldGreen, isCompact: true))
                 .disabled(loadedPDFDoc == nil || evalTitle.trimmingCharacters(in: .whitespaces).isEmpty || selectedClassId == nil)
@@ -443,6 +432,6 @@ public struct Step2LoadingView: View {
         eval.copies = copies
         appState.currentEvaluation = eval
         appState.selectedClassId = selectedClassId
-        currentStep = 3
+        currentStep = 2
     }
 }

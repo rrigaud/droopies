@@ -189,6 +189,22 @@ public struct MainSplitView: View {
             }
             if CommandLine.arguments.contains("-testStudents") {
                 activeScreen = .students
+            } else if CommandLine.arguments.contains("-testDistributionStep2") {
+                activeScreen = .distribution
+                appState.distributionStep = 2
+            } else if CommandLine.arguments.contains("-testDistributionStep3") {
+                activeScreen = .distribution
+                appState.distributionStep = 3
+            } else if CommandLine.arguments.contains("-testDistribution") {
+                activeScreen = .distribution
+                if CommandLine.arguments.contains("-testMultipleTabs") && appState.openCorrectionScans.isEmpty {
+                    let scans = appState.storageManager.listLocalScansSync()
+                    for scan in scans.prefix(3) {
+                        if !appState.openCorrectionScans.contains(where: { $0.id == scan.id }) {
+                            appState.openCorrectionScans.append(scan)
+                        }
+                    }
+                }
             } else if CommandLine.arguments.contains("-testCorrectionStudio") || CommandLine.arguments.contains("-testMultipleTabs") {
                 activeScreen = .correction
             }
@@ -199,7 +215,7 @@ public struct MainSplitView: View {
 
     private var hasCenterToolbar: Bool {
         switch activeScreen {
-        case .students:
+        case .students, .distribution:
             return true
         default:
             return false
@@ -243,6 +259,9 @@ public struct MainSplitView: View {
             .padding(3)
             .glassCapsule(strokeOpacity: 0.4)
 
+        case .distribution:
+            distributionStepperToolbar(isCompact: isCompact)
+
         default:
             EmptyView()
         }
@@ -277,8 +296,8 @@ public struct MainSplitView: View {
                 // 1. Bouton Correction (retour à la mosaïque d'accueil)
                 correctionMainButton
 
-                // 2. Onglets dynamiques des évaluations ouvertes
-                if !appState.openCorrectionScans.isEmpty {
+                // 2. Onglets dynamiques des évaluations ouvertes (masqués en Distribution)
+                if activeScreen != .distribution && !appState.openCorrectionScans.isEmpty {
                     if isCompact && appState.openCorrectionScans.count > 2 {
                         compactEvaluationsMenuPill
                     } else {
@@ -288,7 +307,7 @@ public struct MainSplitView: View {
                     }
                 }
 
-                // 3. Bouton Distribution (compacté à son icône seule si évaluations ouvertes)
+                // 3. Bouton Distribution (compacté à son icône seule si évaluations ouvertes en Correction)
                 distributionMainButton
             }
             .padding(3)
@@ -304,7 +323,9 @@ public struct MainSplitView: View {
     }
 
     private var correctionMainButton: some View {
-        Button {
+        let isDistribution = (activeScreen == .distribution)
+
+        return Button {
             withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                 activeScreen = .correction
                 appState.activeCorrectionScan = nil
@@ -317,11 +338,13 @@ public struct MainSplitView: View {
                 Image(systemName: "pencil.and.outline")
                     .font(.system(size: 13, weight: .semibold))
 
-                Text(appState.t(.tabCorrection))
-                    .font(.system(size: 13, weight: isCorrectionHomeSelected ? .bold : .medium))
+                if !isDistribution {
+                    Text(appState.t(.tabCorrection))
+                        .font(.system(size: 13, weight: isCorrectionHomeSelected ? .bold : .medium))
+                }
             }
             .foregroundColor(isCorrectionHomeSelected ? .white : .primary)
-            .padding(.horizontal, 14)
+            .padding(.horizontal, isDistribution ? 10 : 14)
             .padding(.vertical, 7)
             .background(
                 Group {
@@ -338,7 +361,7 @@ public struct MainSplitView: View {
             .clipShape(Capsule())
         }
         .buttonStyle(.plain)
-        .help("Accueil de la correction (mosaïque des paquets)")
+        .help(isDistribution ? appState.t(.tabCorrection) : "Accueil de la correction (mosaïque des paquets)")
     }
 
     @ViewBuilder
@@ -538,13 +561,13 @@ public struct MainSplitView: View {
                 Image(systemName: "paperplane.fill")
                     .font(.system(size: 13, weight: .semibold))
 
-                if !hasOpenScans {
+                if !hasOpenScans || isDistribution {
                     Text(appState.t(.tabDistribution))
                         .font(.system(size: 13, weight: isDistribution ? .bold : .medium))
                 }
             }
             .foregroundColor(isDistribution ? .white : .primary)
-            .padding(.horizontal, hasOpenScans ? 10 : 14)
+            .padding(.horizontal, (hasOpenScans && !isDistribution) ? 10 : 14)
             .padding(.vertical, 7)
             .background(
                 Group {
@@ -561,7 +584,90 @@ public struct MainSplitView: View {
             .clipShape(Capsule())
         }
         .buttonStyle(.plain)
-        .help(hasOpenScans ? appState.t(.tabDistribution) : "")
+        .help((hasOpenScans && !isDistribution) ? appState.t(.tabDistribution) : "")
+    }
+
+    // MARK: - Stepper Flottant de Distribution (Option B)
+
+    private func distributionStepperToolbar(isCompact: Bool) -> some View {
+        HStack(spacing: 4) {
+            distributionStepItem(step: 1, title: "Chargement", icon: "tray.and.arrow.down.fill")
+            distributionStepChevron
+            distributionStepItem(step: 2, title: "Identification", icon: "viewfinder")
+            distributionStepChevron
+            distributionStepItem(step: 3, title: "Envoi", icon: "paperplane.fill")
+        }
+        .padding(3)
+        .glassCapsule(strokeOpacity: 0.4)
+    }
+
+    private var distributionStepChevron: some View {
+        Image(systemName: "chevron.right")
+            .font(.system(size: 8, weight: .bold))
+            .foregroundColor(.secondary.opacity(0.35))
+            .padding(.horizontal, 2)
+    }
+
+    @ViewBuilder
+    private func distributionStepItem(step: Int, title: String, icon: String) -> some View {
+        let isActive = (appState.distributionStep == step)
+        let isDone = (appState.distributionStep > step)
+
+        Button {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                appState.distributionStep = step
+            }
+        } label: {
+            HStack(spacing: 6) {
+                ZStack {
+                    if isDone {
+                        Circle()
+                            .fill(Color(hex: "10B981"))
+                            .frame(width: 18, height: 18)
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(.white)
+                    } else if isActive {
+                        Circle()
+                            .fill(Color.white)
+                            .frame(width: 18, height: 18)
+                        Text("\(step)")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(Color(hex: "059669"))
+                    } else {
+                        Circle()
+                            .fill(Color.primary.opacity(0.08))
+                            .frame(width: 18, height: 18)
+                        Text("\(step)")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                Text(title)
+                    .font(.system(size: 12, weight: isActive ? .bold : .medium))
+                    .foregroundColor(isActive ? .white : (isDone ? .primary : .secondary))
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(
+                Group {
+                    if isActive {
+                        Capsule()
+                            .fill(LinearGradient.emeraldGreen)
+                            .matchedGeometryEffect(id: "activeDistributionStepPill", in: toolbarNamespace)
+                            .shadow(color: Color.green.opacity(0.3), radius: 6, y: 2)
+                    } else if isDone {
+                        Capsule()
+                            .fill(Color.green.opacity(0.06))
+                    } else {
+                        Color.clear
+                    }
+                }
+            )
+            .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Toolbar 2 : Haut-Droite (Historique Undo/Redo Dédié à la Correction)
