@@ -26,7 +26,7 @@ public struct Step2LoadingView: View {
         public var id: String { rawValue }
     }
 
-    @State private var mode: LoadingMode = .newEvaluation
+    @State private var mode: LoadingMode = CommandLine.arguments.contains("-testCatchUp") ? .catchUpAbsents : .newEvaluation
     @Namespace private var modeTabNamespace
     @Namespace private var pagesNamespace
 
@@ -43,7 +43,6 @@ public struct Step2LoadingView: View {
     @State private var selectedClassId: String? = nil
     @State private var evalTitle: String = ""
     @State private var evalDate: Date = Date()
-    @State private var showDatePickerPopover: Bool = false
     @State private var evalMaxScore: Double = 20.0
 
     // Découpage et options de pages
@@ -93,10 +92,16 @@ public struct Step2LoadingView: View {
 
             Divider()
 
-            // MARK: - Les 4 Blocs
+            // MARK: - Les Blocs
             VStack(spacing: 10) {
                 // Bloc 1 : Fonctionnement de la distribution
                 distributionInfoCard
+
+                // Bloc Mode Rattrapage (uniquement en mode rattrapage)
+                if mode == .catchUpAbsents {
+                    catchUpBackupBlock
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
 
                 // Bloc 2 : Sélection de l'évaluation corrigée + Pages par copie (sur 1 seule ligne)
                 evaluationSelectionBar
@@ -198,6 +203,55 @@ public struct Step2LoadingView: View {
         )
     }
 
+    // MARK: - Bloc Mode Rattrapage (Sélection de l'évaluation archivée)
+
+    private var catchUpBackupBlock: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "arrow.triangle.merge")
+                .foregroundColor(.orange)
+                .font(.system(size: 13, weight: .semibold))
+
+            Text("Mode rattrapage (Sélection de l'évaluation archivée) :")
+                .font(.system(size: 12.5, weight: .bold))
+                .foregroundColor(.primary)
+
+            Picker("Évaluation archivée", selection: $selectedBackup) {
+                if existingBackups.isEmpty {
+                    Text("Aucune évaluation archivée dans /Backup").tag(nil as StorageManager.ExistingBackup?)
+                } else {
+                    Text("— Choisir une évaluation archivée —").tag(nil as StorageManager.ExistingBackup?)
+                    ForEach(existingBackups) { backup in
+                        Text("\(backup.className) • \(backup.evaluationTitle)").tag(backup as StorageManager.ExistingBackup?)
+                    }
+                }
+            }
+            .pickerStyle(.menu)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .onChange(of: selectedBackup) { _, newBackup in
+                if let b = newBackup {
+                    applyBackupMetadata(b)
+                }
+            }
+
+            Spacer()
+
+            if let backup = selectedBackup {
+                HStack(spacing: 4) {
+                    Image(systemName: "folder")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                    Text("/Backup/\(backup.className)/\(backup.fileName)")
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .glassCard(cornerRadius: 12, strokeOpacity: 0.3)
+    }
+
     // MARK: - Bloc 2 : Sélection de l'évaluation corrigée + Pages par copie (1 seule ligne)
 
     private var evaluationSelectionBar: some View {
@@ -235,28 +289,6 @@ public struct Step2LoadingView: View {
                 }
                 .buttonStyle(.plain)
                 .help("Importer un autre PDF depuis le disque...")
-            }
-
-            // En mode rattrapage : choix du backup existant avec Picker natif
-            if mode == .catchUpAbsents {
-                HStack(spacing: 6) {
-                    Image(systemName: "arrow.triangle.merge")
-                        .foregroundColor(.orange)
-                        .font(.system(size: 12))
-
-                    Picker("Backup", selection: $selectedBackup) {
-                        Text("— Backup archivé —").tag(nil as StorageManager.ExistingBackup?)
-                        ForEach(existingBackups) { backup in
-                            Text("\(backup.className) • \(backup.evaluationTitle)").tag(backup as StorageManager.ExistingBackup?)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .onChange(of: selectedBackup) { _, newBackup in
-                        if let b = newBackup {
-                            applyBackupMetadata(b)
-                        }
-                    }
-                }
             }
 
             Spacer()
@@ -362,7 +394,7 @@ public struct Step2LoadingView: View {
 
     private var evaluationMetadataBar: some View {
         HStack(spacing: 16) {
-            // 1. Date (DatePicker graphique dans un popover qui se ferme dès la sélection)
+            // 1. Date (DatePicker natif Apple .compact)
             HStack(spacing: 6) {
                 Image(systemName: "calendar")
                     .foregroundColor(.purple)
@@ -372,35 +404,11 @@ public struct Step2LoadingView: View {
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(.secondary)
 
-                Button {
-                    showDatePickerPopover = true
-                } label: {
-                    HStack(spacing: 4) {
-                        Text(Evaluation.dateFormatter.string(from: evalDate))
-                            .font(.system(size: 12.5, weight: .semibold))
-                            .foregroundColor(.primary)
-
-                        Image(systemName: "chevron.up.chevron.down")
-                            .font(.system(size: 8, weight: .bold))
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 5)
-                    .background(Color.primary.opacity(0.06))
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                }
-                .buttonStyle(.plain)
-                .popover(isPresented: $showDatePickerPopover) {
-                    DatePicker("", selection: $evalDate, displayedComponents: .date)
-                        .datePickerStyle(.graphical)
-                        .labelsHidden()
-                        .padding(10)
-                        .frame(width: 320, height: 330)
-                        .onChange(of: evalDate) { _, _ in
-                            showDatePickerPopover = false
-                        }
-                }
+                DatePicker("", selection: $evalDate, displayedComponents: .date)
+                    .labelsHidden()
+                    .datePickerStyle(.compact)
             }
+            .fixedSize(horizontal: true, vertical: false)
 
             Divider().frame(height: 18)
 
@@ -429,6 +437,7 @@ public struct Step2LoadingView: View {
                     }
                 }
             }
+            .fixedSize(horizontal: true, vertical: false)
 
             Divider().frame(height: 18)
 
@@ -441,6 +450,7 @@ public struct Step2LoadingView: View {
                 Text("Nom :")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(.secondary)
+                    .fixedSize(horizontal: true, vertical: false)
 
                 TextField("Nom de l'évaluation...", text: $evalTitle)
                     .font(.system(size: 12.5))
@@ -511,6 +521,10 @@ public struct Step2LoadingView: View {
 
         if let backups = try? await appState.storageManager.listExistingBackups() {
             self.existingBackups = backups
+            if mode == .catchUpAbsents, let first = backups.first {
+                self.selectedBackup = first
+                applyBackupMetadata(first)
+            }
         }
     }
 
