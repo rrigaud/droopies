@@ -300,6 +300,10 @@ public struct Step2LoadingView: View {
             // Ligne 1 : Sélection de l'évaluation corrigée + Pages par copie
             HStack(spacing: 14) {
                 HStack(spacing: 6) {
+                    Image(systemName: "folder")
+                        .foregroundColor(.blue)
+                        .font(.system(size: 13))
+
                     Text("Évaluation :")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.secondary)
