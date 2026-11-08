@@ -54,9 +54,9 @@ public final class OfflineSyncEngine: @unchecked Sendable {
 
         do {
             // S'assurer de la présence des dossiers en local et dans le Cloud
-            try? await storageManager.ensureSourceFolderStructure()
-            try? await storageManager.localCacheProvider.createDirectory(at: "Evaluations/A corriger")
-            try? await storageManager.localCacheProvider.createDirectory(at: "Configuration")
+            try await storageManager.ensureSourceFolderStructure()
+            try await storageManager.localCacheProvider.createDirectory(at: "Evaluations/A corriger")
+            try await storageManager.localCacheProvider.createDirectory(at: "Configuration")
 
             // MARK: - 1. Miroir de la Configuration (eleves.json, settings.json, icône)
             await syncConfigurationFiles(storageManager: storageManager)
@@ -109,7 +109,6 @@ public final class OfflineSyncEngine: @unchecked Sendable {
         let localFiles = localItems.filter { !$0.isDirectory && $0.name.lowercased().hasSuffix(".pdf") }
 
         let localNames = Set(localFiles.map { $0.name })
-        let cloudNames = Set(cloudFiles.map { $0.name })
 
         // ─────────────────────────────────────────────────────────────
         // RÈGLE 1 : Téléchargement Cloud ➔ iPad
