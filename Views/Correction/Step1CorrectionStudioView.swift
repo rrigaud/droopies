@@ -320,7 +320,7 @@ public struct Step1CorrectionStudioView: View {
         .task {
             let autoOpen = CommandLine.arguments.contains("-testOpenScan")
             let multiTabs = CommandLine.arguments.contains("-testMultipleTabs")
-            if multiTabs {
+            if multiTabs && appState.openCorrectionScans.isEmpty {
                 let scans = appState.storageManager.listLocalScansSync()
                 for scan in scans.prefix(3) {
                     if !appState.openCorrectionScans.contains(where: { $0.id == scan.id }) {

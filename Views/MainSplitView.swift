@@ -714,6 +714,9 @@ public struct MainSplitView: View {
         Button {
             withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                 activeScreen = screen
+                if screen == .correction {
+                    appState.activeCorrectionScan = nil
+                }
                 isSidebarOpen = false
             }
         } label: {
