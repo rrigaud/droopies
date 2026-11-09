@@ -52,7 +52,6 @@ public struct MainSplitView: View {
     // Boîtes de dialogue Cloud
     @State private var showFolderPicker: Bool = false
     @State private var showCloudSetupSheet: Bool = false
-    @State private var showCloudMenuPopover: Bool = false
 
     @Namespace private var toolbarNamespace
 
@@ -135,7 +134,9 @@ public struct MainSplitView: View {
                             topTrailingHistoryToolbar
                                 .glassCapsule(strokeOpacity: 0.4)
                         } else {
-                            topTrailingCloudToolbar
+                            HStack(spacing: 0) {
+                                topTrailingCloudToolbar
+                            }
                         }
                     }
                     #else
@@ -977,6 +978,67 @@ public struct MainSplitView: View {
     // MARK: - Toolbar 2 : Haut-Droite (Widget Cloud Déroulant)
 
     private var topTrailingCloudToolbar: some View {
+        cloudStatusCapsuleView
+            .overlay {
+                Menu {
+                    cloudMenuSections
+                } label: {
+                    Color.white.opacity(0.001)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+            .glassCapsule(strokeOpacity: 0.4)
+    }
+
+    @ViewBuilder
+    private var cloudMenuSections: some View {
+        if !appState.isOnline {
+            Section("Mode Hors-Ligne") {
+                Label("Connexion Internet inactive", systemImage: "bolt.slash.fill")
+                Text("Vos copies annotées sont enregistrées localement et seront envoyées sur Dropbox dès le retour de la connexion.")
+                    .font(.caption2)
+            }
+
+            Divider()
+
+            Button {
+                Task { await appState.loadInitialData() }
+            } label: {
+                Label(appState.t(.navReloadData), systemImage: "arrow.clockwise")
+            }
+        } else {
+            Section(appState.t(.navActiveStorage)) {
+                Label(appState.storageManager.activeProvider.providerType.displayName, systemImage: appState.storageManager.activeProvider.providerType.iconName)
+                Label("\(appState.t(.navSourceFolder)) \(activeRootPath)", systemImage: "folder")
+            }
+
+            Divider()
+
+            Button {
+                showFolderPicker = true
+            } label: {
+                Label(appState.t(.navChangeFolder), systemImage: "folder.badge.gearshape")
+            }
+
+            Button {
+                showCloudSetupSheet = true
+            } label: {
+                Label(appState.t(.navChangeCloud), systemImage: "arrow.triangle.2.circlepath")
+            }
+
+            Divider()
+
+            Button {
+                Task { await appState.loadInitialData() }
+            } label: {
+                Label(appState.t(.navReloadData), systemImage: "arrow.clockwise")
+            }
+        }
+    }
+
+    private var cloudStatusCapsuleView: some View {
         HStack(spacing: 8) {
             if !appState.isOnline {
                 Circle()
@@ -1029,90 +1091,6 @@ public struct MainSplitView: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .contentShape(Capsule())
-        .onTapGesture {
-            showCloudMenuPopover.toggle()
-        }
-        .glassCapsule(strokeOpacity: 0.4)
-        .popover(isPresented: $showCloudMenuPopover) {
-            cloudMenuPopoverContent
-        }
-    }
-
-    private var cloudMenuPopoverContent: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            if !appState.isOnline {
-                VStack(alignment: .leading, spacing: 4) {
-                    Label("Connexion Internet inactive", systemImage: "bolt.slash.fill")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundColor(.orange)
-                    Text("Vos copies annotées sont enregistrées localement et seront envoyées sur Dropbox dès le retour de la connexion.")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                }
-
-                Divider()
-
-                Button {
-                    showCloudMenuPopover = false
-                    Task { await appState.loadInitialData() }
-                } label: {
-                    Label(appState.t(.navReloadData), systemImage: "arrow.clockwise")
-                        .font(.system(size: 13, weight: .medium))
-                }
-                .buttonStyle(.plain)
-            } else {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(appState.t(.navActiveStorage).uppercased())
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(.secondary)
-
-                    HStack(spacing: 8) {
-                        CloudBrandIconView(type: appState.storageManager.activeProvider.providerType, size: 20)
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(appState.storageManager.activeProvider.providerType.displayName)
-                                .font(.system(size: 13, weight: .bold))
-                                .foregroundColor(.primary)
-                            Text("\(appState.t(.navSourceFolder)) \(activeRootPath)")
-                                .font(.system(size: 11, design: .monospaced))
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                }
-
-                Divider()
-
-                Button {
-                    showCloudMenuPopover = false
-                    showFolderPicker = true
-                } label: {
-                    Label(appState.t(.navChangeFolder), systemImage: "folder.badge.gearshape")
-                        .font(.system(size: 13, weight: .medium))
-                }
-                .buttonStyle(.plain)
-
-                Button {
-                    showCloudMenuPopover = false
-                    showCloudSetupSheet = true
-                } label: {
-                    Label(appState.t(.navChangeCloud), systemImage: "arrow.triangle.2.circlepath")
-                        .font(.system(size: 13, weight: .medium))
-                }
-                .buttonStyle(.plain)
-
-                Divider()
-
-                Button {
-                    showCloudMenuPopover = false
-                    Task { await appState.loadInitialData() }
-                } label: {
-                    Label(appState.t(.navReloadData), systemImage: "arrow.clockwise")
-                        .font(.system(size: 13, weight: .medium))
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(14)
-        .frame(minWidth: 260)
     }
 
     // MARK: - 4. Sidebar Flottante en Liquid Glass (Tiroir suspendu)
