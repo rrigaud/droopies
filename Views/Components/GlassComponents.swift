@@ -198,29 +198,19 @@ public struct GlassCapsuleModifier: ViewModifier {
     public var strokeOpacity: Double
     @Environment(\.colorScheme) private var colorScheme
 
-    public init(strokeOpacity: Double = 0.35) {
+    public init(strokeOpacity: Double = 0.14) {
         self.strokeOpacity = strokeOpacity
     }
 
     public func body(content: Content) -> some View {
         content
-            .background(.ultraThinMaterial)
+            .background(.ultraThinMaterial.opacity(0.85))
             .clipShape(Capsule())
             .overlay(
                 Capsule()
-                    .strokeBorder(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(colorScheme == .dark ? 0.45 : 0.65),
-                                Color.primary.opacity(colorScheme == .dark ? 0.16 : 0.10)
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        ),
-                        lineWidth: 0.8
-                    )
+                    .stroke(Color.primary.opacity(strokeOpacity), lineWidth: 1)
             )
-            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.28 : 0.09), radius: 8, x: 0, y: 3)
+            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.25 : 0.10), radius: 6, x: 0, y: 2)
     }
 }
 
@@ -393,58 +383,20 @@ public struct GlassHUDIconButton: View {
     public var body: some View {
         Button(action: action) {
             ZStack {
-                // Fond translucide réactif avec réfraction de verre
-                Circle()
-                    .fill(
-                        (isActive || (isHovered && isEnabled))
-                        ? LinearGradient(
-                            colors: [
-                                Color.white.opacity(colorScheme == .dark ? 0.22 : 0.40),
-                                Color.white.opacity(colorScheme == .dark ? 0.08 : 0.18)
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
+                // Au repos : 100% translucide sur le verre de la capsule (aucune couche blanche qui masque le fond).
+                // Au survol / actif : léger halo subtil.
+                if isActive || (isHovered && isEnabled) {
+                    Circle()
+                        .fill(Color.primary.opacity(colorScheme == .dark ? 0.15 : 0.08))
+                        .overlay(
+                            Circle()
+                                .stroke(Color.primary.opacity(0.12), lineWidth: 0.75)
                         )
-                        : LinearGradient(
-                            colors: [
-                                Color.white.opacity(colorScheme == .dark ? 0.08 : 0.14),
-                                Color.white.opacity(0.02)
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                    .overlay(
-                        Circle()
-                            .strokeBorder(
-                                LinearGradient(
-                                    colors: [
-                                        Color.white.opacity((isActive || isHovered) && isEnabled ? 0.75 : 0.45),
-                                        Color.white.opacity((isActive || isHovered) && isEnabled ? 0.30 : 0.12),
-                                        Color.clear
-                                    ],
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                ),
-                                lineWidth: 0.8
-                            )
-                    )
-                    .shadow(
-                        color: (isActive || isHovered) && isEnabled ? Color.white.opacity(colorScheme == .dark ? 0.25 : 0.45) : Color.clear,
-                        radius: 5,
-                        x: 0,
-                        y: 1
-                    )
+                }
 
                 Image(systemName: icon)
                     .font(.system(size: size * 0.44, weight: .semibold))
                     .foregroundColor(isEnabled ? (isActive ? .accentColor : .primary) : .secondary.opacity(0.35))
-                    .shadow(
-                        color: isEnabled ? Color.black.opacity(colorScheme == .dark ? 0.45 : 0.08) : Color.clear,
-                        radius: 1,
-                        x: 0,
-                        y: 1
-                    )
             }
             .frame(width: size, height: size)
             .contentShape(Circle())
