@@ -47,6 +47,10 @@ public final class NetworkMonitor: @unchecked Sendable {
 
     private init() {
         self.monitor = NWPathMonitor()
+        if CommandLine.arguments.contains("-testOffline") {
+            self.isForcedOffline = true
+            self.isOnline = false
+        }
 
         self.monitor.pathUpdateHandler = { [weak self] path in
             guard let self = self else { return }

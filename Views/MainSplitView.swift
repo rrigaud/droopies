@@ -52,6 +52,7 @@ public struct MainSplitView: View {
     // Boîtes de dialogue Cloud
     @State private var showFolderPicker: Bool = false
     @State private var showCloudSetupSheet: Bool = false
+    @State private var showCloudMenuPopover: Bool = false
 
     @Namespace private var toolbarNamespace
 
@@ -135,7 +136,6 @@ public struct MainSplitView: View {
                                 .glassCapsule(strokeOpacity: 0.4)
                         } else {
                             topTrailingCloudToolbar
-                                .glassCapsule(strokeOpacity: 0.4)
                         }
                     }
                     #else
@@ -156,7 +156,6 @@ public struct MainSplitView: View {
                                 .glassCapsule(strokeOpacity: 0.4)
                         } else {
                             topTrailingCloudToolbar
-                                .glassCapsule(strokeOpacity: 0.4)
                         }
                     }
                     #endif
@@ -978,104 +977,142 @@ public struct MainSplitView: View {
     // MARK: - Toolbar 2 : Haut-Droite (Widget Cloud Déroulant)
 
     private var topTrailingCloudToolbar: some View {
-        Menu {
+        HStack(spacing: 8) {
             if !appState.isOnline {
-                Section("Mode Hors-Ligne") {
-                    Label("Connexion Internet inactive", systemImage: "bolt.slash.fill")
-                    Text("Vos copies annotées sont enregistrées localement et seront envoyées sur Dropbox dès le retour de la connexion.")
-                        .font(.caption2)
-                }
+                Circle()
+                    .fill(Color.orange)
+                    .frame(width: 8, height: 8)
 
-                Divider()
+                CloudBrandIconView(type: appState.storageManager.activeProvider.providerType, size: 16)
 
-                Button {
-                    Task { await appState.loadInitialData() }
-                } label: {
-                    Label(appState.t(.navReloadData), systemImage: "arrow.clockwise")
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Hors-ligne")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(.primary)
+
+                    Text("Cache local actif")
+                        .font(.system(size: 9))
+                        .foregroundColor(Color.primary.opacity(0.65))
                 }
             } else {
-                Section(appState.t(.navActiveStorage)) {
-                    Label(appState.storageManager.activeProvider.providerType.displayName, systemImage: appState.storageManager.activeProvider.providerType.iconName)
-                    Label("\(appState.t(.navSourceFolder)) \(activeRootPath)", systemImage: "folder")
+                Circle()
+                    .fill(appState.storageManager.activeProvider.isConnected ? Color.green : Color.orange)
+                    .frame(width: 8, height: 8)
+
+                CloudBrandIconView(type: appState.storageManager.activeProvider.providerType, size: 16)
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(appState.storageManager.activeProvider.providerType.displayName)
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(.primary)
+
+                    HStack(spacing: 4) {
+                        Text(activeRootPath.isEmpty ? "/Test" : activeRootPath)
+                            .font(.system(size: 9.5, weight: .medium, design: .monospaced))
+                            .foregroundColor(Color.primary.opacity(0.65))
+                            .lineLimit(1)
+
+                        if appState.isLoading || OfflineSyncEngine.shared.isSyncing {
+                            ProgressView()
+                                .controlSize(.mini)
+                                .scaleEffect(0.5)
+                        }
+                    }
+                }
+            }
+
+            Image(systemName: "chevron.up.chevron.down")
+                .font(.system(size: 9, weight: .bold))
+                .foregroundColor(Color.primary.opacity(0.65))
+        }
+        .fixedSize(horizontal: true, vertical: false)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .contentShape(Capsule())
+        .onTapGesture {
+            showCloudMenuPopover.toggle()
+        }
+        .glassCapsule(strokeOpacity: 0.4)
+        .popover(isPresented: $showCloudMenuPopover) {
+            cloudMenuPopoverContent
+        }
+    }
+
+    private var cloudMenuPopoverContent: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if !appState.isOnline {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label("Connexion Internet inactive", systemImage: "bolt.slash.fill")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(.orange)
+                    Text("Vos copies annotées sont enregistrées localement et seront envoyées sur Dropbox dès le retour de la connexion.")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
                 }
 
                 Divider()
 
                 Button {
-                    showFolderPicker = true
-                } label: {
-                    Label(appState.t(.navChangeFolder), systemImage: "folder.badge.gearshape")
-                }
-
-                Button {
-                    showCloudSetupSheet = true
-                } label: {
-                    Label(appState.t(.navChangeCloud), systemImage: "arrow.triangle.2.circlepath")
-                }
-
-                Divider()
-
-                Button {
+                    showCloudMenuPopover = false
                     Task { await appState.loadInitialData() }
                 } label: {
                     Label(appState.t(.navReloadData), systemImage: "arrow.clockwise")
+                        .font(.system(size: 13, weight: .medium))
                 }
-            }
-        } label: {
-            HStack(spacing: 8) {
-                if !appState.isOnline {
-                    Circle()
-                        .fill(Color.orange)
-                        .frame(width: 8, height: 8)
+                .buttonStyle(.plain)
+            } else {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(appState.t(.navActiveStorage).uppercased())
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.secondary)
 
-                    Image(systemName: "bolt.slash.fill")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.orange)
-
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("Hors-ligne")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(.orange)
-
-                        Text("Cache local actif")
-                            .font(.system(size: 9))
-                            .foregroundColor(.secondary)
-                    }
-                } else {
-                    Circle()
-                        .fill(appState.storageManager.activeProvider.isConnected ? Color.green : Color.orange)
-                        .frame(width: 8, height: 8)
-
-                    CloudBrandIconView(type: appState.storageManager.activeProvider.providerType, size: 16)
-
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(appState.storageManager.activeProvider.providerType.displayName)
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(.primary)
-
-                        HStack(spacing: 4) {
-                            Text(activeRootPath)
-                                .font(.system(size: 9, design: .monospaced))
+                    HStack(spacing: 8) {
+                        CloudBrandIconView(type: appState.storageManager.activeProvider.providerType, size: 20)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(appState.storageManager.activeProvider.providerType.displayName)
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundColor(.primary)
+                            Text("\(appState.t(.navSourceFolder)) \(activeRootPath)")
+                                .font(.system(size: 11, design: .monospaced))
                                 .foregroundColor(.secondary)
-                                .lineLimit(1)
-
-                            if appState.isLoading || OfflineSyncEngine.shared.isSyncing {
-                                ProgressView()
-                                    .controlSize(.mini)
-                                    .scaleEffect(0.5)
-                            }
                         }
                     }
                 }
 
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundColor(.secondary)
+                Divider()
+
+                Button {
+                    showCloudMenuPopover = false
+                    showFolderPicker = true
+                } label: {
+                    Label(appState.t(.navChangeFolder), systemImage: "folder.badge.gearshape")
+                        .font(.system(size: 13, weight: .medium))
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    showCloudMenuPopover = false
+                    showCloudSetupSheet = true
+                } label: {
+                    Label(appState.t(.navChangeCloud), systemImage: "arrow.triangle.2.circlepath")
+                        .font(.system(size: 13, weight: .medium))
+                }
+                .buttonStyle(.plain)
+
+                Divider()
+
+                Button {
+                    showCloudMenuPopover = false
+                    Task { await appState.loadInitialData() }
+                } label: {
+                    Label(appState.t(.navReloadData), systemImage: "arrow.clockwise")
+                        .font(.system(size: 13, weight: .medium))
+                }
+                .buttonStyle(.plain)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
         }
-        .buttonStyle(.plain)
+        .padding(14)
+        .frame(minWidth: 260)
     }
 
     // MARK: - 4. Sidebar Flottante en Liquid Glass (Tiroir suspendu)
