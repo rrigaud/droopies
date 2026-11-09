@@ -67,6 +67,7 @@ public struct MainSplitView: View {
     public var body: some View {
         GeometryReader { geometry in
             let isCompact = geometry.size.width < 760
+            let isPortrait = geometry.size.height > geometry.size.width
 
             ZStack(alignment: .topLeading) {
                 // MARK: - 1. Fond Ambiant Liquid Glass & Contenu Plein Écran
@@ -113,7 +114,7 @@ public struct MainSplitView: View {
 
                     // Toolbar Centrale Flottante (Outils contextuels selon l'écran actif)
                     if hasCenterToolbar {
-                        topCenterToolbar(isCompact: isCompact)
+                        topCenterToolbar(isCompact: isCompact, isPortrait: isPortrait)
                         Spacer(minLength: 8)
                     }
 
@@ -270,10 +271,10 @@ public struct MainSplitView: View {
     }
 
     @ViewBuilder
-    private func topCenterToolbar(isCompact: Bool) -> some View {
+    private func topCenterToolbar(isCompact: Bool, isPortrait: Bool) -> some View {
         switch activeScreen {
         case .correction:
-            correctionCenterTabsToolbar(isCompact: isCompact)
+            correctionCenterTabsToolbar(isCompact: isCompact, isPortrait: isPortrait)
 
         case .distribution:
             distributionStepperToolbar(isCompact: isCompact)
@@ -443,9 +444,13 @@ public struct MainSplitView: View {
 
     // MARK: - Center Toolbar : Onglets d'Évaluations (Correction)
 
-    private func correctionCenterTabsToolbar(isCompact: Bool) -> some View {
-        HStack(spacing: 4) {
-            if isCompact && appState.openCorrectionScans.count > 2 {
+    private func correctionCenterTabsToolbar(isCompact: Bool, isPortrait: Bool) -> some View {
+        let shouldCollapse = (isPortrait && appState.openCorrectionScans.count >= 3)
+            || (isCompact && appState.openCorrectionScans.count >= 3)
+            || (appState.openCorrectionScans.count > 4)
+
+        return HStack(spacing: 4) {
+            if shouldCollapse {
                 compactEvaluationsMenuPill
             } else {
                 ForEach(appState.openCorrectionScans) { scan in
