@@ -395,8 +395,8 @@ public struct MainSplitView: View {
     }
 
     private func studentsCenterActionToolbar(isCompact: Bool) -> some View {
-        HStack(spacing: 4) {
-            // Bouton 1 : Ajouter un élève
+        HStack(spacing: 8) {
+            // Bouton 1 : Ajouter un élève (Bouton classique de toolbar Liquid Glass : icône + texte)
             Button {
                 if appState.isOnline {
                     appState.showAddStudentSheet = true
@@ -409,31 +409,20 @@ public struct MainSplitView: View {
                     Text(isCompact ? "Ajouter" : "Ajouter un élève")
                         .font(.system(size: 13, weight: .semibold))
                 }
-                .foregroundColor(.white)
-                .padding(.horizontal, 11)
+                .foregroundColor(appState.isOnline ? .primary : .secondary)
+                .padding(.horizontal, 10)
                 .padding(.vertical, 7)
-                .background(
-                    Capsule()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(hex: "2563EB").opacity(0.80),
-                                    Color(hex: "1D4ED8").opacity(0.72)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .shadow(color: Color.blue.opacity(0.25), radius: 4, y: 1)
-                )
-                .clipShape(Capsule())
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            #if os(iOS)
+            .hoverEffect(.highlight)
+            #endif
             .disabled(!appState.isOnline)
             .opacity(appState.isOnline ? 1.0 : 0.45)
             .help(appState.isOnline ? "Ajouter un élève" : "Disponible en ligne uniquement")
 
-            // Bouton 2 : Importer CSV
+            // Bouton 2 : Importer CSV (Bouton classique de toolbar Liquid Glass : icône + texte)
             Button {
                 if appState.isOnline {
                     appState.showCSVImportSheet = true
@@ -446,32 +435,20 @@ public struct MainSplitView: View {
                     Text(isCompact ? "Importer" : "Importer CSV")
                         .font(.system(size: 13, weight: .semibold))
                 }
-                .foregroundColor(.white)
-                .padding(.horizontal, 11)
+                .foregroundColor(appState.isOnline ? .primary : .secondary)
+                .padding(.horizontal, 10)
                 .padding(.vertical, 7)
-                .background(
-                    Capsule()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(hex: "059669").opacity(0.80),
-                                    Color(hex: "047857").opacity(0.72)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .shadow(color: Color.green.opacity(0.25), radius: 4, y: 1)
-                )
-                .clipShape(Capsule())
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            #if os(iOS)
+            .hoverEffect(.highlight)
+            #endif
             .disabled(!appState.isOnline)
             .opacity(appState.isOnline ? 1.0 : 0.45)
             .help(appState.isOnline ? "Importer un fichier CSV" : "Disponible en ligne uniquement")
         }
         .fixedSize(horizontal: true, vertical: false)
-        .padding(2)
     }
 
     // MARK: - Center Toolbar : Onglets d'Évaluations (Correction)
