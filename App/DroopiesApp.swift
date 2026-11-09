@@ -12,7 +12,7 @@ import SwiftUI
 @main
 struct DroopiesApp: App {
     @State private var appState = AppState()
-    @State private var isSetupCompleted: Bool = false
+    @State private var isSetupCompleted: Bool = CommandLine.arguments.contains(where: { $0.hasPrefix("-test") })
 
     private var activeLocale: Locale {
         appState.settings.language.locale ?? Locale.autoupdatingCurrent

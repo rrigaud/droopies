@@ -395,45 +395,83 @@ public struct MainSplitView: View {
     }
 
     private func studentsCenterActionToolbar(isCompact: Bool) -> some View {
-        HStack(spacing: 8) {
-            // Bouton 1 : Ajouter un élève (Bouton natif Apple avec verre dépoli teinté)
+        HStack(spacing: 4) {
+            // Bouton 1 : Ajouter un élève
             Button {
                 if appState.isOnline {
                     appState.showAddStudentSheet = true
                 }
             } label: {
-                HStack(spacing: 5) {
+                HStack(spacing: 6) {
                     Image(systemName: "person.badge.plus")
+                        .font(.system(size: 13, weight: .semibold))
+
                     Text(isCompact ? "Ajouter" : "Ajouter un élève")
+                        .font(.system(size: 13, weight: .semibold))
                 }
-                .font(.system(size: 12.5, weight: .semibold))
+                .foregroundColor(.white)
+                .padding(.horizontal, 11)
+                .padding(.vertical, 7)
+                .background(
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color(hex: "2563EB").opacity(0.80),
+                                    Color(hex: "1D4ED8").opacity(0.72)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .shadow(color: Color.blue.opacity(0.25), radius: 4, y: 1)
+                )
+                .clipShape(Capsule())
             }
-            .buttonStyle(.bordered)
-            .buttonBorderShape(.capsule)
-            .controlSize(.regular)
-            .tint(.blue)
+            .buttonStyle(.plain)
             .disabled(!appState.isOnline)
+            .opacity(appState.isOnline ? 1.0 : 0.45)
             .help(appState.isOnline ? "Ajouter un élève" : "Disponible en ligne uniquement")
 
-            // Bouton 2 : Importer CSV (Bouton natif Apple en verre dépoli neutre)
+            // Bouton 2 : Importer CSV
             Button {
                 if appState.isOnline {
                     appState.showCSVImportSheet = true
                 }
             } label: {
-                HStack(spacing: 5) {
+                HStack(spacing: 6) {
                     Image(systemName: "arrow.down.doc")
+                        .font(.system(size: 13, weight: .semibold))
+
                     Text(isCompact ? "Importer" : "Importer CSV")
+                        .font(.system(size: 13, weight: .semibold))
                 }
-                .font(.system(size: 12.5, weight: .semibold))
+                .foregroundColor(.white)
+                .padding(.horizontal, 11)
+                .padding(.vertical, 7)
+                .background(
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color(hex: "059669").opacity(0.80),
+                                    Color(hex: "047857").opacity(0.72)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .shadow(color: Color.green.opacity(0.25), radius: 4, y: 1)
+                )
+                .clipShape(Capsule())
             }
-            .buttonStyle(.bordered)
-            .buttonBorderShape(.capsule)
-            .controlSize(.regular)
-            .tint(.primary)
+            .buttonStyle(.plain)
             .disabled(!appState.isOnline)
+            .opacity(appState.isOnline ? 1.0 : 0.45)
             .help(appState.isOnline ? "Importer un fichier CSV" : "Disponible en ligne uniquement")
         }
+        .fixedSize(horizontal: true, vertical: false)
+        .padding(2)
     }
 
     // MARK: - Center Toolbar : Onglets d'Évaluations (Correction)
