@@ -61,14 +61,7 @@ public struct PortalSettingsView: View {
         case unreachable(String)
     }
 
-    public enum DataSyncState: Equatable {
-        case checking
-        case generating
-        case upToDateOnline(String)
-        case generatedReadyToUpload
-        case needsGeneration
-        case noStudents
-    }
+    public typealias DataSyncState = PortalSyncStatus
 
     // MARK: - Thèmes visuels
 
@@ -247,12 +240,13 @@ public struct PortalSettingsView: View {
     // MARK: - 2. En-tête : URL du Portail Web & États de synchronisation
 
     private var portalHeaderSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             Text("URL & SYNCHRONISATION DU PORTAIL")
                 .font(.system(size: 11, weight: .bold))
                 .foregroundColor(.secondary)
                 .tracking(0.5)
 
+            // Ligne 1 : URL à gauche et badge URL à droite
             ViewThatFits(in: .horizontal) {
                 // Layout 1 ligne pour écrans larges et normaux (iPad paysage, Mac)
                 HStack(alignment: .center, spacing: 12) {
@@ -266,6 +260,9 @@ public struct PortalSettingsView: View {
                     onlineStatusBadge
                 }
             }
+
+            // Ligne 2 : État explicatif de synchronisation et d'hébergement
+            syncStatusInfoRow
         }
         .padding(16)
         .background(Color(white: 0.5, opacity: 0.05))
@@ -274,6 +271,60 @@ public struct PortalSettingsView: View {
             RoundedRectangle(cornerRadius: 14)
                 .stroke(Color.primary.opacity(0.08), lineWidth: 1)
         )
+    }
+
+    @ViewBuilder
+    private var syncStatusInfoRow: some View {
+        HStack(spacing: 8) {
+            switch dataSyncStatus {
+            case .checking:
+                ProgressView().controlSize(.small)
+                Text("Vérification de la synchronisation avec l'hébergeur...")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+
+            case .generating:
+                ProgressView().controlSize(.small)
+                Text("Génération du portail chiffré AES-256 en cours...")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(currentTheme.accentColor)
+
+            case .upToDateOnline(let dateStr):
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.green)
+                    .font(.system(size: 13, weight: .bold))
+                Text("Portail en ligne à jour et synchronisé (Dernière publication : \(dateStr))")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.green)
+
+            case .generatedReadyToUpload:
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundColor(.orange)
+                    .font(.system(size: 13, weight: .bold))
+                Text("Portail généré à jour localement : déposez le dossier Portail-Web sur votre hébergeur pour le mettre en ligne")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.orange)
+
+            case .needsGeneration:
+                Image(systemName: "bolt.badge.clock.fill")
+                    .foregroundColor(.orange)
+                    .font(.system(size: 13, weight: .bold))
+                Text("Mise à jour nécessaire : cliquez sur « Générer le portail » dans la barre supérieure pour actualiser les données chiffrées")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.orange)
+
+            case .noStudents:
+                Image(systemName: "person.slash")
+                    .foregroundColor(.secondary)
+                    .font(.system(size: 13))
+                Text("Aucun élève à exporter. Ajoutez des élèves avant de générer le portail.")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+        }
+        .padding(.top, 2)
     }
 
     private var urlInputField: some View {
@@ -1265,6 +1316,7 @@ public struct PortalSettingsView: View {
                     self.appState.isPortalUpdateNeeded = false
                     self.lastGenerationResult = result
                     self.dataSyncStatus = .generatedReadyToUpload
+                    self.appState.portalSyncStatus = .generatedReadyToUpload
                 }
             } catch {
                 await MainActor.run {
@@ -1273,6 +1325,8 @@ public struct PortalSettingsView: View {
                     self.errorMessage = error.localizedDescription
                     self.showErrorAlert = true
                     self.dataSyncStatus = .needsGeneration
+                    self.appState.portalSyncStatus = .needsGeneration
+                    self.appState.isPortalUpdateNeeded = true
                 }
             }
         }
@@ -1301,6 +1355,8 @@ public struct PortalSettingsView: View {
             await MainActor.run {
                 self.onlineStatus = .noUrl
                 self.dataSyncStatus = .noStudents
+                self.appState.portalSyncStatus = .noStudents
+                self.appState.isPortalUpdateNeeded = false
             }
             return
         }
@@ -1321,7 +1377,10 @@ public struct PortalSettingsView: View {
             guard !Task.isCancelled else { return }
             await MainActor.run {
                 self.onlineStatus = .noUrl
-                self.dataSyncStatus = exportsMatchLocal ? .generatedReadyToUpload : .needsGeneration
+                let status: PortalSyncStatus = exportsMatchLocal ? .generatedReadyToUpload : .needsGeneration
+                self.dataSyncStatus = status
+                self.appState.portalSyncStatus = status
+                self.appState.isPortalUpdateNeeded = (status == .needsGeneration)
             }
             return
         }
@@ -1329,6 +1388,7 @@ public struct PortalSettingsView: View {
         await MainActor.run {
             self.onlineStatus = .checking
             self.dataSyncStatus = .checking
+            self.appState.portalSyncStatus = .checking
         }
 
         let config = URLSessionConfiguration.ephemeral
@@ -1409,6 +1469,7 @@ public struct PortalSettingsView: View {
         await MainActor.run {
             self.onlineStatus = resolvedOnlineStatus
             self.dataSyncStatus = resolvedSyncStatus
+            self.appState.portalSyncStatus = resolvedSyncStatus
             self.appState.isPortalUpdateNeeded = (resolvedSyncStatus == .needsGeneration)
         }
     }

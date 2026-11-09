@@ -461,7 +461,7 @@ public struct Step1CorrectionStudioView: View {
             }
 
             VStack(alignment: .leading, spacing: 3) {
-                Text("Atelier Stylet & Correction")
+                Text("Correction des évaluations")
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
 
@@ -471,7 +471,26 @@ public struct Step1CorrectionStudioView: View {
                     .lineLimit(nil)
             }
 
-            Spacer(minLength: 0)
+            Spacer(minLength: 12)
+
+            Button {
+                appState.showPDFImporter = true
+            } label: {
+                HStack(spacing: 7) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 14, weight: .bold))
+                    Text("Importer")
+                        .font(.system(size: 14, weight: .bold))
+                }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 10)
+                .background(LinearGradient.electricBlue)
+                .foregroundColor(.white)
+                .clipShape(Capsule())
+                .shadow(color: Color.blue.opacity(0.35), radius: 6, y: 2)
+            }
+            .buttonStyle(.plain)
+            .help("Importer un paquet de copies (PDF)")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)

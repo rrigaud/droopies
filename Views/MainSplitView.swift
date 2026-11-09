@@ -257,7 +257,7 @@ public struct MainSplitView: View {
     private var hasCenterToolbar: Bool {
         switch activeScreen {
         case .correction:
-            return true
+            return appState.activeCorrectionScan != nil || !appState.openCorrectionScans.isEmpty
         case .distribution:
             return appState.isOnline
         case .students:
@@ -273,11 +273,7 @@ public struct MainSplitView: View {
     private func topCenterToolbar(isCompact: Bool) -> some View {
         switch activeScreen {
         case .correction:
-            if appState.activeCorrectionScan != nil {
-                correctionCenterTabsToolbar(isCompact: isCompact)
-            } else {
-                correctionCenterImportToolbar(isCompact: isCompact)
-            }
+            correctionCenterTabsToolbar(isCompact: isCompact)
 
         case .distribution:
             distributionStepperToolbar(isCompact: isCompact)
@@ -293,36 +289,6 @@ public struct MainSplitView: View {
         }
     }
 
-    // MARK: - Center Toolbar : Import d'Évaluation (Correction Dashboard)
-
-    private func correctionCenterImportToolbar(isCompact: Bool) -> some View {
-        HStack(spacing: 3) {
-            Button {
-                appState.showPDFImporter = true
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "doc.badge.plus")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.blue)
-
-                    Text(isCompact ? "Importer (PDF)" : "Importer une évaluation (PDF)")
-                        .font(.system(size: 12.5, weight: .semibold))
-                        .foregroundColor(.primary)
-                        .lineLimit(1)
-                        .fixedSize(horizontal: true, vertical: false)
-                }
-                .padding(.horizontal, isCompact ? 11 : 14)
-                .frame(height: 32)
-                .background(Color.primary.opacity(0.04))
-                .clipShape(Capsule())
-            }
-            .buttonStyle(.plain)
-            .help("Importer une évaluation au format PDF")
-        }
-        .padding(3)
-        .glassCapsule(strokeOpacity: 0.4)
-    }
-
     // MARK: - Center Toolbar : Actions du Portail Élèves
 
     private func portalCenterActionToolbar(isCompact: Bool) -> some View {
@@ -333,26 +299,69 @@ public struct MainSplitView: View {
                 }
             } label: {
                 HStack(spacing: 6) {
-                    if appState.isPortalGenerating {
+                    switch appState.portalSyncStatus {
+                    case .generating:
                         ProgressView()
                             .controlSize(.small)
-                    } else {
-                        Image(systemName: "bolt.badge.clock.fill")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(appState.isOnline ? (appState.isPortalUpdateNeeded ? .orange : .blue) : .secondary)
-                    }
+                        Text(isCompact ? "Génération..." : "Génération du portail...")
+                            .font(.system(size: 12.5, weight: .bold))
+                            .foregroundColor(.primary)
 
-                    Text(appState.isPortalGenerating
-                         ? (isCompact ? "Génération..." : "Génération du portail...")
-                         : (isCompact ? "Générer" : (appState.isPortalUpdateNeeded ? "Générer le portail (MAJ)" : "Générer le portail")))
-                        .font(.system(size: 12.5, weight: .semibold))
-                        .foregroundColor(appState.isOnline ? .primary : .secondary)
-                        .lineLimit(1)
-                        .fixedSize(horizontal: true, vertical: false)
+                    case .checking:
+                        ProgressView()
+                            .controlSize(.small)
+                        Text(isCompact ? "Vérification..." : "Vérification du portail...")
+                            .font(.system(size: 12.5, weight: .medium))
+                            .foregroundColor(.secondary)
+
+                    case .needsGeneration:
+                        Image(systemName: "bolt.badge.clock.fill")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(.orange)
+                        Text(isCompact ? "Générer (MAJ)" : "Générer le portail (MAJ Nécessaire)")
+                            .font(.system(size: 12.5, weight: .bold))
+                            .foregroundColor(.orange)
+
+                    case .generatedReadyToUpload:
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(.orange)
+                        Text(isCompact ? "À mettre en ligne" : "Portail généré (À mettre en ligne)")
+                            .font(.system(size: 12.5, weight: .semibold))
+                            .foregroundColor(.orange)
+
+                    case .upToDateOnline:
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(.green)
+                        Text(isCompact ? "À jour" : "Portail à jour")
+                            .font(.system(size: 12.5, weight: .semibold))
+                            .foregroundColor(.green)
+
+                    case .noStudents:
+                        Image(systemName: "person.slash")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.secondary)
+                        Text("Aucun élève")
+                            .font(.system(size: 12.5, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
                 }
                 .padding(.horizontal, isCompact ? 11 : 14)
                 .frame(height: 32)
-                .background(Color.primary.opacity(0.04))
+                .background(
+                    Group {
+                        if appState.portalSyncStatus == .needsGeneration {
+                            Color.orange.opacity(0.12)
+                        } else if appState.portalSyncStatus == .generatedReadyToUpload {
+                            Color.orange.opacity(0.08)
+                        } else if case .upToDateOnline = appState.portalSyncStatus {
+                            Color.green.opacity(0.08)
+                        } else {
+                            Color.primary.opacity(0.04)
+                        }
+                    }
+                )
                 .clipShape(Capsule())
             }
             .buttonStyle(.plain)
@@ -363,7 +372,9 @@ public struct MainSplitView: View {
                     ? "Disponible en ligne uniquement"
                     : (appState.students.isEmpty
                        ? "Veuillez d'abord importer des élèves"
-                       : "Générer et publier le portail web chiffré")
+                       : (appState.portalSyncStatus == .generatedReadyToUpload
+                          ? "Portail généré prêt à être mis en ligne sur votre hébergeur. Cliquez pour re-générer."
+                          : "Générer et publier le portail web chiffré"))
             )
         }
         .padding(3)

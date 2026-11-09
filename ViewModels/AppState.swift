@@ -10,6 +10,15 @@
 import Foundation
 import Observation
 
+public enum PortalSyncStatus: Equatable {
+    case checking
+    case generating
+    case upToDateOnline(String)
+    case generatedReadyToUpload
+    case needsGeneration
+    case noStudents
+}
+
 @Observable
 public final class AppState: @unchecked Sendable {
     public var storageManager: StorageManager
@@ -36,6 +45,7 @@ public final class AppState: @unchecked Sendable {
     public var triggerPortalGeneration: Int = 0
     public var isPortalGenerating: Bool = false
     public var isPortalUpdateNeeded: Bool = false
+    public var portalSyncStatus: PortalSyncStatus = .checking
 
     // MARK: - Atelier de Correction Multi-Onglets (Sans Modale)
     public var openCorrectionScans: [StorageManager.ScanItem] = []
