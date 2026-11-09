@@ -395,8 +395,8 @@ public struct MainSplitView: View {
     }
 
     private func studentsCenterActionToolbar(isCompact: Bool) -> some View {
-        HStack(spacing: 8) {
-            // Bouton 1 : Ajouter un élève (Bouton classique de toolbar Liquid Glass : icône + texte)
+        HStack(spacing: 0) {
+            // Bouton 1 : Ajouter un élève
             Button {
                 if appState.isOnline {
                     appState.showAddStudentSheet = true
@@ -410,7 +410,7 @@ public struct MainSplitView: View {
                         .font(.system(size: 13, weight: .semibold))
                 }
                 .foregroundColor(appState.isOnline ? .primary : .secondary)
-                .padding(.horizontal, 10)
+                .padding(.horizontal, 12)
                 .padding(.vertical, 7)
                 .contentShape(Rectangle())
             }
@@ -422,7 +422,12 @@ public struct MainSplitView: View {
             .opacity(appState.isOnline ? 1.0 : 0.45)
             .help(appState.isOnline ? "Ajouter un élève" : "Disponible en ligne uniquement")
 
-            // Bouton 2 : Importer CSV (Bouton classique de toolbar Liquid Glass : icône + texte)
+            // Séparateur vertical fin façon bulle d'outils Aperçu
+            Rectangle()
+                .fill(Color.primary.opacity(0.14))
+                .frame(width: 1, height: 16)
+
+            // Bouton 2 : Importer CSV
             Button {
                 if appState.isOnline {
                     appState.showCSVImportSheet = true
@@ -436,7 +441,7 @@ public struct MainSplitView: View {
                         .font(.system(size: 13, weight: .semibold))
                 }
                 .foregroundColor(appState.isOnline ? .primary : .secondary)
-                .padding(.horizontal, 10)
+                .padding(.horizontal, 12)
                 .padding(.vertical, 7)
                 .contentShape(Rectangle())
             }
@@ -448,6 +453,23 @@ public struct MainSplitView: View {
             .opacity(appState.isOnline ? 1.0 : 0.45)
             .help(appState.isOnline ? "Importer un fichier CSV" : "Disponible en ligne uniquement")
         }
+        .padding(2)
+        .background(.thinMaterial, in: Capsule())
+        .overlay(
+            Capsule()
+                .strokeBorder(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.45),
+                            Color.white.opacity(0.10)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    ),
+                    lineWidth: 0.75
+                )
+        )
+        .shadow(color: Color.black.opacity(0.06), radius: 4, y: 1)
         .fixedSize(horizontal: true, vertical: false)
     }
 
