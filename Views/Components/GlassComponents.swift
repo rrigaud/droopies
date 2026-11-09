@@ -204,24 +204,40 @@ public struct GlassCapsuleModifier: ViewModifier {
 
     public func body(content: Content) -> some View {
         content
-            .background(.ultraThinMaterial)
+            .background(
+                ZStack {
+                    // Verre translucide allégé : laisse passer 65% de la transparence et des formes du fond
+                    Rectangle()
+                        .fill(.ultraThinMaterial)
+                        .opacity(colorScheme == .dark ? 0.45 : 0.35)
+
+                    // Lueur spéculaire de surface
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(colorScheme == .dark ? 0.10 : 0.22),
+                            Color.white.opacity(0.02)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                }
+            )
             .clipShape(Capsule())
             .overlay(
                 Capsule()
                     .strokeBorder(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(colorScheme == .dark ? 0.55 : 0.70), // Reflet spéculaire blanc pur zénithal
-                                Color.white.opacity(colorScheme == .dark ? 0.15 : 0.20),
-                                Color.clear
+                                Color.white.opacity(colorScheme == .dark ? 0.45 : 0.70),
+                                Color.white.opacity(colorScheme == .dark ? 0.08 : 0.15)
                             ],
                             startPoint: .top,
                             endPoint: .bottom
                         ),
-                        lineWidth: 0.8
+                        lineWidth: 0.75
                     )
             )
-            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.25 : 0.08), radius: 10, x: 0, y: 4)
+            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.18 : 0.05), radius: 5, x: 0, y: 2)
     }
 }
 

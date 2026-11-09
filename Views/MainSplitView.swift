@@ -533,9 +533,18 @@ public struct MainSplitView: View {
                 Group {
                     if isCorrectionSelected {
                         Capsule()
-                            .fill(LinearGradient.electricBlue)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color(hex: "2563EB").opacity(0.80),
+                                        Color(hex: "1D4ED8").opacity(0.72)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
                             .matchedGeometryEffect(id: "activeMainPill", in: toolbarNamespace)
-                            .shadow(color: Color.blue.opacity(0.3), radius: 6, y: 2)
+                            .shadow(color: Color.blue.opacity(0.25), radius: 4, y: 1)
                     } else {
                         Color.clear
                     }
@@ -755,9 +764,18 @@ public struct MainSplitView: View {
                 Group {
                     if isDistributionSelected {
                         Capsule()
-                            .fill(LinearGradient.emeraldGreen)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color(hex: "059669").opacity(0.80),
+                                        Color(hex: "047857").opacity(0.72)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
                             .matchedGeometryEffect(id: "activeMainPill", in: toolbarNamespace)
-                            .shadow(color: Color.green.opacity(0.3), radius: 6, y: 2)
+                            .shadow(color: Color.green.opacity(0.25), radius: 4, y: 1)
                     } else {
                         Color.clear
                     }
