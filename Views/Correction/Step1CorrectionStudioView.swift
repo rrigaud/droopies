@@ -432,7 +432,7 @@ public struct Step1CorrectionStudioView: View {
             .padding(.bottom, 16)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .padding(.top, 66)
+        .padding(.top, 16)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 

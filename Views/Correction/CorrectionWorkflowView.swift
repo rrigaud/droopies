@@ -73,7 +73,7 @@ public struct CorrectionWorkflowView: View {
                 }
                 .padding(.horizontal, 24)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(.top, 68)
+                .padding(.top, 16)
             } else {
                 // MARK: - Vue de l'étape active normale
                 Group {
@@ -89,7 +89,7 @@ public struct CorrectionWorkflowView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(.top, 68)
+                .padding(.top, 16)
             }
         }
     }

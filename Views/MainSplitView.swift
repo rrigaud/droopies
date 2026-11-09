@@ -69,73 +69,91 @@ public struct MainSplitView: View {
             let isCompact = geometry.size.width < 760
             let isPortrait = geometry.size.height > geometry.size.width
 
-            ZStack(alignment: .topLeading) {
-                // MARK: - 1. Fond Ambiant Liquid Glass & Contenu Plein Écran
-                LiquidGlassBackground()
+            NavigationStack {
+                ZStack(alignment: .topLeading) {
+                    // MARK: - 1. Fond Ambiant Liquid Glass & Contenu Plein Écran
+                    LiquidGlassBackground()
 
-                // Contenu principal occupant 100% de la fenêtre (architecture Liquid Glass sans démarcation)
-                Group {
-                    switch activeScreen {
-                    case .correction:
-                        Step1CorrectionStudioView(appState: appState, currentStep: .constant(1))
-                    case .distribution:
-                        CorrectionWorkflowView(appState: appState)
-                    case .students:
-                        StudentsManagementView(appState: appState)
-                            .padding(.top, 58)
-                    case .portal:
-                        PortalSettingsView(appState: appState)
-                    case .settings:
-                        AppSettingsView(appState: appState)
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                // MARK: - 2. Fond Estompé (Dimmer) pour fermer la sidebar en cliquant ailleurs
-                if isSidebarOpen {
-                    Color.black.opacity(0.3)
-                        .ignoresSafeArea()
-                        .transition(.opacity)
-                        .onTapGesture {
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                                isSidebarOpen = false
-                            }
+                    // Contenu principal occupant 100% de la fenêtre (architecture native Apple)
+                    Group {
+                        switch activeScreen {
+                        case .correction:
+                            Step1CorrectionStudioView(appState: appState, currentStep: .constant(1))
+                        case .distribution:
+                            CorrectionWorkflowView(appState: appState)
+                        case .students:
+                            StudentsManagementView(appState: appState)
+                        case .portal:
+                            PortalSettingsView(appState: appState)
+                        case .settings:
+                            AppSettingsView(appState: appState)
                         }
-                        .zIndex(10)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                    // MARK: - 2. Fond Estompé (Dimmer) pour fermer la sidebar en cliquant ailleurs
+                    if isSidebarOpen {
+                        Color.black.opacity(0.3)
+                            .ignoresSafeArea()
+                            .transition(.opacity)
+                            .onTapGesture {
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                    isSidebarOpen = false
+                                }
+                            }
+                            .zIndex(10)
+                    }
+
+                    // MARK: - 3. Sidebar Flottante en Liquid Glass (Se déploie à gauche)
+                    if isSidebarOpen {
+                        floatingSidebarDrawer
+                            .transition(.move(edge: .leading).combined(with: .opacity))
+                            .zIndex(20)
+                    }
                 }
+                .navigationTitle("")
+                #if os(iOS)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbarBackground(.visible, for: .navigationBar)
+                #endif
+                .toolbar {
+                    #if os(iOS)
+                    ToolbarItem(placement: .topBarLeading) {
+                        topLeadingToolbar(isCompact: isCompact)
+                    }
 
-                // MARK: - 3. Barres d'Outils Flottantes Supérieures (Liquid Glass Bars)
-                HStack(alignment: .center, spacing: 0) {
-                    // Toolbar 1 : Gauche (Bouton Sidebar + Sélecteur Correction / Distribution)
-                    topLeadingToolbar(isCompact: isCompact)
-                        .glassCapsule(strokeOpacity: 0.4)
-
-                    Spacer(minLength: 8)
-
-                    // Toolbar Centrale Flottante (Outils contextuels selon l'écran actif)
                     if hasCenterToolbar {
-                        topCenterToolbar(isCompact: isCompact, isPortrait: isPortrait)
-                        Spacer(minLength: 8)
+                        ToolbarItem(placement: .principal) {
+                            topCenterToolbar(isCompact: isCompact, isPortrait: isPortrait)
+                        }
                     }
 
-                    // Toolbar 2 : Droite (Historique Undo/Redo si copie active, sinon Menu Cloud)
-                    if activeScreen == .correction && appState.activeCorrectionScan != nil {
-                        topTrailingHistoryToolbar
-                            .glassCapsule(strokeOpacity: 0.4)
-                    } else {
-                        topTrailingCloudToolbar
-                            .glassCapsule(strokeOpacity: 0.4)
+                    ToolbarItem(placement: .topBarTrailing) {
+                        if activeScreen == .correction && appState.activeCorrectionScan != nil {
+                            topTrailingHistoryToolbar
+                        } else {
+                            topTrailingCloudToolbar
+                        }
                     }
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 10)
-                .zIndex(15)
+                    #else
+                    ToolbarItem(placement: .navigation) {
+                        topLeadingToolbar(isCompact: isCompact)
+                    }
 
-                // MARK: - 4. Sidebar Flottante en Liquid Glass (Se déploie à gauche)
-                if isSidebarOpen {
-                    floatingSidebarDrawer
-                        .transition(.move(edge: .leading).combined(with: .opacity))
-                        .zIndex(20)
+                    if hasCenterToolbar {
+                        ToolbarItem(placement: .principal) {
+                            topCenterToolbar(isCompact: isCompact, isPortrait: isPortrait)
+                        }
+                    }
+
+                    ToolbarItem(placement: .primaryAction) {
+                        if activeScreen == .correction && appState.activeCorrectionScan != nil {
+                            topTrailingHistoryToolbar
+                        } else {
+                            topTrailingCloudToolbar
+                        }
+                    }
+                    #endif
                 }
             }
         }
@@ -379,7 +397,6 @@ public struct MainSplitView: View {
             )
         }
         .padding(3)
-        .glassCapsule(strokeOpacity: 0.4)
     }
 
     private func studentsCenterActionToolbar(isCompact: Bool) -> some View {
@@ -439,7 +456,6 @@ public struct MainSplitView: View {
             .help(appState.isOnline ? "Importer un fichier CSV" : "Disponible en ligne uniquement")
         }
         .padding(3)
-        .glassCapsule(strokeOpacity: 0.4)
     }
 
     // MARK: - Center Toolbar : Onglets d'Évaluations (Correction)
@@ -459,7 +475,6 @@ public struct MainSplitView: View {
             }
         }
         .padding(3)
-        .glassCapsule(strokeOpacity: 0.4)
     }
 
     // MARK: - Toolbar 1 : Haut-Gauche (Sidebar Toggle + Navigation Correction / Distribution)
@@ -499,8 +514,10 @@ public struct MainSplitView: View {
                 correctionMainButton
                 distributionMainButton
             }
+            .fixedSize(horizontal: true, vertical: false)
             .padding(2)
         }
+        .fixedSize(horizontal: true, vertical: false)
         .padding(.horizontal, 6)
         .padding(.vertical, 4)
     }
@@ -798,7 +815,6 @@ public struct MainSplitView: View {
             distributionStepItem(step: 3, title: "Envoi", icon: "paperplane.fill")
         }
         .padding(3)
-        .glassCapsule(strokeOpacity: 0.4)
     }
 
     private var distributionStepChevron: some View {
