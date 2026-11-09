@@ -198,7 +198,7 @@ public struct GlassCapsuleModifier: ViewModifier {
     public var strokeOpacity: Double
     @Environment(\.colorScheme) private var colorScheme
 
-    public init(strokeOpacity: Double = 0.4) {
+    public init(strokeOpacity: Double = 0.35) {
         self.strokeOpacity = strokeOpacity
     }
 
@@ -208,19 +208,19 @@ public struct GlassCapsuleModifier: ViewModifier {
             .clipShape(Capsule())
             .overlay(
                 Capsule()
-                    .stroke(
+                    .strokeBorder(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(colorScheme == .dark ? strokeOpacity * 0.85 : strokeOpacity),
-                                Color.white.opacity(strokeOpacity * 0.15)
+                                Color.white.opacity(colorScheme == .dark ? 0.45 : 0.65),
+                                Color.primary.opacity(colorScheme == .dark ? 0.16 : 0.10)
                             ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
+                            startPoint: .top,
+                            endPoint: .bottom
                         ),
-                        lineWidth: 1
+                        lineWidth: 0.8
                     )
             )
-            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.08), radius: 14, x: 0, y: 6)
+            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.28 : 0.09), radius: 8, x: 0, y: 3)
     }
 }
 
@@ -366,6 +366,7 @@ public struct GlassToolButton: View {
 public struct GlassHUDIconButton: View {
     public let icon: String
     public let isEnabled: Bool
+    public var isActive: Bool = false
     public var helpText: String? = nil
     public var size: CGFloat = 30
     public let action: () -> Void
@@ -376,12 +377,14 @@ public struct GlassHUDIconButton: View {
     public init(
         icon: String,
         isEnabled: Bool = true,
+        isActive: Bool = false,
         helpText: String? = nil,
         size: CGFloat = 30,
         action: @escaping () -> Void
     ) {
         self.icon = icon
         self.isEnabled = isEnabled
+        self.isActive = isActive
         self.helpText = helpText
         self.size = size
         self.action = action
@@ -393,7 +396,7 @@ public struct GlassHUDIconButton: View {
                 // Fond translucide réactif avec réfraction de verre
                 Circle()
                     .fill(
-                        (isHovered && isEnabled)
+                        (isActive || (isHovered && isEnabled))
                         ? LinearGradient(
                             colors: [
                                 Color.white.opacity(colorScheme == .dark ? 0.22 : 0.40),
@@ -416,8 +419,8 @@ public struct GlassHUDIconButton: View {
                             .strokeBorder(
                                 LinearGradient(
                                     colors: [
-                                        Color.white.opacity(isEnabled ? (isHovered ? 0.75 : 0.45) : 0.15),
-                                        Color.white.opacity(isEnabled ? (isHovered ? 0.30 : 0.12) : 0.04),
+                                        Color.white.opacity((isActive || isHovered) && isEnabled ? 0.75 : 0.45),
+                                        Color.white.opacity((isActive || isHovered) && isEnabled ? 0.30 : 0.12),
                                         Color.clear
                                     ],
                                     startPoint: .top,
@@ -427,7 +430,7 @@ public struct GlassHUDIconButton: View {
                             )
                     )
                     .shadow(
-                        color: isHovered && isEnabled ? Color.white.opacity(colorScheme == .dark ? 0.25 : 0.45) : Color.clear,
+                        color: (isActive || isHovered) && isEnabled ? Color.white.opacity(colorScheme == .dark ? 0.25 : 0.45) : Color.clear,
                         radius: 5,
                         x: 0,
                         y: 1
@@ -435,7 +438,7 @@ public struct GlassHUDIconButton: View {
 
                 Image(systemName: icon)
                     .font(.system(size: size * 0.44, weight: .semibold))
-                    .foregroundColor(isEnabled ? .primary : .secondary.opacity(0.35))
+                    .foregroundColor(isEnabled ? (isActive ? .accentColor : .primary) : .secondary.opacity(0.35))
                     .shadow(
                         color: isEnabled ? Color.black.opacity(colorScheme == .dark ? 0.45 : 0.08) : Color.clear,
                         radius: 1,

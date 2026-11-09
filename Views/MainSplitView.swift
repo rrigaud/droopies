@@ -466,34 +466,40 @@ public struct MainSplitView: View {
 
     private func topLeadingToolbar(isCompact: Bool) -> some View {
         HStack(spacing: 8) {
-            // Bouton Sidebar (Icone qui ouvre / referme la sidebar)
-            Button {
+            // Bouton Sidebar façon Aperçu (sans fond gris plat)
+            GlassHUDIconButton(
+                icon: isSidebarOpen ? "sidebar.left" : "sidebar.leading",
+                isEnabled: true,
+                isActive: isSidebarOpen,
+                helpText: "Afficher ou masquer la barre latérale",
+                size: 30
+            ) {
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                     isSidebarOpen.toggle()
                 }
-            } label: {
-                Image(systemName: isSidebarOpen ? "sidebar.left" : "sidebar.leading")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(isSidebarOpen ? .accentColor : .primary)
-                    .frame(width: 32, height: 32)
-                    .background(Color.primary.opacity(isSidebarOpen ? 0.12 : 0.05))
-                    .clipShape(Circle())
             }
-            .buttonStyle(.plain)
-            .help("Afficher ou masquer la barre latérale")
 
-            Divider()
-                .frame(height: 18)
-                .opacity(0.3)
+            // Séparateur de verre fin
+            Rectangle()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.12),
+                            Color.primary.opacity(0.16),
+                            Color.white.opacity(0.12)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .frame(width: 1, height: 18)
 
-            // Sélecteur Mode Principal (Voie 2 : Taille 100% stable et fixe)
-            HStack(spacing: 3) {
+            // Sélecteur Mode Principal (100% stable, épuré sans capsule grise)
+            HStack(spacing: 4) {
                 correctionMainButton
                 distributionMainButton
             }
-            .padding(3)
-            .background(Color.primary.opacity(0.04))
-            .clipShape(Capsule())
+            .padding(2)
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 4)
