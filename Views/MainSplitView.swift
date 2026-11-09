@@ -395,82 +395,98 @@ public struct MainSplitView: View {
     }
 
     private func studentsCenterActionToolbar(isCompact: Bool) -> some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 8) {
             // Bouton 1 : Ajouter un élève
-            Button {
+            StudentToolbarItemButton(
+                icon: "person.badge.plus",
+                title: isCompact ? "Ajouter" : "Ajouter un élève",
+                isEnabled: appState.isOnline,
+                helpText: appState.isOnline ? "Ajouter un élève" : "Disponible en ligne uniquement"
+            ) {
                 if appState.isOnline {
                     appState.showAddStudentSheet = true
                 }
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "person.badge.plus")
-                        .font(.system(size: 13, weight: .semibold))
-
-                    Text(isCompact ? "Ajouter" : "Ajouter un élève")
-                        .font(.system(size: 13, weight: .semibold))
-                }
-                .foregroundColor(appState.isOnline ? .primary : .secondary)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
-                .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
-            #if os(iOS)
-            .hoverEffect(.highlight)
-            #endif
-            .disabled(!appState.isOnline)
-            .opacity(appState.isOnline ? 1.0 : 0.45)
-            .help(appState.isOnline ? "Ajouter un élève" : "Disponible en ligne uniquement")
 
-            // Séparateur vertical fin façon bulle d'outils Aperçu
+            // Séparateur de verre fin (identique à la toolbar de gauche)
             Rectangle()
-                .fill(Color.primary.opacity(0.14))
-                .frame(width: 1, height: 16)
-
-            // Bouton 2 : Importer CSV
-            Button {
-                if appState.isOnline {
-                    appState.showCSVImportSheet = true
-                }
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "arrow.down.doc")
-                        .font(.system(size: 13, weight: .semibold))
-
-                    Text(isCompact ? "Importer" : "Importer CSV")
-                        .font(.system(size: 13, weight: .semibold))
-                }
-                .foregroundColor(appState.isOnline ? .primary : .secondary)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            #if os(iOS)
-            .hoverEffect(.highlight)
-            #endif
-            .disabled(!appState.isOnline)
-            .opacity(appState.isOnline ? 1.0 : 0.45)
-            .help(appState.isOnline ? "Importer un fichier CSV" : "Disponible en ligne uniquement")
-        }
-        .padding(2)
-        .background(.thinMaterial, in: Capsule())
-        .overlay(
-            Capsule()
-                .strokeBorder(
+                .fill(
                     LinearGradient(
                         colors: [
-                            Color.white.opacity(0.45),
-                            Color.white.opacity(0.10)
+                            Color.white.opacity(0.12),
+                            Color.primary.opacity(0.16),
+                            Color.white.opacity(0.12)
                         ],
                         startPoint: .top,
                         endPoint: .bottom
-                    ),
-                    lineWidth: 0.75
+                    )
                 )
-        )
-        .shadow(color: Color.black.opacity(0.06), radius: 4, y: 1)
+                .frame(width: 1, height: 18)
+
+            // Bouton 2 : Importer CSV
+            StudentToolbarItemButton(
+                icon: "arrow.down.doc",
+                title: isCompact ? "Importer" : "Importer CSV",
+                isEnabled: appState.isOnline,
+                helpText: appState.isOnline ? "Importer un fichier CSV" : "Disponible en ligne uniquement"
+            ) {
+                if appState.isOnline {
+                    appState.showCSVImportSheet = true
+                }
+            }
+        }
         .fixedSize(horizontal: true, vertical: false)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
+    }
+
+    private struct StudentToolbarItemButton: View {
+        let icon: String
+        let title: String
+        let isEnabled: Bool
+        let helpText: String
+        let action: () -> Void
+
+        @State private var isHovered: Bool = false
+        @Environment(\.colorScheme) private var colorScheme
+
+        var body: some View {
+            Button(action: action) {
+                HStack(spacing: 6) {
+                    Image(systemName: icon)
+                        .font(.system(size: 13, weight: .semibold))
+
+                    Text(title)
+                        .font(.system(size: 13, weight: .semibold))
+                }
+                .foregroundColor(isEnabled ? .primary : .secondary.opacity(0.35))
+                .padding(.horizontal, 11)
+                .padding(.vertical, 7)
+                .background(
+                    Group {
+                        if isHovered && isEnabled {
+                            Capsule()
+                                .fill(Color.primary.opacity(colorScheme == .dark ? 0.15 : 0.08))
+                                .overlay(
+                                    Capsule()
+                                        .stroke(Color.primary.opacity(0.12), lineWidth: 0.75)
+                                )
+                        } else {
+                            Color.clear
+                        }
+                    }
+                )
+                .clipShape(Capsule())
+            }
+            .buttonStyle(GlassHUDPressStyle())
+            .disabled(!isEnabled)
+            .onHover { hovering in
+                withAnimation(.easeInOut(duration: 0.16)) {
+                    isHovered = hovering
+                }
+            }
+            .help(helpText)
+        }
     }
 
     // MARK: - Center Toolbar : Onglets d'Évaluations (Correction)
