@@ -204,32 +204,16 @@ public struct GlassCapsuleModifier: ViewModifier {
 
     public func body(content: Content) -> some View {
         content
-            .background(
-                ZStack {
-                    // Verre translucide allégé : laisse passer 65% de la transparence et des formes du fond
-                    Rectangle()
-                        .fill(.ultraThinMaterial)
-                        .opacity(colorScheme == .dark ? 0.45 : 0.35)
-
-                    // Lueur spéculaire de surface
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(colorScheme == .dark ? 0.10 : 0.22),
-                            Color.white.opacity(0.02)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                }
-            )
-            .clipShape(Capsule())
+            // Verre dépoli Liquid Glass 100% natif Apple (conforme au réglage système 50% sans opacité artificielle)
+            .background(.thinMaterial, in: Capsule())
             .overlay(
+                // Biseau de lumière zénithale façon verre Apple (Aperçu)
                 Capsule()
                     .strokeBorder(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(colorScheme == .dark ? 0.45 : 0.70),
-                                Color.white.opacity(colorScheme == .dark ? 0.08 : 0.15)
+                                Color.white.opacity(colorScheme == .dark ? 0.35 : 0.55),
+                                Color.white.opacity(colorScheme == .dark ? 0.06 : 0.10)
                             ],
                             startPoint: .top,
                             endPoint: .bottom
@@ -237,7 +221,7 @@ public struct GlassCapsuleModifier: ViewModifier {
                         lineWidth: 0.75
                     )
             )
-            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.18 : 0.05), radius: 5, x: 0, y: 2)
+            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.20 : 0.06), radius: 6, x: 0, y: 2)
     }
 }
 
