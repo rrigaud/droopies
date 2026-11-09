@@ -361,6 +361,113 @@ public struct GlassToolButton: View {
     }
 }
 
+// MARK: - Bouton d'icône Liquid Glass façon Aperçu / macOS HUD (GlassHUDIconButton)
+
+public struct GlassHUDIconButton: View {
+    public let icon: String
+    public let isEnabled: Bool
+    public var helpText: String? = nil
+    public var size: CGFloat = 30
+    public let action: () -> Void
+
+    @State private var isHovered: Bool = false
+    @Environment(\.colorScheme) private var colorScheme
+
+    public init(
+        icon: String,
+        isEnabled: Bool = true,
+        helpText: String? = nil,
+        size: CGFloat = 30,
+        action: @escaping () -> Void
+    ) {
+        self.icon = icon
+        self.isEnabled = isEnabled
+        self.helpText = helpText
+        self.size = size
+        self.action = action
+    }
+
+    public var body: some View {
+        Button(action: action) {
+            ZStack {
+                // Fond translucide réactif avec réfraction de verre
+                Circle()
+                    .fill(
+                        (isHovered && isEnabled)
+                        ? LinearGradient(
+                            colors: [
+                                Color.white.opacity(colorScheme == .dark ? 0.22 : 0.40),
+                                Color.white.opacity(colorScheme == .dark ? 0.08 : 0.18)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                        : LinearGradient(
+                            colors: [
+                                Color.white.opacity(colorScheme == .dark ? 0.08 : 0.14),
+                                Color.white.opacity(0.02)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .overlay(
+                        Circle()
+                            .strokeBorder(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(isEnabled ? (isHovered ? 0.75 : 0.45) : 0.15),
+                                        Color.white.opacity(isEnabled ? (isHovered ? 0.30 : 0.12) : 0.04),
+                                        Color.clear
+                                    ],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                ),
+                                lineWidth: 0.8
+                            )
+                    )
+                    .shadow(
+                        color: isHovered && isEnabled ? Color.white.opacity(colorScheme == .dark ? 0.25 : 0.45) : Color.clear,
+                        radius: 5,
+                        x: 0,
+                        y: 1
+                    )
+
+                Image(systemName: icon)
+                    .font(.system(size: size * 0.44, weight: .semibold))
+                    .foregroundColor(isEnabled ? .primary : .secondary.opacity(0.35))
+                    .shadow(
+                        color: isEnabled ? Color.black.opacity(colorScheme == .dark ? 0.45 : 0.08) : Color.clear,
+                        radius: 1,
+                        x: 0,
+                        y: 1
+                    )
+            }
+            .frame(width: size, height: size)
+            .contentShape(Circle())
+        }
+        .buttonStyle(GlassHUDPressStyle())
+        .disabled(!isEnabled)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.16)) {
+                isHovered = hovering
+            }
+        }
+        .help(helpText ?? "")
+    }
+}
+
+public struct GlassHUDPressStyle: ButtonStyle {
+    public init() {}
+
+    public func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.91 : 1.0)
+            .opacity(configuration.isPressed ? 0.82 : 1.0)
+            .animation(.spring(response: 0.22, dampingFraction: 0.7), value: configuration.isPressed)
+    }
+}
+
 // MARK: - Cross-Platform Text Input Helpers
 
 public extension View {

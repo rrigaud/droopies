@@ -854,42 +854,44 @@ public struct MainSplitView: View {
     // MARK: - Toolbar 2 : Haut-Droite (Historique Undo/Redo Dédié à la Correction)
 
     private var topTrailingHistoryToolbar: some View {
-        HStack(spacing: 4) {
-            // Bouton Annuler
-            Button {
+        HStack(spacing: 5) {
+            // Bouton Annuler façon Aperçu
+            GlassHUDIconButton(
+                icon: "arrow.uturn.backward",
+                isEnabled: appState.canUndoCorrection,
+                helpText: "Annuler la dernière action (tracé, surlignage, tampon, texte)",
+                size: 30
+            ) {
                 appState.undoCorrectionTrigger += 1
-            } label: {
-                Image(systemName: "arrow.uturn.backward")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(appState.canUndoCorrection ? .primary : .secondary.opacity(0.35))
-                    .frame(width: 30, height: 30)
-                    .background(Color.primary.opacity(0.04))
-                    .clipShape(Circle())
             }
-            .buttonStyle(.plain)
-            .disabled(!appState.canUndoCorrection)
-            .help("Annuler la dernière action (tracé, surlignage, tampon, texte)")
 
-            Divider()
-                .frame(height: 16)
-                .opacity(0.3)
+            // Séparateur de verre fin
+            Rectangle()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.12),
+                            Color.primary.opacity(0.16),
+                            Color.white.opacity(0.12)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .frame(width: 1, height: 16)
 
-            // Bouton Rétablir
-            Button {
+            // Bouton Rétablir façon Aperçu
+            GlassHUDIconButton(
+                icon: "arrow.uturn.forward",
+                isEnabled: appState.canRedoCorrection,
+                helpText: "Rétablir la dernière action",
+                size: 30
+            ) {
                 appState.redoCorrectionTrigger += 1
-            } label: {
-                Image(systemName: "arrow.uturn.forward")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(appState.canRedoCorrection ? .primary : .secondary.opacity(0.35))
-                    .frame(width: 30, height: 30)
-                    .background(Color.primary.opacity(0.04))
-                    .clipShape(Circle())
             }
-            .buttonStyle(.plain)
-            .disabled(!appState.canRedoCorrection)
-            .help("Rétablir la dernière action")
         }
-        .padding(3)
+        .padding(.horizontal, 4)
+        .padding(.vertical, 3)
     }
 
     // MARK: - Toolbar 2 : Haut-Droite (Widget Cloud Déroulant)
