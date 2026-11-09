@@ -452,19 +452,6 @@ public struct MainSplitView: View {
                     evaluationTabButton(for: scan)
                 }
             }
-
-            Button {
-                appState.showPDFImporter = true
-            } label: {
-                Image(systemName: "doc.badge.plus")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.blue)
-                    .frame(width: 28, height: 28)
-                    .background(Color.primary.opacity(0.04))
-                    .clipShape(Circle())
-            }
-            .buttonStyle(.plain)
-            .help("Importer une évaluation (PDF)")
         }
         .padding(3)
         .glassCapsule(strokeOpacity: 0.4)
