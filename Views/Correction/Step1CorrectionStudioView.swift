@@ -113,7 +113,6 @@ public struct Step1CorrectionStudioView: View {
 
     // État Mosaïque Dashboard
     @State private var availableScans: [StorageManager.ScanItem] = []
-    @State private var isImporterPresented: Bool = false
     @State private var showMarkedToast: String? = nil
     @State private var isLoadingScans: Bool = false
     @State private var importSuccessToast: String? = nil
@@ -373,7 +372,7 @@ public struct Step1CorrectionStudioView: View {
             }
         }
         .fileImporter(
-            isPresented: $isImporterPresented,
+            isPresented: $appState.showPDFImporter,
             allowedContentTypes: [.pdf],
             allowsMultipleSelection: true
         ) { result in
@@ -430,12 +429,8 @@ public struct Step1CorrectionStudioView: View {
                 correctedEvaluationsAccordionBlock
             }
             .padding(.horizontal, 24)
+            .padding(.bottom, 16)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-            // 4. Bloc d'import de PDF fixe tout en bas
-            bottomPdfImportBar
-                .padding(.horizontal, 24)
-                .padding(.bottom, 14)
         }
         .padding(.top, 66)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -665,54 +660,6 @@ public struct Step1CorrectionStudioView: View {
                 .stroke(Color(hex: "10B981").opacity(isExpanded ? 0.45 : 0.28), lineWidth: 1.2)
         )
         .frame(maxHeight: isExpanded ? .infinity : 44)
-    }
-
-    // MARK: - 4. Bloc d'Import de PDF Tout en Bas (Fixe)
-
-    private var bottomPdfImportBar: some View {
-        HStack(spacing: 14) {
-            ZStack {
-                Circle()
-                    .fill(Color.blue.opacity(0.12))
-                    .frame(width: 38, height: 38)
-                Image(systemName: "externaldrive.badge.plus")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.blue)
-            }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Importer un nouveau paquet de copies")
-                    .font(.system(size: 13.5, weight: .bold))
-                    .foregroundColor(.primary)
-
-                Text("Sélectionnez vos devoirs numérisés depuis cet iPad, une clé USB connectée, Fichiers ou iCloud")
-                    .font(.system(size: 11.5))
-                    .foregroundColor(.secondary)
-            }
-
-            Spacer()
-
-            Button {
-                isImporterPresented = true
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 13, weight: .bold))
-                    Text("Parcourir les fichiers (PDF)...")
-                        .font(.system(size: 13, weight: .semibold))
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .background(LinearGradient.electricBlue)
-                .foregroundColor(.white)
-                .clipShape(Capsule())
-                .shadow(color: Color.blue.opacity(0.3), radius: 6, y: 2)
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .glassCard(cornerRadius: 14, strokeOpacity: 0.3)
     }
 
     // MARK: - Placeholder si aucune évaluation en attente

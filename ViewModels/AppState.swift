@@ -30,6 +30,12 @@ public final class AppState: @unchecked Sendable {
     // MARK: - Déclencheurs de Modales Globales
     public var showAddStudentSheet: Bool = false
     public var showCSVImportSheet: Bool = false
+    public var showPDFImporter: Bool = false
+
+    // MARK: - Génération du Portail Web
+    public var triggerPortalGeneration: Int = 0
+    public var isPortalGenerating: Bool = false
+    public var isPortalUpdateNeeded: Bool = false
 
     // MARK: - Atelier de Correction Multi-Onglets (Sans Modale)
     public var openCorrectionScans: [StorageManager.ScanItem] = []

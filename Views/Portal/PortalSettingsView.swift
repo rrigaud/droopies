@@ -120,6 +120,10 @@ public struct PortalSettingsView: View {
                 // 2. URL du Portail Web & États de synchronisation en ligne
                 portalHeaderSection
 
+                if isGenerating {
+                    generationProgressBanner
+                }
+
                 // 3. Bloc de Personnalisation du Portail (Thème, Icône, Titres & Auto-Save)
                 customizationBlockSection
 
@@ -163,6 +167,11 @@ public struct PortalSettingsView: View {
         .onChange(of: appState.isOnline) { _, isOnline in
             if isOnline {
                 Task { await checkOnlineAndSyncStatus() }
+            }
+        }
+        .onChange(of: appState.triggerPortalGeneration) { _, newCount in
+            if newCount > 0 {
+                generatePortalAction()
             }
         }
         .alert("Erreur", isPresented: $showErrorAlert) {
@@ -245,21 +254,16 @@ public struct PortalSettingsView: View {
                 .tracking(0.5)
 
             ViewThatFits(in: .horizontal) {
-                // Layout 1 ligne pour écrans larges (iPad paysage, Mac)
+                // Layout 1 ligne pour écrans larges et normaux (iPad paysage, Mac)
                 HStack(alignment: .center, spacing: 12) {
                     urlInputField
                     onlineStatusBadge
-                    syncStatusBadge
                 }
 
-                // Layout 2 lignes pour écrans plus étroits
-                VStack(alignment: .leading, spacing: 10) {
+                // Layout compact de repli pour écrans très étroits
+                VStack(alignment: .leading, spacing: 8) {
                     urlInputField
-                    HStack(spacing: 10) {
-                        onlineStatusBadge
-                        syncStatusBadge
-                        Spacer()
-                    }
+                    onlineStatusBadge
                 }
             }
         }
@@ -393,127 +397,33 @@ public struct PortalSettingsView: View {
         }
     }
 
-    // Bouton 2 : État de synchronisation & Génération
+    // MARK: - Bannière de Progression pendant la Génération
+
     @ViewBuilder
-    private var syncStatusBadge: some View {
-        if !appState.isOnline {
-            HStack(spacing: 6) {
-                Image(systemName: "icloud.slash")
-                    .font(.system(size: 13, weight: .semibold))
-                Text("Synchronisation en pause")
-                    .font(.system(size: 13, weight: .semibold))
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .background(Color.primary.opacity(0.06))
-            .foregroundColor(.secondary)
-            .clipShape(Capsule())
-        } else {
-            switch dataSyncStatus {
-            case .checking:
-                HStack(spacing: 7) {
-                    ProgressView()
-                        .controlSize(.small)
-                    Text("Vérification des données...")
-                        .font(.system(size: 13, weight: .semibold))
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .background(Color.primary.opacity(0.06))
+    private var generationProgressBanner: some View {
+        HStack(spacing: 12) {
+            ProgressView(value: generationProgress, total: 1.0)
+                .progressViewStyle(.linear)
+                .frame(maxWidth: 160)
+
+            Text(generationStatusText.isEmpty ? "Génération du portail en cours..." : generationStatusText)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.primary)
+
+            Spacer()
+
+            Text("\(Int(generationProgress * 100)) %")
+                .font(.system(size: 12, weight: .bold, design: .monospaced))
                 .foregroundColor(.secondary)
-                .clipShape(Capsule())
-
-            case .generating:
-                HStack(spacing: 7) {
-                    ProgressView()
-                        .controlSize(.small)
-                        .tint(.white)
-                    Text("Génération du portail...")
-                        .font(.system(size: 13, weight: .bold))
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(
-                    LinearGradient(
-                        colors: [currentTheme.accentColor, currentTheme.accentColor.opacity(0.85)],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .foregroundColor(.white)
-                .clipShape(Capsule())
-                .shadow(color: currentTheme.accentColor.opacity(0.35), radius: 6, x: 0, y: 2)
-
-            case .upToDateOnline(let dateStr):
-                HStack(spacing: 6) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 13, weight: .bold))
-                    Text("À jour (MAJ : \(dateStr))")
-                        .font(.system(size: 13, weight: .bold))
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .background(Color.green.opacity(0.14))
-                .foregroundColor(.green)
-                .clipShape(Capsule())
-
-            case .generatedReadyToUpload:
-                HStack(spacing: 6) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 13, weight: .bold))
-                    Text("Portail généré à jour, vous pouvez à présent le mettre en ligne")
-                        .font(.system(size: 13, weight: .semibold))
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .background(Color.orange.opacity(0.15))
-                .foregroundColor(.orange)
-                .clipShape(Capsule())
-
-            case .needsGeneration:
-                Button {
-                    if appState.isOnline {
-                        generatePortalAction()
-                    }
-                } label: {
-                    HStack(spacing: 7) {
-                        Image(systemName: appState.isOnline ? "bolt.badge.clock.fill" : "bolt.slash.fill")
-                            .font(.system(size: 13, weight: .bold))
-                        Text(appState.isOnline ? "Générer le portail (MAJ Nécessaire)" : "Connexion requise pour publier")
-                            .font(.system(size: 13, weight: .bold))
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(
-                        LinearGradient(
-                            colors: appState.isOnline
-                                ? [currentTheme.accentColor, currentTheme.accentColor.opacity(0.85)]
-                                : [Color.gray, Color.gray.opacity(0.8)],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .foregroundColor(.white)
-                    .clipShape(Capsule())
-                    .shadow(color: appState.isOnline ? currentTheme.accentColor.opacity(0.35) : Color.clear, radius: 6, x: 0, y: 2)
-                }
-                .buttonStyle(.plain)
-                .disabled(!appState.isOnline)
-                .opacity(appState.isOnline ? 1.0 : 0.6)
-
-            case .noStudents:
-                HStack(spacing: 6) {
-                    Image(systemName: "person.slash")
-                    Text("Aucun élève à exporter")
-                        .font(.system(size: 13, weight: .medium))
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .background(Color.primary.opacity(0.05))
-                .foregroundColor(.secondary)
-                .clipShape(Capsule())
-            }
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(currentTheme.accentColor.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(currentTheme.accentColor.opacity(0.25), lineWidth: 1)
+        )
     }
 
     // MARK: - 3. Bloc de Personnalisation du Portail
@@ -1312,6 +1222,7 @@ public struct PortalSettingsView: View {
         }
 
         isGenerating = true
+        appState.isPortalGenerating = true
         dataSyncStatus = .generating
         generationProgress = 0.0
         generationStatusText = "Initialisation..."
@@ -1350,12 +1261,15 @@ public struct PortalSettingsView: View {
                 await MainActor.run {
                     self.appState.settings = finalSettings
                     self.isGenerating = false
+                    self.appState.isPortalGenerating = false
+                    self.appState.isPortalUpdateNeeded = false
                     self.lastGenerationResult = result
                     self.dataSyncStatus = .generatedReadyToUpload
                 }
             } catch {
                 await MainActor.run {
                     self.isGenerating = false
+                    self.appState.isPortalGenerating = false
                     self.errorMessage = error.localizedDescription
                     self.showErrorAlert = true
                     self.dataSyncStatus = .needsGeneration
@@ -1495,6 +1409,7 @@ public struct PortalSettingsView: View {
         await MainActor.run {
             self.onlineStatus = resolvedOnlineStatus
             self.dataSyncStatus = resolvedSyncStatus
+            self.appState.isPortalUpdateNeeded = (resolvedSyncStatus == .needsGeneration)
         }
     }
 

@@ -66,7 +66,7 @@ public struct MainSplitView: View {
 
     public var body: some View {
         GeometryReader { geometry in
-            let isCompact = geometry.size.width < 960
+            let isCompact = geometry.size.width < 760
 
             ZStack(alignment: .topLeading) {
                 // MARK: - 1. Fond Ambiant Liquid Glass & Contenu Plein Écran
@@ -246,6 +246,8 @@ public struct MainSplitView: View {
                 }
             } else if CommandLine.arguments.contains("-testCorrectionStudio") || CommandLine.arguments.contains("-testMultipleTabs") {
                 activeScreen = .correction
+            } else if CommandLine.arguments.contains("-testPortal") {
+                activeScreen = .portal
             }
         }
     }
@@ -255,10 +257,12 @@ public struct MainSplitView: View {
     private var hasCenterToolbar: Bool {
         switch activeScreen {
         case .correction:
-            return !appState.openCorrectionScans.isEmpty
+            return true
         case .distribution:
             return appState.isOnline
         case .students:
+            return true
+        case .portal:
             return true
         default:
             return false
@@ -269,7 +273,11 @@ public struct MainSplitView: View {
     private func topCenterToolbar(isCompact: Bool) -> some View {
         switch activeScreen {
         case .correction:
-            correctionCenterTabsToolbar(isCompact: isCompact)
+            if appState.activeCorrectionScan != nil {
+                correctionCenterTabsToolbar(isCompact: isCompact)
+            } else {
+                correctionCenterImportToolbar(isCompact: isCompact)
+            }
 
         case .distribution:
             distributionStepperToolbar(isCompact: isCompact)
@@ -277,9 +285,89 @@ public struct MainSplitView: View {
         case .students:
             studentsCenterActionToolbar(isCompact: isCompact)
 
+        case .portal:
+            portalCenterActionToolbar(isCompact: isCompact)
+
         default:
             EmptyView()
         }
+    }
+
+    // MARK: - Center Toolbar : Import d'Évaluation (Correction Dashboard)
+
+    private func correctionCenterImportToolbar(isCompact: Bool) -> some View {
+        HStack(spacing: 3) {
+            Button {
+                appState.showPDFImporter = true
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "doc.badge.plus")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.blue)
+
+                    Text(isCompact ? "Importer (PDF)" : "Importer une évaluation (PDF)")
+                        .font(.system(size: 12.5, weight: .semibold))
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                }
+                .padding(.horizontal, isCompact ? 11 : 14)
+                .frame(height: 32)
+                .background(Color.primary.opacity(0.04))
+                .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .help("Importer une évaluation au format PDF")
+        }
+        .padding(3)
+        .glassCapsule(strokeOpacity: 0.4)
+    }
+
+    // MARK: - Center Toolbar : Actions du Portail Élèves
+
+    private func portalCenterActionToolbar(isCompact: Bool) -> some View {
+        HStack(spacing: 3) {
+            Button {
+                if appState.isOnline && !appState.isPortalGenerating {
+                    appState.triggerPortalGeneration += 1
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    if appState.isPortalGenerating {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Image(systemName: "bolt.badge.clock.fill")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(appState.isOnline ? (appState.isPortalUpdateNeeded ? .orange : .blue) : .secondary)
+                    }
+
+                    Text(appState.isPortalGenerating
+                         ? (isCompact ? "Génération..." : "Génération du portail...")
+                         : (isCompact ? "Générer" : (appState.isPortalUpdateNeeded ? "Générer le portail (MAJ)" : "Générer le portail")))
+                        .font(.system(size: 12.5, weight: .semibold))
+                        .foregroundColor(appState.isOnline ? .primary : .secondary)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                }
+                .padding(.horizontal, isCompact ? 11 : 14)
+                .frame(height: 32)
+                .background(Color.primary.opacity(0.04))
+                .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .disabled(!appState.isOnline || appState.isPortalGenerating || appState.students.isEmpty)
+            .opacity((appState.isOnline && !appState.isPortalGenerating && !appState.students.isEmpty) ? 1.0 : 0.45)
+            .help(
+                !appState.isOnline
+                    ? "Disponible en ligne uniquement"
+                    : (appState.students.isEmpty
+                       ? "Veuillez d'abord importer des élèves"
+                       : "Générer et publier le portail web chiffré")
+            )
+        }
+        .padding(3)
+        .glassCapsule(strokeOpacity: 0.4)
     }
 
     private func studentsCenterActionToolbar(isCompact: Bool) -> some View {
@@ -353,6 +441,19 @@ public struct MainSplitView: View {
                     evaluationTabButton(for: scan)
                 }
             }
+
+            Button {
+                appState.showPDFImporter = true
+            } label: {
+                Image(systemName: "doc.badge.plus")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.blue)
+                    .frame(width: 28, height: 28)
+                    .background(Color.primary.opacity(0.04))
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .help("Importer une évaluation (PDF)")
         }
         .padding(3)
         .glassCapsule(strokeOpacity: 0.4)
