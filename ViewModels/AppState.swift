@@ -121,10 +121,10 @@ public final class AppState: @unchecked Sendable {
             if !isOnline || studs.isEmpty {
                 onProgress?(1.0, isOnline ? "Base de données initialisée" : "Mode Hors-Ligne activé • Données locales prêtes")
             } else {
-                // Synchronisation et vérification fine élève par élève
-                let updated = try await storageManager.autoSyncAllStudents(students: studs) { current, total, student, stepText in
-                    let fraction = 0.15 + (0.85 * (Double(current) / Double(total)))
-                    onProgress?(fraction, "Élève \(current)/\(total) : \(stepText)")
+                // Synchronisation et vérification fine par classe et par élève
+                let updated = try await storageManager.autoSyncAllStudents(students: studs) { subProgress, stepText in
+                    let fraction = 0.15 + (subProgress * 0.85) // 15% -> 100%
+                    onProgress?(fraction, stepText)
                 }
                 self.students = updated
 

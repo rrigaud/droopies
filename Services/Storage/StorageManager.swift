@@ -353,10 +353,10 @@ public final class StorageManager: @unchecked Sendable {
     }
 
     /// Synchronisation automatique continue : Détecte les dossiers ou partages manquants,
-    /// les génère et persiste `eleves.json` dans le Cloud, avec retour de progression élève par élève.
+    /// les génère et persiste `eleves.json` dans le Cloud, avec retour de progression granulaire par classe et élève.
     public func autoSyncAllStudents(
         students: [Student],
-        onProgress: (@Sendable (Int, Int, Student, String) -> Void)? = nil
+        onProgress: (@Sendable (Double, String) -> Void)? = nil
     ) async throws -> [Student] {
         guard !students.isEmpty else { return [] }
         try await ensureSourceFolderStructure()
@@ -370,10 +370,15 @@ public final class StorageManager: @unchecked Sendable {
         var hasChanges = false
 
         // Optimisation majeure : Regrouper par classe pour n'effectuer qu'une seule requête par classe
-        let classNames = Set(students.compactMap { $0.classe.isEmpty ? nil : Student.sanitizeFolderName($0.classe) })
+        let classNames = Array(Set(students.compactMap { $0.classe.isEmpty ? nil : Student.sanitizeFolderName($0.classe) })).sorted()
         var classContentsCache: [String: Set<String>] = [:]
+        let totalClasses = max(1, classNames.count)
 
-        for className in classNames {
+        // Phase 1 : Vérification Cloud par classe (50% de la progression de cette phase)
+        for (cIndex, className) in classNames.enumerated() {
+            let classProgress = Double(cIndex) / Double(totalClasses) * 0.50
+            onProgress?(classProgress, "Vérification Cloud • Classe \(className) (\(cIndex + 1)/\(totalClasses))...")
+
             let classFolder = "Evaluations/Eleves/\(className)"
             try? await activeProvider.createDirectory(at: classFolder)
             if let items = try? await activeProvider.listContents(at: classFolder) {
@@ -382,10 +387,14 @@ public final class StorageManager: @unchecked Sendable {
                 classContentsCache[className] = []
             }
         }
+        onProgress?(0.50, "Dossiers de classes synchronisés (\(totalClasses)/\(totalClasses))")
 
+        // Phase 2 : Vérification fine des dossiers et partages élèves (50% -> 100%)
+        let totalStudents = max(1, students.count)
         for (index, student) in students.enumerated() {
+            let studentFraction = 0.50 + (0.50 * (Double(index + 1) / Double(totalStudents)))
+
             guard !student.classe.isEmpty && !student.name.isEmpty else {
-                onProgress?(index + 1, students.count, student, "Élève validé")
                 continue
             }
 
@@ -397,26 +406,30 @@ public final class StorageManager: @unchecked Sendable {
             // 1. Vérifier si le dossier physique existe déjà dans le cache local de la classe
             let folderAlreadyExists = existingInClass.contains(student.folderName.lowercased())
             if !folderAlreadyExists {
-                onProgress?(index + 1, students.count, student, "Création du dossier Cloud pour \(student.name)...")
+                onProgress?(studentFraction, "Création du dossier Cloud pour \(student.name)...")
                 try? await activeProvider.createDirectory(at: studentFolder)
                 classContentsCache[cleanClass]?.insert(student.folderName.lowercased())
             }
 
             // 2. S'assurer de l'existence du lien de partage actif
             if updatedStudents[index].urlDropbox.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                onProgress?(index + 1, students.count, student, "Génération du lien partagé pour \(student.name)...")
+                onProgress?(studentFraction, "Génération du lien partagé pour \(student.name)...")
                 if let link = try? await activeProvider.createSharedLink(for: studentFolder) {
                     updatedStudents[index].urlDropbox = link
                     hasChanges = true
                 }
             }
 
-            onProgress?(index + 1, students.count, student, "\(student.name) (\(student.classe))")
+            // Notifier par paliers réguliers ou sur le dernier élève pour éviter de saturer l'UI
+            if index == totalStudents - 1 || index % 5 == 0 {
+                onProgress?(studentFraction, "Validation des élèves • \(index + 1)/\(totalStudents) (\(student.classe))")
+            }
         }
 
         if hasChanges {
             try await saveStudents(updatedStudents)
         }
+        onProgress?(1.0, "Synchronisation des élèves terminée")
         return updatedStudents
     }
 
