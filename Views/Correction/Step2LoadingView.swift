@@ -37,6 +37,8 @@ public struct Step2LoadingView: View {
 
     @State private var pdfURL: URL? = nil
     @State private var loadedPDFDoc: PDFDocument? = nil
+    @State private var isLoadingPDF: Bool = false
+    @State private var pdfLoadingTask: Task<Void, Never>? = nil
     @State private var isExternalPickerPresented: Bool = false
 
     // Métadonnées
@@ -134,6 +136,13 @@ public struct Step2LoadingView: View {
             allowsMultipleSelection: false
         ) { result in
             if case .success(let urls) = result, let url = urls.first {
+                let filename = url.lastPathComponent
+                if let detectedClassId = detectClass(from: filename) {
+                    self.selectedClassId = detectedClassId
+                } else {
+                    self.selectedClassId = nil
+                }
+                self.evalTitle = url.deletingPathExtension().lastPathComponent
                 loadPDF(from: url)
             }
         }
@@ -516,7 +525,25 @@ public struct Step2LoadingView: View {
 
     private var pdfPreviewSection: some View {
         Group {
-            if let doc = loadedPDFDoc {
+            if isLoadingPDF {
+                VStack(spacing: 16) {
+                    ProgressView()
+                        .controlSize(.large)
+                        .tint(.blue)
+
+                    VStack(spacing: 4) {
+                        Text("Chargement de l'évaluation...")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.primary)
+
+                        Text("Préparation de l'affichage du document")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .glassCard(cornerRadius: 14, strokeOpacity: 0.3)
+            } else if let doc = loadedPDFDoc {
                 VStack(spacing: 0) {
                     HStack {
                         Label("\(totalPages) page(s) au total", systemImage: "doc.text")
@@ -558,7 +585,57 @@ public struct Step2LoadingView: View {
 
     // MARK: - Actions & Logique Métier
 
+    /// Détection automatique de la classe dans le nom du fichier (ex: Controle_3e2.pdf -> "3e2")
+    private func detectClass(from fileName: String) -> String? {
+        let baseName = fileName.replacingOccurrences(of: ".pdf", with: "", options: [.caseInsensitive])
+
+        // Trier les classes par longueur de nom décroissante pour privilégier les noms plus spécifiques (ex: "3e10" avant "3e1")
+        let sortedClasses = appState.classes.sorted { $0.name.count > $1.name.count }
+
+        for cls in sortedClasses {
+            let rawName = cls.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !rawName.isEmpty else { continue }
+
+            var variations: [String] = [
+                rawName,
+                rawName.replacingOccurrences(of: " ", with: "_"),
+                rawName.replacingOccurrences(of: " ", with: "-"),
+                rawName.replacingOccurrences(of: " ", with: "")
+            ]
+
+            // Si le nom contient une forme condensée comme "3e1", tester aussi les variantes avec séparateur "3e 1", "3e_1", "3e-1"
+            if let regexNumLet = try? NSRegularExpression(pattern: "^(\\d+e)(\\d+|[A-Za-z])$", options: .caseInsensitive) {
+                let range = NSRange(location: 0, length: rawName.utf16.count)
+                if let match = regexNumLet.firstMatch(in: rawName, options: [], range: range) {
+                    if let r1 = Range(match.range(at: 1), in: rawName),
+                       let r2 = Range(match.range(at: 2), in: rawName) {
+                        let part1 = String(rawName[r1])
+                        let part2 = String(rawName[r2])
+                        variations.append("\(part1) \(part2)")
+                        variations.append("\(part1)_\(part2)")
+                        variations.append("\(part1)-\(part2)")
+                    }
+                }
+            }
+
+            for variation in Set(variations) {
+                let escaped = NSRegularExpression.escapedPattern(for: variation)
+                // Délimité par le début/fin de chaîne ou un délimiteur usuel (espace, _, -, ., (, ), [, ], #)
+                let pattern = "(?i)(?:^|[\\s_\\-\\.\\[\\]()#])" + escaped + "(?:$|[\\s_\\-\\.\\[\\]()#])"
+                if let regex = try? NSRegularExpression(pattern: pattern) {
+                    let range = NSRange(location: 0, length: baseName.utf16.count)
+                    if regex.firstMatch(in: baseName, options: [], range: range) != nil {
+                        return cls.id
+                    }
+                }
+            }
+        }
+
+        return nil
+    }
+
     private func loadInitialScansAndBackups() async {
+        isLoadingPDF = true
         if let scans = try? await appState.storageManager.listScans() {
             self.availableScans = scans
             let corrected = scans.filter { $0.isCorrected }
@@ -566,7 +643,11 @@ public struct Step2LoadingView: View {
                 selectScan(firstCorrected)
             } else if let first = scans.first {
                 selectScan(first)
+            } else {
+                isLoadingPDF = false
             }
+        } else {
+            isLoadingPDF = false
         }
 
         if let backups = try? await appState.storageManager.listExistingBackups() {
@@ -580,31 +661,46 @@ public struct Step2LoadingView: View {
 
     private func selectScan(_ scan: StorageManager.ScanItem) {
         selectedScan = scan
+        if let detected = detectClass(from: scan.name) {
+            self.selectedClassId = detected
+        } else {
+            self.selectedClassId = nil
+        }
+        self.evalTitle = scan.cleanTitle.replacingOccurrences(of: ".pdf", with: "")
         let url = appState.storageManager.localURL(for: "Evaluations/A corriger/\(scan.name)")
         loadPDF(from: url)
-        if evalTitle.isEmpty {
-            self.evalTitle = scan.cleanTitle.replacingOccurrences(of: ".pdf", with: "")
-        }
     }
 
     private func loadPDF(from url: URL) {
-        let isAccessing = url.startAccessingSecurityScopedResource()
-        defer {
-            if isAccessing { url.stopAccessingSecurityScopedResource() }
-        }
+        pdfLoadingTask?.cancel()
+        isLoadingPDF = true
+        loadedPDFDoc = nil
+        pdfURL = url
 
-        if let doc = try? PDFEngine.shared.loadDocument(from: url) {
-            self.pdfURL = url
-            self.loadedPDFDoc = doc
-            if selectedClassId == nil, let first = appState.classes.first {
-                self.selectedClassId = first.id
+        pdfLoadingTask = Task {
+            // Céder brièvement pour s'assurer que le spinner s'affiche immédiatement
+            await Task.yield()
+
+            let isAccessing = url.startAccessingSecurityScopedResource()
+            defer {
+                if isAccessing { url.stopAccessingSecurityScopedResource() }
             }
-            autoSelectPagesPerCopy(for: doc)
+
+            let doc = try? PDFEngine.shared.loadDocument(from: url)
+
+            guard !Task.isCancelled else { return }
+
+            self.loadedPDFDoc = doc
+            self.isLoadingPDF = false
+            if let doc = doc {
+                autoSelectPagesPerCopy(for: doc)
+            }
         }
     }
 
     private func autoSelectPagesPerCopy(for doc: PDFDocument) {
-        let classSize = appState.studentsInSelectedClass.count > 0 ? appState.studentsInSelectedClass.count : 28
+        let matchingGroup = appState.classes.first(where: { $0.id == selectedClassId })
+        let classSize = (matchingGroup?.studentCount ?? 0) > 0 ? (matchingGroup?.studentCount ?? 28) : (appState.studentsInSelectedClass.count > 0 ? appState.studentsInSelectedClass.count : 28)
         let estimated = Evaluation.estimatePagesPerCopy(totalPages: doc.pageCount, expectedClassSize: classSize)
         if !availablePageStops.contains(estimated) {
             availablePageStops.append(estimated)
