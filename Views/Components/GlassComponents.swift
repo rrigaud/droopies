@@ -198,19 +198,30 @@ public struct GlassCapsuleModifier: ViewModifier {
     public var strokeOpacity: Double
     @Environment(\.colorScheme) private var colorScheme
 
-    public init(strokeOpacity: Double = 0.14) {
+    public init(strokeOpacity: Double = 0.35) {
         self.strokeOpacity = strokeOpacity
     }
 
     public func body(content: Content) -> some View {
         content
-            .background(.ultraThinMaterial.opacity(0.85))
+            .background(.ultraThinMaterial)
             .clipShape(Capsule())
             .overlay(
                 Capsule()
-                    .stroke(Color.primary.opacity(strokeOpacity), lineWidth: 1)
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(colorScheme == .dark ? 0.55 : 0.70), // Reflet spéculaire blanc pur zénithal
+                                Color.white.opacity(colorScheme == .dark ? 0.15 : 0.20),
+                                Color.clear
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        ),
+                        lineWidth: 0.8
+                    )
             )
-            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.25 : 0.10), radius: 6, x: 0, y: 2)
+            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.25 : 0.08), radius: 10, x: 0, y: 4)
     }
 }
 
