@@ -360,32 +360,16 @@ public struct MainSplitView: View {
                     case .noStudents:
                         Image(systemName: "person.slash")
                             .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(.secondary)
                         Text("Aucun élève")
                             .font(.system(size: 12.5, weight: .medium))
-                            .foregroundColor(.secondary)
                     }
                 }
-                .padding(.horizontal, isCompact ? 11 : 14)
-                .frame(height: 32)
-                .background(
-                    Group {
-                        if appState.portalSyncStatus == .needsGeneration {
-                            Color.orange.opacity(0.12)
-                        } else if appState.portalSyncStatus == .generatedReadyToUpload {
-                            Color.orange.opacity(0.08)
-                        } else if case .upToDateOnline = appState.portalSyncStatus {
-                            Color.green.opacity(0.08)
-                        } else {
-                            Color.primary.opacity(0.04)
-                        }
-                    }
-                )
-                .clipShape(Capsule())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.bordered)
+            .buttonBorderShape(.capsule)
+            .controlSize(.regular)
+            .tint(portalButtonTint)
             .disabled(!appState.isOnline || appState.isPortalGenerating || appState.students.isEmpty)
-            .opacity((appState.isOnline && !appState.isPortalGenerating && !appState.students.isEmpty) ? 1.0 : 0.45)
             .help(
                 !appState.isOnline
                     ? "Disponible en ligne uniquement"
@@ -399,63 +383,57 @@ public struct MainSplitView: View {
         .padding(3)
     }
 
+    private var portalButtonTint: Color {
+        switch appState.portalSyncStatus {
+        case .needsGeneration, .generatedReadyToUpload:
+            return .orange
+        case .upToDateOnline:
+            return .green
+        default:
+            return .secondary
+        }
+    }
+
     private func studentsCenterActionToolbar(isCompact: Bool) -> some View {
-        HStack(spacing: 3) {
-            // Bouton 1 : Ajouter un élève
+        HStack(spacing: 8) {
+            // Bouton 1 : Ajouter un élève (Bouton natif Apple avec verre dépoli teinté)
             Button {
                 if appState.isOnline {
                     appState.showAddStudentSheet = true
                 }
             } label: {
-                HStack(spacing: 6) {
+                HStack(spacing: 5) {
                     Image(systemName: "person.badge.plus")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(appState.isOnline ? .blue : .secondary)
-
                     Text(isCompact ? "Ajouter" : "Ajouter un élève")
-                        .font(.system(size: 12.5, weight: .semibold))
-                        .foregroundColor(appState.isOnline ? .primary : .secondary)
-                        .lineLimit(1)
-                        .fixedSize(horizontal: true, vertical: false)
                 }
-                .padding(.horizontal, isCompact ? 11 : 14)
-                .frame(height: 32)
-                .background(Color.primary.opacity(0.04))
-                .clipShape(Capsule())
+                .font(.system(size: 12.5, weight: .semibold))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.bordered)
+            .buttonBorderShape(.capsule)
+            .controlSize(.regular)
+            .tint(.blue)
             .disabled(!appState.isOnline)
-            .opacity(appState.isOnline ? 1.0 : 0.45)
             .help(appState.isOnline ? "Ajouter un élève" : "Disponible en ligne uniquement")
 
-            // Bouton 2 : Importer CSV
+            // Bouton 2 : Importer CSV (Bouton natif Apple en verre dépoli neutre)
             Button {
                 if appState.isOnline {
                     appState.showCSVImportSheet = true
                 }
             } label: {
-                HStack(spacing: 6) {
+                HStack(spacing: 5) {
                     Image(systemName: "arrow.down.doc")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(appState.isOnline ? .blue : .secondary)
-
                     Text(isCompact ? "Importer" : "Importer CSV")
-                        .font(.system(size: 12.5, weight: .semibold))
-                        .foregroundColor(appState.isOnline ? .primary : .secondary)
-                        .lineLimit(1)
-                        .fixedSize(horizontal: true, vertical: false)
                 }
-                .padding(.horizontal, isCompact ? 11 : 14)
-                .frame(height: 32)
-                .background(Color.primary.opacity(0.04))
-                .clipShape(Capsule())
+                .font(.system(size: 12.5, weight: .semibold))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.bordered)
+            .buttonBorderShape(.capsule)
+            .controlSize(.regular)
+            .tint(.primary)
             .disabled(!appState.isOnline)
-            .opacity(appState.isOnline ? 1.0 : 0.45)
             .help(appState.isOnline ? "Importer un fichier CSV" : "Disponible en ligne uniquement")
         }
-        .padding(3)
     }
 
     // MARK: - Center Toolbar : Onglets d'Évaluations (Correction)
