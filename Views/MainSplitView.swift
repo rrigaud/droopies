@@ -120,6 +120,7 @@ public struct MainSplitView: View {
                     #if os(iOS)
                     ToolbarItem(placement: .topBarLeading) {
                         topLeadingToolbar(isCompact: isCompact)
+                            .glassCapsule(strokeOpacity: 0.4)
                     }
 
                     if hasCenterToolbar {
@@ -131,13 +132,16 @@ public struct MainSplitView: View {
                     ToolbarItem(placement: .topBarTrailing) {
                         if activeScreen == .correction && appState.activeCorrectionScan != nil {
                             topTrailingHistoryToolbar
+                                .glassCapsule(strokeOpacity: 0.4)
                         } else {
                             topTrailingCloudToolbar
+                                .glassCapsule(strokeOpacity: 0.4)
                         }
                     }
                     #else
                     ToolbarItem(placement: .navigation) {
                         topLeadingToolbar(isCompact: isCompact)
+                            .glassCapsule(strokeOpacity: 0.4)
                     }
 
                     if hasCenterToolbar {
@@ -149,8 +153,10 @@ public struct MainSplitView: View {
                     ToolbarItem(placement: .primaryAction) {
                         if activeScreen == .correction && appState.activeCorrectionScan != nil {
                             topTrailingHistoryToolbar
+                                .glassCapsule(strokeOpacity: 0.4)
                         } else {
                             topTrailingCloudToolbar
+                                .glassCapsule(strokeOpacity: 0.4)
                         }
                     }
                     #endif
@@ -381,6 +387,7 @@ public struct MainSplitView: View {
             )
         }
         .padding(3)
+        .glassCapsule(strokeOpacity: 0.4)
     }
 
     private var portalButtonTint: Color {
@@ -438,6 +445,7 @@ public struct MainSplitView: View {
         .fixedSize(horizontal: true, vertical: false)
         .padding(.horizontal, 6)
         .padding(.vertical, 4)
+        .glassCapsule(strokeOpacity: 0.4)
     }
 
     private struct StudentToolbarItemButton: View {
@@ -506,6 +514,7 @@ public struct MainSplitView: View {
             }
         }
         .padding(3)
+        .glassCapsule(strokeOpacity: 0.4)
     }
 
     // MARK: - Toolbar 1 : Haut-Gauche (Sidebar Toggle + Navigation Correction / Distribution)
@@ -846,6 +855,7 @@ public struct MainSplitView: View {
             distributionStepItem(step: 3, title: "Envoi", icon: "paperplane.fill")
         }
         .padding(3)
+        .glassCapsule(strokeOpacity: 0.4)
     }
 
     private var distributionStepChevron: some View {
