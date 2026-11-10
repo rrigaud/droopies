@@ -16,18 +16,34 @@ public struct CloudBrandIconView: View {
     public let type: AppSettings.StorageProviderType
     public var size: CGFloat
     public var isSelected: Bool
+    public var statusDotColor: Color?
 
     public init(
         type: AppSettings.StorageProviderType,
         size: CGFloat = 26,
-        isSelected: Bool = false
+        isSelected: Bool = false,
+        statusDotColor: Color? = nil
     ) {
         self.type = type
         self.size = size
         self.isSelected = isSelected
+        self.statusDotColor = statusDotColor
     }
 
     public var body: some View {
+        HStack(spacing: 6) {
+            if let statusDotColor {
+                Circle()
+                    .fill(statusDotColor)
+                    .frame(width: 8, height: 8)
+            }
+
+            brandLogo
+        }
+    }
+
+    @ViewBuilder
+    private var brandLogo: some View {
         Group {
             switch type {
             case .dropbox:

@@ -800,6 +800,7 @@ public struct MainSplitView: View {
 
     private var distributionMainButton: some View {
         Button {
+            guard appState.isOnline else { return }
             withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                 activeScreen = .distribution
                 if isSidebarOpen {
@@ -814,7 +815,7 @@ public struct MainSplitView: View {
                 Text(appState.t(.tabDistribution))
                     .font(.system(size: 13, weight: isDistributionSelected ? .bold : .medium))
             }
-            .foregroundColor(isDistributionSelected ? .white : .primary)
+            .foregroundColor(!appState.isOnline ? .secondary.opacity(0.4) : (isDistributionSelected ? .white : .primary))
             .padding(.horizontal, 11)
             .padding(.vertical, 7)
             .background(
@@ -841,7 +842,8 @@ public struct MainSplitView: View {
             .clipShape(Capsule())
         }
         .buttonStyle(.plain)
-        .help("Distribution et envoi des devoirs")
+        .disabled(!appState.isOnline)
+        .help(!appState.isOnline ? "Distribution indisponible hors-ligne (envoi Cloud requis)" : "Distribution et envoi des devoirs")
     }
 
     // MARK: - Stepper Flottant de Distribution (Option B)
@@ -978,18 +980,13 @@ public struct MainSplitView: View {
     // MARK: - Toolbar 2 : Haut-Droite (Widget Cloud Déroulant)
 
     private var topTrailingCloudToolbar: some View {
-        cloudStatusCapsuleView
-            .overlay {
-                Menu {
-                    cloudMenuSections
-                } label: {
-                    Color.white.opacity(0.001)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .contentShape(Capsule())
-                }
-                .buttonStyle(.plain)
-            }
-            .glassCapsule(strokeOpacity: 0.4)
+        Menu {
+            cloudMenuSections
+        } label: {
+            cloudStatusCapsuleView
+        }
+        .buttonStyle(.plain)
+        .glassCapsule(strokeOpacity: 0.4)
     }
 
     @ViewBuilder
@@ -1041,11 +1038,11 @@ public struct MainSplitView: View {
     private var cloudStatusCapsuleView: some View {
         HStack(spacing: 8) {
             if !appState.isOnline {
-                Circle()
-                    .fill(Color.orange)
-                    .frame(width: 8, height: 8)
-
-                CloudBrandIconView(type: appState.storageManager.activeProvider.providerType, size: 16)
+                CloudBrandIconView(
+                    type: appState.storageManager.activeProvider.providerType,
+                    size: 16,
+                    statusDotColor: .orange
+                )
 
                 VStack(alignment: .leading, spacing: 1) {
                     Text("Hors-ligne")
@@ -1057,11 +1054,11 @@ public struct MainSplitView: View {
                         .foregroundColor(Color.primary.opacity(0.65))
                 }
             } else {
-                Circle()
-                    .fill(appState.storageManager.activeProvider.isConnected ? Color.green : Color.orange)
-                    .frame(width: 8, height: 8)
-
-                CloudBrandIconView(type: appState.storageManager.activeProvider.providerType, size: 16)
+                CloudBrandIconView(
+                    type: appState.storageManager.activeProvider.providerType,
+                    size: 16,
+                    statusDotColor: appState.storageManager.activeProvider.isConnected ? .green : .orange
+                )
 
                 VStack(alignment: .leading, spacing: 1) {
                     Text(appState.storageManager.activeProvider.providerType.displayName)
@@ -1203,8 +1200,10 @@ public struct MainSplitView: View {
         badgeText: String? = nil
     ) -> some View {
         let isSelected = activeScreen == screen
+        let isScreenAvailable = (screen == .correction || screen == .settings || appState.isOnline)
 
         Button {
+            guard isScreenAvailable else { return }
             withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                 activeScreen = screen
                 if screen == .correction {
@@ -1230,11 +1229,19 @@ public struct MainSplitView: View {
 
                 Text(title)
                     .font(.system(size: 13, weight: isSelected ? .bold : .medium))
-                    .foregroundColor(isSelected ? .primary : .secondary)
+                    .foregroundColor(isSelected ? .primary : (isScreenAvailable ? .secondary : .secondary.opacity(0.4)))
 
                 Spacer()
 
-                if let badge = badgeText {
+                if !isScreenAvailable {
+                    Text("Hors-ligne")
+                        .font(.system(size: 9.5, weight: .semibold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.orange.opacity(0.15))
+                        .foregroundColor(.orange)
+                        .clipShape(Capsule())
+                } else if let badge = badgeText {
                     Text(badge)
                         .font(.caption2.bold())
                         .padding(.horizontal, 6)
@@ -1243,6 +1250,7 @@ public struct MainSplitView: View {
                         .clipShape(Capsule())
                 }
             }
+            .opacity(isScreenAvailable ? 1.0 : 0.55)
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
             .background(
@@ -1257,5 +1265,6 @@ public struct MainSplitView: View {
             )
         }
         .buttonStyle(.plain)
+        .disabled(!isScreenAvailable)
     }
 }

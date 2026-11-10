@@ -5,113 +5,116 @@
 	};
 	objectVersion = 56;
 	objects = {
+
 /* Begin PBXBuildFile section */
+		03571DEE227A4306932DB94D /* PDFEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235D8B38335E4AEBB39E055D /* PDFEngine.swift */; };
+		07364B8A28114FBC9BBC34E5 /* GlassComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F51FD117BE3047188F97D511 /* GlassComponents.swift */; };
+		1925E10E36E34141819607E4 /* MainSplitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19FFE027978945F18AC6ADF7 /* MainSplitView.swift */; };
+		1A08E039EF474DE3B83CC29C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B4E43E30C77745679D9CE033 /* Assets.xcassets */; };
+		2012EA8E6758470195806EB5 /* StudentMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64922686CF6848C0A2274ADB /* StudentMatcher.swift */; };
+		21EBF3AEE3394C2F91F8FE17 /* ClassGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = F559E7A374E1461EAF64806C /* ClassGroup.swift */; };
+		265DCDF769934361A4017FFA /* Step3IdentificationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8312EEFA4B5C42F08C19A8CA /* Step3IdentificationView.swift */; };
+		2E31378023AF4C38B98C7D9C /* Evaluation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A282270706FA4F2A8EEE30EC /* Evaluation.swift */; };
+		2F8B3474557D44998226CCC1 /* AppSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7297D5DE58442BEB15B4DE7 /* AppSettingsView.swift */; };
+		33B68E59151F4364B88C33C4 /* PencilCanvasOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = F903F61DF318405DACF0F956 /* PencilCanvasOverlay.swift */; };
+		3A04BBF8E19B4639940725E2 /* CloudFolderPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C769A07D8F8443889A78CAFF /* CloudFolderPickerSheet.swift */; };
+		3DEFFF9CFCD747C09147E541 /* Step2LoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30A806D7A8E549B7823D5ECA /* Step2LoadingView.swift */; };
+		3FF021A6D64F4B5FB73A92D0 /* DropboxStorageProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDF99EC28CBE483D9F5CF467 /* DropboxStorageProvider.swift */; };
+		45EC7221B5A248EE861FF9E7 /* SplashSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6577559343D54C62B42441AB /* SplashSetupView.swift */; };
+		480C9D140580414D92918FB9 /* TeacherMemoSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6D42A7EFBC246B4A8FF882B /* TeacherMemoSheet.swift */; };
+		4978B7FCAB6449708C694DB0 /* Step1CorrectionStudioView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B2D2F480C204719B6692035 /* Step1CorrectionStudioView.swift */; };
+		537867D3868D4658AA1A0A15 /* PasswordGenerationSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03E4DA8043C345B9AF8D1E75 /* PasswordGenerationSheet.swift */; };
+		545E01E603F84AEBB785FADD /* StudentCopy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DC25795628E4D42BC9B1C1A /* StudentCopy.swift */; };
+		5A9CA36F49A04B49882A382C /* LocalStorageProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D823552C1BF84CB6AF694448 /* LocalStorageProvider.swift */; };
+		5B3689D125154A1489574CCE /* StudentsManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4A3090F75DA409BB5E93AE6 /* StudentsManagementView.swift */; };
+		684AAD1881BA46FF83C1920B /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 698F5CE7621740A997A33753 /* AppSettings.swift */; };
+		6875CDCF1B9F4059AFBD90AC /* OCREngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67F1CFDEED5D4C5D8B8F028C /* OCREngine.swift */; };
+		6CB25701CE334087A5C9B613 /* StorageProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73122792E2E0456382F2E5B1 /* StorageProvider.swift */; };
+		6FAED132E5E0481096C88BCE /* DropboxOAuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A527B78E81C44B28F4251AE /* DropboxOAuthManager.swift */; };
+		7CDE4742396946B1AEAA9CAB /* L10n.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D1768B6A9FC49B3AFD08FED /* L10n.swift */; };
+		8A6AFEB88A6348BCB2AA5FA7 /* Step4DistributionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A9A054CD8EC4AFA8098073D /* Step4DistributionView.swift */; };
+		8F11E5D0DB1F444492310BC2 /* BadgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A45ABE61147543968CADE2F6 /* BadgeView.swift */; };
+		994B07D8298F40EDB6185297 /* StudentEditSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 155223D2CD5D4E57925E4C13 /* StudentEditSheet.swift */; };
+		998E75A688A248A8B3F7E409 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AF983FCF84D43658E6D0925 /* AppState.swift */; };
+		9BF85E08BD0F49E69B6F5CDB /* CloudBrandIconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A485B528561B4FF5BC32A5F5 /* CloudBrandIconView.swift */; };
+		9EFA3FA9311F486493D100E6 /* CloudItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 429A90DA5FF74D4E84FA272D /* CloudItem.swift */; };
+		9F4666B8E3ED4027977156A1 /* StudentLabelsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F33A91E9112423E836288CF /* StudentLabelsView.swift */; };
+		9F862539802545C69421D3D6 /* QRCodeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D2DB2FBEC95409A87288260 /* QRCodeView.swift */; };
+		A4B1CC77E19B4639940725E2 /* CloudCSVFilePickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C769A07D8F8443889A78CC11 /* CloudCSVFilePickerSheet.swift */; };
 		B00A11B2C3D4E5F6A7B8C9D3 /* PortalGeneratorService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00A11B2C3D4E5F6A7B8C9D1 /* PortalGeneratorService.swift */; };
 		B00A11B2C3D4E5F6A7B8C9D4 /* PortalDefaultIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00A11B2C3D4E5F6A7B8C9D2 /* PortalDefaultIcon.swift */; };
-		480C9D140580414D92918FB9 /* TeacherMemoSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6D42A7EFBC246B4A8FF882B /* TeacherMemoSheet.swift */; };
-		537867D3868D4658AA1A0A15 /* PasswordGenerationSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03E4DA8043C345B9AF8D1E75 /* PasswordGenerationSheet.swift */; };
-		E2CF8DD7E69348BB9171882A /* PasswordGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7A2522629A749F59D1F0BCB /* PasswordGenerator.swift */; };
-		7CDE4742396946B1AEAA9CAB /* L10n.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D1768B6A9FC49B3AFD08FED /* L10n.swift */; };
-		BD9856F89A254B18A95F5F05 /* DroopiesApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF568F9666D143E39D3A7884 /* DroopiesApp.swift */; };
-		684AAD1881BA46FF83C1920B /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 698F5CE7621740A997A33753 /* AppSettings.swift */; };
-		21EBF3AEE3394C2F91F8FE17 /* ClassGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = F559E7A374E1461EAF64806C /* ClassGroup.swift */; };
-		2E31378023AF4C38B98C7D9C /* Evaluation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A282270706FA4F2A8EEE30EC /* Evaluation.swift */; };
-		ED6EFFD6BA694259831E93B6 /* Student.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DF1251C9583460E9E65EDDA /* Student.swift */; };
-		545E01E603F84AEBB785FADD /* StudentCopy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DC25795628E4D42BC9B1C1A /* StudentCopy.swift */; };
-		9EFA3FA9311F486493D100E6 /* CloudItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 429A90DA5FF74D4E84FA272D /* CloudItem.swift */; };
-		6FAED132E5E0481096C88BCE /* DropboxOAuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A527B78E81C44B28F4251AE /* DropboxOAuthManager.swift */; };
-		3FF021A6D64F4B5FB73A92D0 /* DropboxStorageProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDF99EC28CBE483D9F5CF467 /* DropboxStorageProvider.swift */; };
-		5A9CA36F49A04B49882A382C /* LocalStorageProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D823552C1BF84CB6AF694448 /* LocalStorageProvider.swift */; };
 		B0CCE946C3D847F0B9B57C86 /* StorageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C9A4F8AFCE44177AFF5ACA0 /* StorageManager.swift */; };
+		B22C3D4E5F6A7B8C9D0E1F2A /* StudentLabelsPDFGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11B2C3D4E5F6A7B8C9D0E1F /* StudentLabelsPDFGenerator.swift */; };
+		B70A3D05EB474520A90B2437 /* CorrectionWorkflowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E42CDD3DE7884C1EA87787B4 /* CorrectionWorkflowView.swift */; };
+		BD9856F89A254B18A95F5F05 /* DroopiesApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF568F9666D143E39D3A7884 /* DroopiesApp.swift */; };
+		C1BD89AD319344CCA945EAA5 /* PDFKitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 735A04CF8B914B5697E6498C /* PDFKitView.swift */; };
+		D33E4F5A6B7C8D9E0F1A2B3C /* TeacherMemoPDFGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C22D3E4F5A6B7C8D9E0F1A2B /* TeacherMemoPDFGenerator.swift */; };
+		DF2ED8539C7845AB9FE2B9B6 /* PortalSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5BE6EA932B1486B95DF5E7B /* PortalSettingsView.swift */; };
+		E2CF8DD7E69348BB9171882A /* PasswordGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7A2522629A749F59D1F0BCB /* PasswordGenerator.swift */; };
+		E69089CC2C504695871623E9 /* DroopiesMascotView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AC6A2CFF646430389A2E6B6 /* DroopiesMascotView.swift */; };
+		E8A201A12900010100000001 /* CloudImagePickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8A201A02900010100000001 /* CloudImagePickerSheet.swift */; };
+		ED6EFFD6BA694259831E93B6 /* Student.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DF1251C9583460E9E65EDDA /* Student.swift */; };
+		EF52D77D138C4062BFB89469 /* CSVImportWizardSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B47776324BDD4EEA89FAEABB /* CSVImportWizardSheet.swift */; };
+		F602766BE11D4FF79986BC50 /* KPICard.swift in Sources */ = {isa = PBXBuildFile; fileRef = BABEB20AF8EE4EACAD378710 /* KPICard.swift */; };
 		N001A11B2C3D4E5F6A7B8C01 /* NetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = N002A11B2C3D4E5F6A7B8C02 /* NetworkMonitor.swift */; };
 		S001A11B2C3D4E5F6A7B8C01 /* OfflineSyncEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = S002A11B2C3D4E5F6A7B8C02 /* OfflineSyncEngine.swift */; };
-		6CB25701CE334087A5C9B613 /* StorageProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73122792E2E0456382F2E5B1 /* StorageProvider.swift */; };
-		03571DEE227A4306932DB94D /* PDFEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235D8B38335E4AEBB39E055D /* PDFEngine.swift */; };
-		B22C3D4E5F6A7B8C9D0E1F2A /* StudentLabelsPDFGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11B2C3D4E5F6A7B8C9D0E1F /* StudentLabelsPDFGenerator.swift */; };
-		D33E4F5A6B7C8D9E0F1A2B3C /* TeacherMemoPDFGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C22D3E4F5A6B7C8D9E0F1A2B /* TeacherMemoPDFGenerator.swift */; };
-		6875CDCF1B9F4059AFBD90AC /* OCREngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67F1CFDEED5D4C5D8B8F028C /* OCREngine.swift */; };
-		2012EA8E6758470195806EB5 /* StudentMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64922686CF6848C0A2274ADB /* StudentMatcher.swift */; };
-		998E75A688A248A8B3F7E409 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AF983FCF84D43658E6D0925 /* AppState.swift */; };
-		1925E10E36E34141819607E4 /* MainSplitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19FFE027978945F18AC6ADF7 /* MainSplitView.swift */; };
-		8F11E5D0DB1F444492310BC2 /* BadgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A45ABE61147543968CADE2F6 /* BadgeView.swift */; };
-		9BF85E08BD0F49E69B6F5CDB /* CloudBrandIconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A485B528561B4FF5BC32A5F5 /* CloudBrandIconView.swift */; };
-		07364B8A28114FBC9BBC34E5 /* GlassComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F51FD117BE3047188F97D511 /* GlassComponents.swift */; };
-		E69089CC2C504695871623E9 /* DroopiesMascotView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AC6A2CFF646430389A2E6B6 /* DroopiesMascotView.swift */; };
-		3A04BBF8E19B4639940725E2 /* CloudFolderPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C769A07D8F8443889A78CAFF /* CloudFolderPickerSheet.swift */; };
-		A4B1CC77E19B4639940725E2 /* CloudCSVFilePickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C769A07D8F8443889A78CC11 /* CloudCSVFilePickerSheet.swift */; };
-		E8A201A12900010100000001 /* CloudImagePickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8A201A02900010100000001 /* CloudImagePickerSheet.swift */; };
-		F602766BE11D4FF79986BC50 /* KPICard.swift in Sources */ = {isa = PBXBuildFile; fileRef = BABEB20AF8EE4EACAD378710 /* KPICard.swift */; };
-		C1BD89AD319344CCA945EAA5 /* PDFKitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 735A04CF8B914B5697E6498C /* PDFKitView.swift */; };
-		33B68E59151F4364B88C33C4 /* PencilCanvasOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = F903F61DF318405DACF0F956 /* PencilCanvasOverlay.swift */; };
-		9F862539802545C69421D3D6 /* QRCodeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D2DB2FBEC95409A87288260 /* QRCodeView.swift */; };
-		45EC7221B5A248EE861FF9E7 /* SplashSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6577559343D54C62B42441AB /* SplashSetupView.swift */; };
-		B70A3D05EB474520A90B2437 /* CorrectionWorkflowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E42CDD3DE7884C1EA87787B4 /* CorrectionWorkflowView.swift */; };
-		4978B7FCAB6449708C694DB0 /* Step1CorrectionStudioView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B2D2F480C204719B6692035 /* Step1CorrectionStudioView.swift */; };
-		3DEFFF9CFCD747C09147E541 /* Step2LoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30A806D7A8E549B7823D5ECA /* Step2LoadingView.swift */; };
-		265DCDF769934361A4017FFA /* Step3IdentificationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8312EEFA4B5C42F08C19A8CA /* Step3IdentificationView.swift */; };
-		8A6AFEB88A6348BCB2AA5FA7 /* Step4DistributionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A9A054CD8EC4AFA8098073D /* Step4DistributionView.swift */; };
-		5B3689D125154A1489574CCE /* StudentsManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4A3090F75DA409BB5E93AE6 /* StudentsManagementView.swift */; };
-		994B07D8298F40EDB6185297 /* StudentEditSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 155223D2CD5D4E57925E4C13 /* StudentEditSheet.swift */; };
-		EF52D77D138C4062BFB89469 /* CSVImportWizardSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B47776324BDD4EEA89FAEABB /* CSVImportWizardSheet.swift */; };
-		9F4666B8E3ED4027977156A1 /* StudentLabelsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F33A91E9112423E836288CF /* StudentLabelsView.swift */; };
-		DF2ED8539C7845AB9FE2B9B6 /* PortalSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5BE6EA932B1486B95DF5E7B /* PortalSettingsView.swift */; };
-		2F8B3474557D44998226CCC1 /* AppSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7297D5DE58442BEB15B4DE7 /* AppSettingsView.swift */; };
-		1A08E039EF474DE3B83CC29C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B4E43E30C77745679D9CE033 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
-		B00A11B2C3D4E5F6A7B8C9D1 /* PortalGeneratorService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PortalGeneratorService.swift"; sourceTree = "<group>"; };
-		B00A11B2C3D4E5F6A7B8C9D2 /* PortalDefaultIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PortalDefaultIcon.swift"; sourceTree = "<group>"; };
-		E6D42A7EFBC246B4A8FF882B /* TeacherMemoSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TeacherMemoSheet.swift"; sourceTree = "<group>"; };
-		03E4DA8043C345B9AF8D1E75 /* PasswordGenerationSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PasswordGenerationSheet.swift"; sourceTree = "<group>"; };
-		D7A2522629A749F59D1F0BCB /* PasswordGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PasswordGenerator.swift"; sourceTree = "<group>"; };
-		0D1768B6A9FC49B3AFD08FED /* L10n.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "L10n.swift"; sourceTree = "<group>"; };
+		03E4DA8043C345B9AF8D1E75 /* PasswordGenerationSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordGenerationSheet.swift; sourceTree = "<group>"; };
+		0D1768B6A9FC49B3AFD08FED /* L10n.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = L10n.swift; sourceTree = "<group>"; };
 		14B9BDD37D0B4D719674A212 /* Droopies.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Droopies.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		CF568F9666D143E39D3A7884 /* DroopiesApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DroopiesApp.swift"; sourceTree = "<group>"; };
-		698F5CE7621740A997A33753 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppSettings.swift"; sourceTree = "<group>"; };
-		F559E7A374E1461EAF64806C /* ClassGroup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ClassGroup.swift"; sourceTree = "<group>"; };
-		A282270706FA4F2A8EEE30EC /* Evaluation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Evaluation.swift"; sourceTree = "<group>"; };
-		4DF1251C9583460E9E65EDDA /* Student.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Student.swift"; sourceTree = "<group>"; };
-		2DC25795628E4D42BC9B1C1A /* StudentCopy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StudentCopy.swift"; sourceTree = "<group>"; };
-		429A90DA5FF74D4E84FA272D /* CloudItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CloudItem.swift"; sourceTree = "<group>"; };
-		2A527B78E81C44B28F4251AE /* DropboxOAuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DropboxOAuthManager.swift"; sourceTree = "<group>"; };
-		FDF99EC28CBE483D9F5CF467 /* DropboxStorageProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DropboxStorageProvider.swift"; sourceTree = "<group>"; };
-		D823552C1BF84CB6AF694448 /* LocalStorageProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LocalStorageProvider.swift"; sourceTree = "<group>"; };
-		3C9A4F8AFCE44177AFF5ACA0 /* StorageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StorageManager.swift"; sourceTree = "<group>"; };
-		N002A11B2C3D4E5F6A7B8C02 /* NetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NetworkMonitor.swift"; sourceTree = "<group>"; };
-		S002A11B2C3D4E5F6A7B8C02 /* OfflineSyncEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "OfflineSyncEngine.swift"; sourceTree = "<group>"; };
-		73122792E2E0456382F2E5B1 /* StorageProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StorageProvider.swift"; sourceTree = "<group>"; };
-		235D8B38335E4AEBB39E055D /* PDFEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PDFEngine.swift"; sourceTree = "<group>"; };
-		A11B2C3D4E5F6A7B8C9D0E1F /* StudentLabelsPDFGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StudentLabelsPDFGenerator.swift"; sourceTree = "<group>"; };
-		C22D3E4F5A6B7C8D9E0F1A2B /* TeacherMemoPDFGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TeacherMemoPDFGenerator.swift"; sourceTree = "<group>"; };
-		67F1CFDEED5D4C5D8B8F028C /* OCREngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "OCREngine.swift"; sourceTree = "<group>"; };
-		64922686CF6848C0A2274ADB /* StudentMatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StudentMatcher.swift"; sourceTree = "<group>"; };
-		9AF983FCF84D43658E6D0925 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppState.swift"; sourceTree = "<group>"; };
-		19FFE027978945F18AC6ADF7 /* MainSplitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MainSplitView.swift"; sourceTree = "<group>"; };
-		A45ABE61147543968CADE2F6 /* BadgeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BadgeView.swift"; sourceTree = "<group>"; };
-		A485B528561B4FF5BC32A5F5 /* CloudBrandIconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CloudBrandIconView.swift"; sourceTree = "<group>"; };
-		F51FD117BE3047188F97D511 /* GlassComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GlassComponents.swift"; sourceTree = "<group>"; };
-		1AC6A2CFF646430389A2E6B6 /* DroopiesMascotView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DroopiesMascotView.swift"; sourceTree = "<group>"; };
-		C769A07D8F8443889A78CAFF /* CloudFolderPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CloudFolderPickerSheet.swift"; sourceTree = "<group>"; };
-		C769A07D8F8443889A78CC11 /* CloudCSVFilePickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CloudCSVFilePickerSheet.swift"; sourceTree = "<group>"; };
-		E8A201A02900010100000001 /* CloudImagePickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CloudImagePickerSheet.swift"; sourceTree = "<group>"; };
-		BABEB20AF8EE4EACAD378710 /* KPICard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "KPICard.swift"; sourceTree = "<group>"; };
-		735A04CF8B914B5697E6498C /* PDFKitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PDFKitView.swift"; sourceTree = "<group>"; };
-		F903F61DF318405DACF0F956 /* PencilCanvasOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PencilCanvasOverlay.swift"; sourceTree = "<group>"; };
-		8D2DB2FBEC95409A87288260 /* QRCodeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "QRCodeView.swift"; sourceTree = "<group>"; };
-		6577559343D54C62B42441AB /* SplashSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SplashSetupView.swift"; sourceTree = "<group>"; };
-		E42CDD3DE7884C1EA87787B4 /* CorrectionWorkflowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CorrectionWorkflowView.swift"; sourceTree = "<group>"; };
-		2B2D2F480C204719B6692035 /* Step1CorrectionStudioView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Step1CorrectionStudioView.swift"; sourceTree = "<group>"; };
-		30A806D7A8E549B7823D5ECA /* Step2LoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Step2LoadingView.swift"; sourceTree = "<group>"; };
-		8312EEFA4B5C42F08C19A8CA /* Step3IdentificationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Step3IdentificationView.swift"; sourceTree = "<group>"; };
-		6A9A054CD8EC4AFA8098073D /* Step4DistributionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Step4DistributionView.swift"; sourceTree = "<group>"; };
-		D4A3090F75DA409BB5E93AE6 /* StudentsManagementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StudentsManagementView.swift"; sourceTree = "<group>"; };
-		155223D2CD5D4E57925E4C13 /* StudentEditSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StudentEditSheet.swift"; sourceTree = "<group>"; };
-		B47776324BDD4EEA89FAEABB /* CSVImportWizardSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CSVImportWizardSheet.swift"; sourceTree = "<group>"; };
-		3F33A91E9112423E836288CF /* StudentLabelsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StudentLabelsView.swift"; sourceTree = "<group>"; };
-		F5BE6EA932B1486B95DF5E7B /* PortalSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PortalSettingsView.swift"; sourceTree = "<group>"; };
-		C7297D5DE58442BEB15B4DE7 /* AppSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppSettingsView.swift"; sourceTree = "<group>"; };
-		B4E43E30C77745679D9CE033 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Assets.xcassets"; sourceTree = "<group>"; };
+		155223D2CD5D4E57925E4C13 /* StudentEditSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudentEditSheet.swift; sourceTree = "<group>"; };
+		19FFE027978945F18AC6ADF7 /* MainSplitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainSplitView.swift; sourceTree = "<group>"; };
+		1AC6A2CFF646430389A2E6B6 /* DroopiesMascotView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DroopiesMascotView.swift; sourceTree = "<group>"; };
+		235D8B38335E4AEBB39E055D /* PDFEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFEngine.swift; sourceTree = "<group>"; };
+		2A527B78E81C44B28F4251AE /* DropboxOAuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DropboxOAuthManager.swift; sourceTree = "<group>"; };
+		2B2D2F480C204719B6692035 /* Step1CorrectionStudioView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Step1CorrectionStudioView.swift; sourceTree = "<group>"; };
+		2DC25795628E4D42BC9B1C1A /* StudentCopy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudentCopy.swift; sourceTree = "<group>"; };
+		30A806D7A8E549B7823D5ECA /* Step2LoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Step2LoadingView.swift; sourceTree = "<group>"; };
+		3C9A4F8AFCE44177AFF5ACA0 /* StorageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageManager.swift; sourceTree = "<group>"; };
+		3F33A91E9112423E836288CF /* StudentLabelsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudentLabelsView.swift; sourceTree = "<group>"; };
+		429A90DA5FF74D4E84FA272D /* CloudItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudItem.swift; sourceTree = "<group>"; };
+		4DF1251C9583460E9E65EDDA /* Student.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Student.swift; sourceTree = "<group>"; };
+		64922686CF6848C0A2274ADB /* StudentMatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudentMatcher.swift; sourceTree = "<group>"; };
+		6577559343D54C62B42441AB /* SplashSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashSetupView.swift; sourceTree = "<group>"; };
+		67F1CFDEED5D4C5D8B8F028C /* OCREngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OCREngine.swift; sourceTree = "<group>"; };
+		698F5CE7621740A997A33753 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		6A9A054CD8EC4AFA8098073D /* Step4DistributionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Step4DistributionView.swift; sourceTree = "<group>"; };
+		73122792E2E0456382F2E5B1 /* StorageProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageProvider.swift; sourceTree = "<group>"; };
+		735A04CF8B914B5697E6498C /* PDFKitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFKitView.swift; sourceTree = "<group>"; };
+		8312EEFA4B5C42F08C19A8CA /* Step3IdentificationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Step3IdentificationView.swift; sourceTree = "<group>"; };
+		8D2DB2FBEC95409A87288260 /* QRCodeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRCodeView.swift; sourceTree = "<group>"; };
+		9AF983FCF84D43658E6D0925 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		A11B2C3D4E5F6A7B8C9D0E1F /* StudentLabelsPDFGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudentLabelsPDFGenerator.swift; sourceTree = "<group>"; };
+		A282270706FA4F2A8EEE30EC /* Evaluation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Evaluation.swift; sourceTree = "<group>"; };
+		A45ABE61147543968CADE2F6 /* BadgeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BadgeView.swift; sourceTree = "<group>"; };
+		A485B528561B4FF5BC32A5F5 /* CloudBrandIconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudBrandIconView.swift; sourceTree = "<group>"; };
+		B00A11B2C3D4E5F6A7B8C9D1 /* PortalGeneratorService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortalGeneratorService.swift; sourceTree = "<group>"; };
+		B00A11B2C3D4E5F6A7B8C9D2 /* PortalDefaultIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortalDefaultIcon.swift; sourceTree = "<group>"; };
+		B47776324BDD4EEA89FAEABB /* CSVImportWizardSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CSVImportWizardSheet.swift; sourceTree = "<group>"; };
+		B4E43E30C77745679D9CE033 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		BABEB20AF8EE4EACAD378710 /* KPICard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KPICard.swift; sourceTree = "<group>"; };
+		C22D3E4F5A6B7C8D9E0F1A2B /* TeacherMemoPDFGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeacherMemoPDFGenerator.swift; sourceTree = "<group>"; };
+		C7297D5DE58442BEB15B4DE7 /* AppSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsView.swift; sourceTree = "<group>"; };
+		C769A07D8F8443889A78CAFF /* CloudFolderPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudFolderPickerSheet.swift; sourceTree = "<group>"; };
+		C769A07D8F8443889A78CC11 /* CloudCSVFilePickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudCSVFilePickerSheet.swift; sourceTree = "<group>"; };
+		CF568F9666D143E39D3A7884 /* DroopiesApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DroopiesApp.swift; sourceTree = "<group>"; };
+		D4A3090F75DA409BB5E93AE6 /* StudentsManagementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudentsManagementView.swift; sourceTree = "<group>"; };
+		D7A2522629A749F59D1F0BCB /* PasswordGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordGenerator.swift; sourceTree = "<group>"; };
+		D823552C1BF84CB6AF694448 /* LocalStorageProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalStorageProvider.swift; sourceTree = "<group>"; };
+		E42CDD3DE7884C1EA87787B4 /* CorrectionWorkflowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CorrectionWorkflowView.swift; sourceTree = "<group>"; };
+		E6D42A7EFBC246B4A8FF882B /* TeacherMemoSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeacherMemoSheet.swift; sourceTree = "<group>"; };
+		E8A201A02900010100000001 /* CloudImagePickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudImagePickerSheet.swift; sourceTree = "<group>"; };
+		F51FD117BE3047188F97D511 /* GlassComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassComponents.swift; sourceTree = "<group>"; };
+		F559E7A374E1461EAF64806C /* ClassGroup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassGroup.swift; sourceTree = "<group>"; };
+		F5BE6EA932B1486B95DF5E7B /* PortalSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortalSettingsView.swift; sourceTree = "<group>"; };
+		F903F61DF318405DACF0F956 /* PencilCanvasOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PencilCanvasOverlay.swift; sourceTree = "<group>"; };
+		FDF99EC28CBE483D9F5CF467 /* DropboxStorageProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DropboxStorageProvider.swift; sourceTree = "<group>"; };
+		N002A11B2C3D4E5F6A7B8C02 /* NetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMonitor.swift; sourceTree = "<group>"; };
+		S002A11B2C3D4E5F6A7B8C02 /* OfflineSyncEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineSyncEngine.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
 /* Begin PBXFrameworksBuildPhase section */
 		57F263FB566F4B4EA3E4BD80 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
@@ -121,118 +124,30 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
+
 /* Begin PBXGroup section */
-		5FF952C195D04729BA37AF0F = {
-			isa = PBXGroup;
-			children = (
-				20EA246164C746BC8D35AAF4 /* App */,
-				593050D1122B40C38183C737 /* Models */,
-				F7B32C5DFC0845F3829DA75A /* Services */,
-				C94F0421CC6A4EB78CCBBA78 /* ViewModels */,
-				425F6DCD7F464A6A906BCF2D /* Views */,
-				5777C97A81B546DAA3962707 /* Resources */,
-				5235F7406F1D4D48BD644209 /* Products */,
-			);
-			sourceTree = "<group>";
-		};
-		5235F7406F1D4D48BD644209 /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				14B9BDD37D0B4D719674A212 /* Droopies.app */,
-			);
-			name = Products;
-			sourceTree = "<group>";
-		};
 		20EA246164C746BC8D35AAF4 /* App */ = {
 			isa = PBXGroup;
 			children = (
 				CF568F9666D143E39D3A7884 /* DroopiesApp.swift */,
 			);
-			path = "App";
+			path = App;
 			sourceTree = "<group>";
 		};
-		593050D1122B40C38183C737 /* Models */ = {
+		301E947868F04CDE99E00F22 /* Splash */ = {
 			isa = PBXGroup;
 			children = (
-				D7A2522629A749F59D1F0BCB /* PasswordGenerator.swift */,
-				0D1768B6A9FC49B3AFD08FED /* L10n.swift */,
-				698F5CE7621740A997A33753 /* AppSettings.swift */,
-				F559E7A374E1461EAF64806C /* ClassGroup.swift */,
-				A282270706FA4F2A8EEE30EC /* Evaluation.swift */,
-				4DF1251C9583460E9E65EDDA /* Student.swift */,
-				2DC25795628E4D42BC9B1C1A /* StudentCopy.swift */,
+				6577559343D54C62B42441AB /* SplashSetupView.swift */,
 			);
-			path = "Models";
+			path = Splash;
 			sourceTree = "<group>";
 		};
-		F7B32C5DFC0845F3829DA75A /* Services */ = {
+		34999293FF9547E4A6EC6674 /* Portal */ = {
 			isa = PBXGroup;
 			children = (
-				N003A11B2C3D4E5F6A7B8C03 /* Network */,
-				B00A11B2C3D4E5F6A7B8C9D0 /* PortalEngine */,
-				F18D7C3E2395423FAA69FED2 /* Storage */,
-				749A7A0AB2DD42E484FC6630 /* PDFEngine */,
-				80B8DC2CDACE4ADEA5526D6D /* OCREngine */,
+				F5BE6EA932B1486B95DF5E7B /* PortalSettingsView.swift */,
 			);
-			path = "Services";
-			sourceTree = "<group>";
-		};
-		N003A11B2C3D4E5F6A7B8C03 /* Network */ = {
-			isa = PBXGroup;
-			children = (
-				N002A11B2C3D4E5F6A7B8C02 /* NetworkMonitor.swift */,
-			);
-			path = "Network";
-			sourceTree = "<group>";
-		};
-				B00A11B2C3D4E5F6A7B8C9D0 /* PortalEngine */ = {
-			isa = PBXGroup;
-			children = (
-				B00A11B2C3D4E5F6A7B8C9D1 /* PortalGeneratorService.swift */,
-				B00A11B2C3D4E5F6A7B8C9D2 /* PortalDefaultIcon.swift */,
-			);
-			path = "PortalEngine";
-			sourceTree = "<group>";
-		};
-		F18D7C3E2395423FAA69FED2 /* Storage */ = {
-			isa = PBXGroup;
-			children = (
-				429A90DA5FF74D4E84FA272D /* CloudItem.swift */,
-				2A527B78E81C44B28F4251AE /* DropboxOAuthManager.swift */,
-				FDF99EC28CBE483D9F5CF467 /* DropboxStorageProvider.swift */,
-				D823552C1BF84CB6AF694448 /* LocalStorageProvider.swift */,
-				S002A11B2C3D4E5F6A7B8C02 /* OfflineSyncEngine.swift */,
-				3C9A4F8AFCE44177AFF5ACA0 /* StorageManager.swift */,
-				73122792E2E0456382F2E5B1 /* StorageProvider.swift */,
-			);
-			path = "Storage";
-			sourceTree = "<group>";
-		};
-		749A7A0AB2DD42E484FC6630 /* PDFEngine */ = {
-			isa = PBXGroup;
-			children = (
-				235D8B38335E4AEBB39E055D /* PDFEngine.swift */,
-				A11B2C3D4E5F6A7B8C9D0E1F /* StudentLabelsPDFGenerator.swift */,
-				C22D3E4F5A6B7C8D9E0F1A2B /* TeacherMemoPDFGenerator.swift */,
-			);
-			path = "PDFEngine";
-			sourceTree = "<group>";
-		};
-		80B8DC2CDACE4ADEA5526D6D /* OCREngine */ = {
-			isa = PBXGroup;
-			children = (
-				67F1CFDEED5D4C5D8B8F028C /* OCREngine.swift */,
-				64922686CF6848C0A2274ADB /* StudentMatcher.swift */,
-			);
-			path = "OCREngine";
-			sourceTree = "<group>";
-		};
-		C94F0421CC6A4EB78CCBBA78 /* ViewModels */ = {
-			isa = PBXGroup;
-			children = (
-				9AF983FCF84D43658E6D0925 /* AppState.swift */,
-			);
-			path = "ViewModels";
+			path = Portal;
 			sourceTree = "<group>";
 		};
 		425F6DCD7F464A6A906BCF2D /* Views */ = {
@@ -246,7 +161,37 @@
 				34999293FF9547E4A6EC6674 /* Portal */,
 				B5BFEC546E50433392A1A443 /* Settings */,
 			);
-			path = "Views";
+			path = Views;
+			sourceTree = "<group>";
+		};
+		5235F7406F1D4D48BD644209 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				14B9BDD37D0B4D719674A212 /* Droopies.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		5777C97A81B546DAA3962707 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				B4E43E30C77745679D9CE033 /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		593050D1122B40C38183C737 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				D7A2522629A749F59D1F0BCB /* PasswordGenerator.swift */,
+				0D1768B6A9FC49B3AFD08FED /* L10n.swift */,
+				698F5CE7621740A997A33753 /* AppSettings.swift */,
+				F559E7A374E1461EAF64806C /* ClassGroup.swift */,
+				A282270706FA4F2A8EEE30EC /* Evaluation.swift */,
+				4DF1251C9583460E9E65EDDA /* Student.swift */,
+				2DC25795628E4D42BC9B1C1A /* StudentCopy.swift */,
+			);
+			path = Models;
 			sourceTree = "<group>";
 		};
 		5A053568678C42FBBF75986D /* Components */ = {
@@ -264,15 +209,30 @@
 				F903F61DF318405DACF0F956 /* PencilCanvasOverlay.swift */,
 				8D2DB2FBEC95409A87288260 /* QRCodeView.swift */,
 			);
-			path = "Components";
+			path = Components;
 			sourceTree = "<group>";
 		};
-		301E947868F04CDE99E00F22 /* Splash */ = {
+		5FF952C195D04729BA37AF0F = {
 			isa = PBXGroup;
 			children = (
-				6577559343D54C62B42441AB /* SplashSetupView.swift */,
+				20EA246164C746BC8D35AAF4 /* App */,
+				593050D1122B40C38183C737 /* Models */,
+				F7B32C5DFC0845F3829DA75A /* Services */,
+				C94F0421CC6A4EB78CCBBA78 /* ViewModels */,
+				425F6DCD7F464A6A906BCF2D /* Views */,
+				5777C97A81B546DAA3962707 /* Resources */,
+				5235F7406F1D4D48BD644209 /* Products */,
 			);
-			path = "Splash";
+			sourceTree = "<group>";
+		};
+		749A7A0AB2DD42E484FC6630 /* PDFEngine */ = {
+			isa = PBXGroup;
+			children = (
+				235D8B38335E4AEBB39E055D /* PDFEngine.swift */,
+				A11B2C3D4E5F6A7B8C9D0E1F /* StudentLabelsPDFGenerator.swift */,
+				C22D3E4F5A6B7C8D9E0F1A2B /* TeacherMemoPDFGenerator.swift */,
+			);
+			path = PDFEngine;
 			sourceTree = "<group>";
 		};
 		7753B1587767448097A52132 /* Correction */ = {
@@ -284,7 +244,16 @@
 				8312EEFA4B5C42F08C19A8CA /* Step3IdentificationView.swift */,
 				6A9A054CD8EC4AFA8098073D /* Step4DistributionView.swift */,
 			);
-			path = "Correction";
+			path = Correction;
+			sourceTree = "<group>";
+		};
+		80B8DC2CDACE4ADEA5526D6D /* OCREngine */ = {
+			isa = PBXGroup;
+			children = (
+				67F1CFDEED5D4C5D8B8F028C /* OCREngine.swift */,
+				64922686CF6848C0A2274ADB /* StudentMatcher.swift */,
+			);
+			path = OCREngine;
 			sourceTree = "<group>";
 		};
 		9BEC1EDECAFA473E9C6A7D6C /* Students */ = {
@@ -297,15 +266,16 @@
 				B47776324BDD4EEA89FAEABB /* CSVImportWizardSheet.swift */,
 				3F33A91E9112423E836288CF /* StudentLabelsView.swift */,
 			);
-			path = "Students";
+			path = Students;
 			sourceTree = "<group>";
 		};
-		34999293FF9547E4A6EC6674 /* Portal */ = {
+		B00A11B2C3D4E5F6A7B8C9D0 /* PortalEngine */ = {
 			isa = PBXGroup;
 			children = (
-				F5BE6EA932B1486B95DF5E7B /* PortalSettingsView.swift */,
+				B00A11B2C3D4E5F6A7B8C9D1 /* PortalGeneratorService.swift */,
+				B00A11B2C3D4E5F6A7B8C9D2 /* PortalDefaultIcon.swift */,
 			);
-			path = "Portal";
+			path = PortalEngine;
 			sourceTree = "<group>";
 		};
 		B5BFEC546E50433392A1A443 /* Settings */ = {
@@ -313,22 +283,57 @@
 			children = (
 				C7297D5DE58442BEB15B4DE7 /* AppSettingsView.swift */,
 			);
-			path = "Settings";
+			path = Settings;
 			sourceTree = "<group>";
 		};
-		5777C97A81B546DAA3962707 /* Resources */ = {
+		C94F0421CC6A4EB78CCBBA78 /* ViewModels */ = {
 			isa = PBXGroup;
 			children = (
-				B4E43E30C77745679D9CE033 /* Assets.xcassets */,
+				9AF983FCF84D43658E6D0925 /* AppState.swift */,
 			);
-			path = "Resources";
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		F18D7C3E2395423FAA69FED2 /* Storage */ = {
+			isa = PBXGroup;
+			children = (
+				429A90DA5FF74D4E84FA272D /* CloudItem.swift */,
+				2A527B78E81C44B28F4251AE /* DropboxOAuthManager.swift */,
+				FDF99EC28CBE483D9F5CF467 /* DropboxStorageProvider.swift */,
+				D823552C1BF84CB6AF694448 /* LocalStorageProvider.swift */,
+				S002A11B2C3D4E5F6A7B8C02 /* OfflineSyncEngine.swift */,
+				3C9A4F8AFCE44177AFF5ACA0 /* StorageManager.swift */,
+				73122792E2E0456382F2E5B1 /* StorageProvider.swift */,
+			);
+			path = Storage;
+			sourceTree = "<group>";
+		};
+		F7B32C5DFC0845F3829DA75A /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				N003A11B2C3D4E5F6A7B8C03 /* Network */,
+				B00A11B2C3D4E5F6A7B8C9D0 /* PortalEngine */,
+				F18D7C3E2395423FAA69FED2 /* Storage */,
+				749A7A0AB2DD42E484FC6630 /* PDFEngine */,
+				80B8DC2CDACE4ADEA5526D6D /* OCREngine */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		N003A11B2C3D4E5F6A7B8C03 /* Network */ = {
+			isa = PBXGroup;
+			children = (
+				N002A11B2C3D4E5F6A7B8C02 /* NetworkMonitor.swift */,
+			);
+			path = Network;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
+
 /* Begin PBXNativeTarget section */
 		577899A6D95C4321B9A058FF /* Droopies */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 37C622DACBF84287856FAA83 /* Build configuration list for PBXNativeTarget "Dropies" */;
+			buildConfigurationList = 37C622DACBF84287856FAA83 /* Build configuration list for PBXNativeTarget "Droopies" */;
 			buildPhases = (
 				23E86647AD19436AA7B4AEE8 /* Sources */,
 				57F263FB566F4B4EA3E4BD80 /* Frameworks */,
@@ -344,6 +349,7 @@
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
+
 /* Begin PBXProject section */
 		E1ED6C242F374784A9E32763 /* Project object */ = {
 			isa = PBXProject;
@@ -374,6 +380,7 @@
 			);
 		};
 /* End PBXProject section */
+
 /* Begin PBXResourcesBuildPhase section */
 		1B651700789C4576A9ECFD28 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
@@ -384,6 +391,7 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		23E86647AD19436AA7B4AEE8 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -443,7 +451,94 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
 /* Begin XCBuildConfiguration section */
+		0EA1F8651C324ADA9DC23CC2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "-";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = P56F9NV998;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Droopies;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Droopies utilise la caméra pour scanner les QR codes de connexion des élèves.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Droopies accède aux photos pour importer des devoirs ou étiquettes.";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = fr.education.droopies;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 2;
+			};
+			name = Release;
+		};
+		6F1BEB7CE03243CD8BE8CC68 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		77840678E86E4C1B9291DD6D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "-";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = P56F9NV998;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Droopies;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Droopies utilise la caméra pour scanner les QR codes de connexion des élèves.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Droopies accède aux photos pour importer des devoirs ou étiquettes.";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = fr.education.droopies;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 2;
+			};
+			name = Debug;
+		};
 		C6EE82E0232C41309BB7D0DA /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -476,104 +571,23 @@
 			};
 			name = Debug;
 		};
-		6F1BEB7CE03243CD8BE8CC68 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
-				CLANG_ENABLE_MODULES = YES;
-				CLANG_ENABLE_OBJC_ARC = YES;
-				COPY_PHASE_STRIP = NO;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				ENABLE_NS_ASSERTIONS = NO;
-				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
-				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
-				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
-				MTL_ENABLE_DEBUG_INFO = NO;
-				MTL_FAST_MATH = YES;
-				SWIFT_COMPILATION_MODE = "wholemodule";
-			};
-			name = Release;
-		};
-		77840678E86E4C1B9291DD6D /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_IDENTITY = "-";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = Droopies;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Droopies utilise la caméra pour scanner les QR codes de connexion des élèves.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Droopies accède aux photos pour importer des devoirs ou étiquettes.";
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = fr.education.droopies;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "2";
-			};
-			name = Debug;
-		};
-		0EA1F8651C324ADA9DC23CC2 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_IDENTITY = "-";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = Droopies;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Droopies utilise la caméra pour scanner les QR codes de connexion des élèves.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Droopies accède aux photos pour importer des devoirs ou étiquettes.";
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = fr.education.droopies;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "2";
-			};
-			name = Release;
-		};
 /* End XCBuildConfiguration section */
+
 /* Begin XCConfigurationList section */
+		37C622DACBF84287856FAA83 /* Build configuration list for PBXNativeTarget "Droopies" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				77840678E86E4C1B9291DD6D /* Debug */,
+				0EA1F8651C324ADA9DC23CC2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		4B67305DF9144D1BB9248BC4 /* Build configuration list for PBXProject "Droopies" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C6EE82E0232C41309BB7D0DA /* Debug */,
 				6F1BEB7CE03243CD8BE8CC68 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		37C622DACBF84287856FAA83 /* Build configuration list for PBXNativeTarget "Dropies" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				77840678E86E4C1B9291DD6D /* Debug */,
-				0EA1F8651C324ADA9DC23CC2 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

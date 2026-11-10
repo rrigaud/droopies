@@ -2,10 +2,11 @@
 //  SplashSetupView.swift
 //  Droopies
 //
-//  Écran de démarrage et assistant de vérification Cloud (Splash & Cloud Setup).
-//  Fonctionne 100 % en Cloud (Dropbox, OneDrive, Nextcloud, Google Drive) sans aucun mode local.
-//  Vérifie le compte, configure le dossier Source dans le Cloud,
-//  et bascule automatiquement vers l'interface principale dès que tout est prêt.
+//  Écran de démarrage et assistant de vérification Cloud (Splash & Cloud Stepper).
+//  Fonctionne 100 % en Cloud (Dropbox, Nextcloud, OneDrive, Google Drive).
+//  - Au quotidien : splashscreen épuré plein écran (Logo + Titre + Progression 1-2s).
+//  - Hors-ligne sans compte : écran informatif clair expliquant le besoin d'Internet.
+//  - Premier démarrage en ligne : Assistant Stepper 3 étapes séquentiel fluide.
 //
 
 import SwiftUI
@@ -17,10 +18,17 @@ public struct SplashSetupView: View {
     public var isSwitcherMode: Bool
     public var onFinish: () -> Void
 
-    @State private var selectedProviderType: AppSettings.StorageProviderType = .dropbox
+    // MARK: - Étape active du Stepper (1: Service, 2: Connexion, 3: Dossier)
+    @State private var currentStep: Int = 1
+
+    @State private var selectedProviderType: AppSettings.StorageProviderType? = nil
     @State private var rootFolder: String = ""
 
-    // Boîte de dialogue de sélection du dossier Dropbox dans le Cloud
+    private var effectiveProviderType: AppSettings.StorageProviderType {
+        selectedProviderType ?? .dropbox
+    }
+
+    // Boîte de dialogue de sélection du dossier dans le Cloud
     @State private var showFolderPicker: Bool = false
 
     // États de connexion Cloud
@@ -42,13 +50,16 @@ public struct SplashSetupView: View {
     /// Indique si l'appareil est au premier démarrage SANS Internet et SANS cache local
     @State private var isFirstLaunchOfflineBlocked: Bool = false
 
-    /// Indique si l'écran d'assistant de configuration manuel (Mode 2) est affiché
+    /// Indique si l'écran d'assistant de configuration manuel (Mode Stepper) est affiché
     @State private var isShowingManualSetup: Bool = false
 
     @State private var isLoadingData: Bool = false
     @State private var isDataLoaded: Bool = false
-
     @State private var errorMessage: String? = nil
+
+    // Progression fluide et dynamique échelonnée étape par étape (0.05 -> 1.0)
+    @State private var progressValue: Double = 0.05
+    @State private var progressLabel: String = "Connexion sécurisée à votre compte Cloud..."
 
     public init(appState: AppState, isSwitcherMode: Bool = false, onFinish: @escaping () -> Void) {
         self.appState = appState
@@ -56,11 +67,8 @@ public struct SplashSetupView: View {
         self.onFinish = onFinish
         self._isCheckingCloud = State(initialValue: false)
         self._isShowingManualSetup = State(initialValue: isSwitcherMode)
+        self._selectedProviderType = State(initialValue: isSwitcherMode ? appState.storageManager.activeProvider.providerType : nil)
     }
-
-    // Progression fluide et dynamique échelonnée étape par étape (0.05 -> 1.0)
-    @State private var progressValue: Double = 0.05
-    @State private var progressLabel: String = "Connexion sécurisée à votre compte Cloud..."
 
     @MainActor
     private func updateProgress(value: Double, label: String) {
@@ -70,135 +78,43 @@ public struct SplashSetupView: View {
         }
     }
 
+    // MARK: - Vue Principale
+
     public var body: some View {
         ZStack {
             LiquidGlassBackground()
 
             if isFirstLaunchOfflineBlocked {
-                // MARK: - Mode 0 : Premier Lancement Hors-Ligne (Bloqué au splashscreen avec explications)
+                // MARK: - CAS A2 : Premier Lancement Hors-Ligne (Informatif & Épuré)
                 firstLaunchOfflineBlockedView
                     .transition(.opacity)
             } else if !isShowingManualSetup {
-                // MARK: - Mode 1 : Splashscreen Épuré Plein Écran (Lancements normaux)
-                VStack(spacing: 24) {
-                    Spacer()
-
-                    // Mascotte Droopies géante (Taille 160, flottante et respirante)
-                    DroopiesMascotView(size: 160, hasShadow: true, isAnimated: true)
-
-                    // Titre et sous-titre
-                    VStack(spacing: 6) {
-                        Text("Droopies")
-                            .font(.system(size: 36, weight: .bold, design: .rounded))
-
-                        Text("Studio Numérique Enseignant • 100% Cloud")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.secondary)
-                    }
-
-                    // Barre de progression sous l'icône et ses sous-textes (hauteur doublée à 8pt)
-                    splashProgressBar
-                        .padding(.top, 8)
-
-                    Spacer()
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(.horizontal, 24)
-                .transition(.opacity)
+                // MARK: - CAS B1 & A1 : Splashscreen Épuré Plein Écran (Lancement Quotidien)
+                splashMinimalView
+                    .transition(.opacity)
             } else {
-                // MARK: - Mode 2 : Configuration Cloud Manuelle (Premier lancement ou Switcher)
-                ScrollView {
-                    VStack(spacing: 24) {
-                        if isSwitcherMode {
-                            // En-tête mode switcher
-                            HStack(spacing: 14) {
-                                DroopiesMascotView(size: 48, hasShadow: true)
-
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text("Changer de Service Cloud")
-                                        .font(.system(size: 22, weight: .bold, design: .rounded))
-
-                                    Text("Sélectionnez votre espace Cloud ou configurez un nouveau serveur")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-
-                                Spacer()
-                            }
-                            .frame(maxWidth: 600)
-                            .padding(.top, 16)
-                            .padding(.horizontal, 6)
-                        } else {
-                            // En-tête premier lancement avec Mascotte
-                            VStack(spacing: 16) {
-                                DroopiesMascotView(size: 160, hasShadow: true, isAnimated: true)
-                                    .padding(.top, 24)
-
-                                VStack(spacing: 4) {
-                                    Text("Droopies")
-                                        .font(.system(size: 32, weight: .bold, design: .rounded))
-
-                                    Text("Studio Numérique Enseignant • 100% Cloud")
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                }
-
-                                // Barre de progression
-                                splashProgressBar
-                                    .padding(.top, 4)
-                            }
-                        }
-
-                        // Carte Principale de Configuration Cloud
-                        VStack(alignment: .leading, spacing: 20) {
-                            // 1. Choix du service Cloud
-                            cloudProviderSelectorSection
-
-                            Divider()
-
-                            // 2. Connexion au compte Cloud sélectionné
-                            cloudAccountConnectionSection
-
-                            // 3. Choix du dossier Source dans l'arborescence Cloud
-                            if isCloudConnected {
-                                Divider()
-                                sourceFolderPickerSection
-                            }
-
-                            if let error = errorMessage {
-                                HStack(spacing: 8) {
-                                    Image(systemName: "exclamationmark.triangle.fill")
-                                        .foregroundColor(.red)
-                                    Text(error)
-                                        .font(.caption)
-                                        .foregroundColor(.red)
-                                }
-                                .padding(10)
-                                .background(Color.red.opacity(0.1))
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
-                            }
-                        }
-                        .padding(24)
-                        .glassCard(cornerRadius: 22, strokeOpacity: 0.45)
-                        .frame(maxWidth: 600)
-                        .padding(.bottom, 36)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.horizontal, 20)
-                }
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+                // MARK: - CAS B2 : Assistant Stepper Séquentiel (3 étapes)
+                stepperContainerView
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
         .sheet(isPresented: $showFolderPicker) {
             let providerToUse: StorageProvider = (appState.storageManager.activeProvider as? DropboxStorageProvider) ?? DropboxStorageProvider()
             CloudFolderPickerSheet(
                 provider: providerToUse,
-                initialPath: ""
+                initialPath: rootFolder
             ) { chosenPath in
                 self.rootFolder = chosenPath
+                self.isFolderValidated = true
                 UserDefaults.standard.set(chosenPath, forKey: "droopies_selected_folder")
                 if let dropbox = providerToUse as? DropboxStorageProvider {
                     self.appState.storageManager.setProvider(dropbox)
+                }
+
+                // Dès que le dossier est choisi : on masque le bloc de paramétrage
+                // et on revient au splashscreen en mode "tout est prêt, on charge !"
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                    self.isShowingManualSetup = false
                 }
                 Task {
                     await applyAndValidateSourceFolder(chosenPath)
@@ -231,7 +147,36 @@ public struct SplashSetupView: View {
         }
     }
 
-    // MARK: - Mode 0 : Premier Lancement Hors-Ligne (Bloqué avec explications bienveillantes)
+    // MARK: - 1. Splashscreen Épuré Plein Écran (Normal)
+
+    private var splashMinimalView: some View {
+        VStack(spacing: 24) {
+            Spacer()
+
+            // Mascotte Droopies géante (Taille 160, flottante et respirante)
+            DroopiesMascotView(size: 160, hasShadow: true, isAnimated: true)
+
+            // Titre et sous-titre
+            VStack(spacing: 6) {
+                Text("Droopies")
+                    .font(.system(size: 36, weight: .bold, design: .rounded))
+
+                Text("Studio Numérique Enseignant • 100% Cloud")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+
+            // Barre de progression sous l'icône
+            splashProgressBar
+                .padding(.top, 8)
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.horizontal, 24)
+    }
+
+    // MARK: - 2. Premier Lancement Hors-Ligne (Informatif, sans formulaire)
 
     private var firstLaunchOfflineBlockedView: some View {
         VStack(spacing: 24) {
@@ -252,20 +197,19 @@ public struct SplashSetupView: View {
                 ZStack {
                     Circle()
                         .fill(Color.orange.opacity(0.15))
-                        .frame(width: 64, height: 64)
+                        .frame(width: 60, height: 60)
 
                     Image(systemName: "wifi.slash")
-                        .font(.system(size: 28, weight: .semibold))
+                        .font(.system(size: 26, weight: .semibold))
                         .foregroundColor(.orange)
                 }
 
                 VStack(spacing: 8) {
-                    Text("Connexion Internet requise pour l'initialisation")
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                    Text("Connexion Internet requise")
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
                         .foregroundColor(.primary)
-                        .multilineTextAlignment(.center)
 
-                    Text("Droopies fonctionne directement avec votre espace Cloud. Lors du tout premier lancement sur cet appareil, une connexion Internet est indispensable pour configurer votre dossier enseignant et synchroniser vos classes.")
+                    Text("Pour configurer Droopies et associer votre espace Cloud lors du premier démarrage sur cet appareil, veuillez connecter l'iPad à un réseau Internet (Wi-Fi ou partage de connexion).")
                         .font(.system(size: 13))
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
@@ -276,25 +220,15 @@ public struct SplashSetupView: View {
 
                 HStack(spacing: 8) {
                     ProgressView().scaleEffect(0.8)
-                    Text("En attente d'une connexion réseau (Wi-Fi ou câble)...")
+                    Text("Détection automatique dès la connexion...")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
-                .padding(.vertical, 4)
-
-                Button {
-                    Task {
-                        await autoDetectExistingConnection()
-                    }
-                } label: {
-                    Label("Réessayer la connexion", systemImage: "arrow.clockwise")
-                        .font(.system(size: 13, weight: .semibold))
-                }
-                .buttonStyle(VibrantGradientButtonStyle(gradient: .electricBlue, isCompact: true))
+                .padding(.top, 2)
             }
-            .padding(22)
+            .padding(24)
             .glassCard(cornerRadius: 20, strokeOpacity: 0.35)
-            .frame(maxWidth: 480)
+            .frame(maxWidth: 460)
 
             Spacer()
         }
@@ -302,7 +236,648 @@ public struct SplashSetupView: View {
         .padding(.horizontal, 24)
     }
 
-    // MARK: - Barre de Progression Native (Hauteur Doublée à 8pt)
+    // MARK: - 3. Assistant Stepper 3 Étapes
+
+    private var stepperContainerView: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                // En-tête : Mascotte Droopies + Titre
+                if !isSwitcherMode {
+                    VStack(spacing: 12) {
+                        DroopiesMascotView(size: 110, hasShadow: true, isAnimated: true)
+                            .padding(.top, 16)
+
+                        VStack(spacing: 4) {
+                            Text("Bienvenue sur Droopies")
+                                .font(.system(size: 26, weight: .bold, design: .rounded))
+
+                            Text("Configuration initiale de votre espace enseignant")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                } else {
+                    HStack(spacing: 14) {
+                        DroopiesMascotView(size: 44, hasShadow: true)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Changer de Service Cloud")
+                                .font(.system(size: 20, weight: .bold, design: .rounded))
+
+                            Text("Associez un nouvel espace de stockage à Droopies")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+
+                        Spacer()
+                    }
+                    .frame(maxWidth: 580)
+                    .padding(.top, 16)
+                    .padding(.horizontal, 6)
+                }
+
+                // Carte Principale du Stepper
+                VStack(alignment: .leading, spacing: 18) {
+                    // Indicateur des 3 étapes (Breadcrumb)
+                    stepperBreadcrumb
+
+                    Divider()
+
+                    // Contenu de l'étape active
+                    Group {
+                        switch currentStep {
+                        case 1:
+                            step1ProviderSection
+                        case 2:
+                            step2ConnectionSection
+                        case 3:
+                            step3FolderSection
+                        default:
+                            step1ProviderSection
+                        }
+                    }
+
+                    if let error = errorMessage {
+                        HStack(spacing: 8) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.red)
+                            Text(error)
+                                .font(.caption)
+                                .foregroundColor(.red)
+                        }
+                        .padding(10)
+                        .background(Color.red.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
+
+                    Divider()
+
+                    // Barre de navigation (Précédent / Suivant)
+                    stepperNavigationBar
+                }
+                .padding(22)
+                .glassCard(cornerRadius: 22, strokeOpacity: 0.45)
+                .frame(maxWidth: 580)
+                .padding(.bottom, 24)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 20)
+        }
+    }
+
+    // MARK: - Fil d'Ariane des 3 Étapes
+
+    private var stepperBreadcrumb: some View {
+        HStack(spacing: 8) {
+            stepIndicatorItem(
+                step: 1,
+                title: "1. Service Cloud",
+                isCompleted: currentStep > 1,
+                isActive: currentStep == 1
+            )
+
+            stepSeparator(isCompleted: currentStep > 1)
+
+            stepIndicatorItem(
+                step: 2,
+                title: "2. Compte",
+                isCompleted: currentStep > 2 || (currentStep == 1 && isCloudConnected),
+                isActive: currentStep == 2
+            )
+
+            stepSeparator(isCompleted: currentStep > 2)
+
+            stepIndicatorItem(
+                step: 3,
+                title: "3. Dossier Source",
+                isCompleted: isFolderValidated && !rootFolder.isEmpty,
+                isActive: currentStep == 3
+            )
+        }
+        .padding(.horizontal, 4)
+        .padding(.bottom, 4)
+    }
+
+    @ViewBuilder
+    private func stepIndicatorItem(step: Int, title: String, isCompleted: Bool, isActive: Bool) -> some View {
+        Button {
+            // Permettre la navigation directe vers les étapes franchies
+            if step < currentStep || (step == 2 && isCloudConnected) || (step == 3 && isCloudConnected) {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                    currentStep = step
+                }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            isActive
+                                ? Color(hex: "0284C7")
+                                : (isCompleted ? Color.green : Color.primary.opacity(0.08))
+                        )
+                        .frame(width: 22, height: 22)
+
+                    if isCompleted && !isActive {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.white)
+                    } else {
+                        Text("\(step)")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .foregroundColor(isActive ? .white : (isCompleted ? .white : .secondary))
+                    }
+                }
+
+                Text(title)
+                    .font(.system(size: 12, weight: isActive ? .bold : .medium, design: .rounded))
+                    .foregroundColor(isActive ? .primary : (isCompleted ? .primary : .secondary.opacity(0.8)))
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private func stepSeparator(isCompleted: Bool) -> some View {
+        Rectangle()
+            .fill(isCompleted ? Color.green.opacity(0.5) : Color.primary.opacity(0.12))
+            .frame(height: 2)
+            .frame(maxWidth: .infinity)
+    }
+
+    // MARK: - Étape 1 : Choix du Service Cloud
+
+    private var step1ProviderSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Choisissez votre service Cloud")
+                    .font(.headline.bold())
+                    .foregroundColor(.primary)
+
+                Text("Sélectionnez la plateforme Cloud où vous souhaitez stocker vos évaluations et vos classes.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            HStack(spacing: 10) {
+                cloudOptionChip(type: .dropbox, label: "Dropbox", color: Color(red: 0.0, green: 0.38, blue: 1.0))
+                cloudOptionChip(type: .nextcloud, label: "Nextcloud", color: Color(red: 0.0, green: 0.51, blue: 0.79))
+                cloudOptionChip(type: .oneDrive, label: "OneDrive", color: Color(red: 0.0, green: 0.47, blue: 0.83))
+                cloudOptionChip(type: .googleDrive, label: "Google Drive", color: Color(red: 0.0, green: 0.67, blue: 0.28))
+            }
+            .padding(.top, 4)
+
+            HStack(spacing: 6) {
+                Image(systemName: "checkmark.shield.fill")
+                    .foregroundColor(.green)
+                    .font(.caption)
+                Text("Droopies fonctionne directement avec votre espace de stockage, sans intermédiaire ni serveur tiers (RGPD).")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.top, 2)
+        }
+    }
+
+    @ViewBuilder
+    private func cloudOptionChip(type: AppSettings.StorageProviderType, label: String, color: Color) -> some View {
+        let isSelected = selectedProviderType == type
+        Button {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                selectedProviderType = type
+                UserDefaults.standard.set(type.rawValue, forKey: "droopies_selected_provider")
+                if type != .dropbox {
+                    isCloudConnected = false
+                    cloudStatusMessage = "\(label) sera activé très prochainement. Veuillez utiliser Dropbox pour le moment."
+                }
+            }
+        } label: {
+            VStack(spacing: 8) {
+                CloudBrandIconView(type: type, size: 28, isSelected: isSelected)
+                    .frame(height: 28)
+
+                Text(label)
+                    .font(.system(size: 11, weight: isSelected ? .bold : .medium))
+                    .foregroundColor(isSelected ? .white : .primary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(
+                Group {
+                    if isSelected {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(LinearGradient(colors: [color, color.opacity(0.85)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                            .shadow(color: color.opacity(0.35), radius: 8, y: 3)
+                    } else {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(Color.primary.opacity(0.04))
+                    }
+                }
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(isSelected ? Color.white.opacity(0.4) : Color.primary.opacity(0.08), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Étape 2 : Connexion au Compte
+
+    private var step2ConnectionSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Connexion au compte \(effectiveProviderType.displayName)")
+                    .font(.headline.bold())
+                    .foregroundColor(.primary)
+
+                Text("Autorisez Droopies à accéder à vos devoirs et évaluations dans votre espace.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            if effectiveProviderType == .nextcloud {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Connecter votre espace Nuage Éducation (Nextcloud WebDAV) :")
+                        .font(.caption.bold())
+                        .foregroundColor(.primary)
+
+                    VStack(spacing: 8) {
+                        TextField("URL du serveur (ex: https://nuage03.apps.education.fr/...)", text: .constant(""))
+                            .textFieldStyle(.roundedBorder)
+                            .font(.caption)
+
+                        HStack(spacing: 8) {
+                            TextField("Identifiant enseignant", text: .constant(""))
+                                .textFieldStyle(.roundedBorder)
+                                .font(.caption)
+
+                            SecureField("Mot de passe d'application", text: .constant(""))
+                                .textFieldStyle(.roundedBorder)
+                                .font(.caption)
+                        }
+                    }
+
+                    HStack(spacing: 6) {
+                        Image(systemName: "sparkles")
+                            .foregroundColor(.blue)
+                        Text("Connecteur Nuage Éducation en cours d'intégration native.")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .padding(14)
+                .background(Color.blue.opacity(0.06))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            } else if effectiveProviderType == .oneDrive {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Connecter votre compte Microsoft 365 Éducation :")
+                        .font(.caption.bold())
+                        .foregroundColor(.primary)
+
+                    Button {} label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "server.rack")
+                            Text("Se connecter avec Microsoft")
+                                .font(.subheadline.bold())
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(VibrantGradientButtonStyle(gradient: .electricBlue, isCompact: true))
+                    .disabled(true)
+                    .opacity(0.6)
+
+                    Text("Le support Microsoft OneDrive sera activé dans la prochaine mise à jour.")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+                .padding(14)
+                .background(Color.blue.opacity(0.06))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            } else if effectiveProviderType == .googleDrive {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Connecter votre compte Google Workspace Éducation :")
+                        .font(.caption.bold())
+                        .foregroundColor(.primary)
+
+                    Button {} label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "triangle.fill")
+                            Text("Se connecter avec Google")
+                                .font(.subheadline.bold())
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(VibrantGradientButtonStyle(gradient: .electricBlue, isCompact: true))
+                    .disabled(true)
+                    .opacity(0.6)
+
+                    Text("Le support Google Drive sera activé dans la prochaine mise à jour.")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+                .padding(14)
+                .background(Color.green.opacity(0.06))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            } else if isCloudConnected {
+                // Compte connecté avec succès
+                HStack(spacing: 12) {
+                    Image(systemName: "person.crop.circle.badge.checkmark")
+                        .font(.title2)
+                        .foregroundColor(.green)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(connectedUserDisplayName ?? "Enseignant Dropbox")
+                            .font(.subheadline.bold())
+                            .foregroundColor(.primary)
+
+                        Text(connectedUserEmail ?? "Compte actif et synchronisé")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+
+                    Spacer()
+
+                    Button("Déconnecter") {
+                        disconnectDropbox()
+                    }
+                    .font(.caption.bold())
+                    .foregroundColor(.red)
+                    .buttonStyle(.plain)
+                }
+                .padding(14)
+                .background(Color.green.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(Color.green.opacity(0.25), lineWidth: 1)
+                )
+            } else {
+                // Non connecté : Bouton 1-clic de connexion
+                VStack(alignment: .leading, spacing: 12) {
+                    Button {
+                        connectWithDropbox1Click()
+                    } label: {
+                        HStack(spacing: 8) {
+                            if isConnectingCloud {
+                                ProgressView()
+                                    .controlSize(.small)
+                                    .tint(.white)
+                                Text("Connexion en cours...")
+                                    .font(.headline.bold())
+                            } else {
+                                Image(systemName: "link")
+                                    .font(.system(size: 15, weight: .bold))
+                                Text("Se connecter avec Dropbox")
+                                    .font(.headline.bold())
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(VibrantGradientButtonStyle(gradient: .electricBlue))
+                    .disabled(isConnectingCloud || isCheckingCloud)
+
+                    // Option avancée dépliable : App Key personnalisée si souhaité
+                    DisclosureGroup(isExpanded: $showAdvancedAppKey) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Par défaut, Droopies utilise l'App Key officielle intégrée. Vous pouvez renseigner votre propre clé de Scoped App créée sur la console Dropbox :")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+
+                            HStack {
+                                TextField("App Key personnalisée (ex: cpb97d4akmmhn3j)", text: $customAppKey)
+                                    .textFieldStyle(.roundedBorder)
+                                    .font(.system(.caption, design: .monospaced))
+
+                                if !customAppKey.isEmpty {
+                                    Button("Effacer") {
+                                        customAppKey = ""
+                                        DropboxOAuthManager.shared.effectiveAppKey = ""
+                                    }
+                                    .font(.caption2)
+                                }
+                            }
+                        }
+                        .padding(.top, 4)
+                    } label: {
+                        Text("Options avancées (App Key personnalisée)")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Étape 3 : Choix du Dossier Source
+
+    private var step3FolderSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Dossier Source dans \(effectiveProviderType.displayName)")
+                    .font(.headline.bold())
+                    .foregroundColor(.primary)
+
+                Text("Droopies a besoin d'un dossier dans votre espace pour y ranger vos devoirs scannés, annotations et corrections.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            if rootFolder.isEmpty {
+                VStack(spacing: 12) {
+                    // Action 1 : Année scolaire courante (1-clic direct)
+                    Button {
+                        let targetYear = "/\(AppSettings.currentSchoolYear)"
+                        self.rootFolder = targetYear
+                        self.isFolderValidated = true
+
+                        // Dès le dossier choisi : masquer le stepper et basculer sur le splashscreen épuré
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                            self.isShowingManualSetup = false
+                        }
+                        Task {
+                            await applyAndValidateSourceFolder(targetYear)
+                        }
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 16, weight: .bold))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Créer le dossier de l'année scolaire : \(AppSettings.currentSchoolYear)")
+                                    .font(.subheadline.bold())
+                                Text("Recommandé • Initialise automatiquement la structure")
+                                    .font(.caption2)
+                                    .opacity(0.85)
+                            }
+                            Spacer()
+                            Image(systemName: "arrow.right")
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(VibrantGradientButtonStyle(gradient: .electricBlue))
+
+                    // Action 2 : Parcourir l'arborescence Cloud
+                    Button {
+                        showFolderPicker = true
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "folder.badge.gearshape")
+                                .font(.system(size: 15))
+                            Text("Parcourir et sélectionner un autre dossier...")
+                                .font(.subheadline.weight(.medium))
+                        }
+                        .foregroundColor(.primary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(Color.primary.opacity(0.05))
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(Color.primary.opacity(0.1), lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            } else {
+                // Dossier déjà sélectionné
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 12) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .fill(Color.blue.opacity(0.12))
+                                .frame(width: 44, height: 44)
+                            Image(systemName: "folder.fill")
+                                .font(.title3)
+                                .foregroundColor(.blue)
+                        }
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(URL(fileURLWithPath: rootFolder).lastPathComponent.isEmpty ? "Racine \(effectiveProviderType.displayName)" : URL(fileURLWithPath: rootFolder).lastPathComponent)
+                                .font(.system(.subheadline, design: .rounded, weight: .bold))
+
+                            Text("Chemin Cloud : \(rootFolder)")
+                                .font(.system(size: 11, design: .monospaced))
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                        }
+
+                        Spacer()
+
+                        Button {
+                            showFolderPicker = true
+                        } label: {
+                            Text("Modifier...")
+                                .font(.caption.bold())
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    .padding(14)
+                    .background(Color.blue.opacity(0.06))
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(Color.blue.opacity(0.2), lineWidth: 1)
+                    )
+
+                    if let msg = folderStatusMessage {
+                        Text(msg)
+                            .font(.caption)
+                            .foregroundColor(isFolderValidated ? .green : .secondary)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Barre de Navigation du Stepper (Précédent / Suivant / Terminer)
+
+    private var stepperNavigationBar: some View {
+        HStack {
+            if currentStep > 1 {
+                Button {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                        currentStep -= 1
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "chevron.left")
+                        Text("Précédent")
+                    }
+                    .font(.subheadline.bold())
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(Color.primary.opacity(0.06))
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            } else if isSwitcherMode {
+                Button("Fermer") {
+                    dismiss()
+                }
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            if currentStep == 1 {
+                if selectedProviderType != nil {
+                    Button {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            currentStep = 2
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Text("Suivant")
+                            Image(systemName: "chevron.right")
+                        }
+                    }
+                    .buttonStyle(VibrantGradientButtonStyle(gradient: .electricBlue, isCompact: true))
+                    .transition(.scale.combined(with: .opacity))
+                }
+            } else if currentStep == 2 {
+                if isCloudConnected {
+                    Button {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            currentStep = 3
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Text("Suivant")
+                            Image(systemName: "chevron.right")
+                        }
+                    }
+                    .buttonStyle(VibrantGradientButtonStyle(gradient: .electricBlue, isCompact: true))
+                    .transition(.scale.combined(with: .opacity))
+                }
+            } else if currentStep == 3 {
+                if !rootFolder.isEmpty && isFolderValidated {
+                    Button {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                            isShowingManualSetup = false
+                        }
+                        Task {
+                            await applyAndValidateSourceFolder(rootFolder)
+                        }
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "checkmark.circle.fill")
+                            Text(isSwitcherMode ? "Valider le nouveau Cloud" : "Terminer & Ouvrir Droopies")
+                        }
+                    }
+                    .buttonStyle(VibrantGradientButtonStyle(gradient: .emeraldGreen, isCompact: true))
+                    .transition(.scale.combined(with: .opacity))
+                }
+            }
+        }
+        .padding(.top, 4)
+    }
+
+    // MARK: - Barre de Progression Native
 
     private var splashProgressBar: some View {
         VStack(spacing: 10) {
@@ -344,422 +919,6 @@ public struct SplashSetupView: View {
         }
     }
 
-    // MARK: - Section 1 : Choix du Service Cloud
-
-    private var cloudProviderSelectorSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                ZStack {
-                    Circle()
-                        .fill(Color.green.opacity(0.15))
-                        .frame(width: 32, height: 32)
-                    Image(systemName: "globe.europe.africa.fill")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundColor(.green)
-                }
-
-                Text("1. Choix du service Cloud")
-                    .font(.subheadline.bold())
-                    .foregroundColor(.primary)
-
-                Spacer()
-
-                BadgeView(selectedProviderType.displayName, style: .success)
-            }
-
-            HStack(spacing: 8) {
-                cloudOptionChip(type: .dropbox, label: "Dropbox", color: Color(red: 0.0, green: 0.38, blue: 1.0))
-                cloudOptionChip(type: .nextcloud, label: "Nextcloud", color: Color(red: 0.0, green: 0.51, blue: 0.79))
-                cloudOptionChip(type: .oneDrive, label: "OneDrive", color: Color(red: 0.0, green: 0.47, blue: 0.83))
-                cloudOptionChip(type: .googleDrive, label: "Google Drive", color: Color(red: 0.0, green: 0.67, blue: 0.28))
-            }
-            .padding(.leading, 36)
-        }
-    }
-
-    @ViewBuilder
-    private func cloudOptionChip(type: AppSettings.StorageProviderType, label: String, color: Color) -> some View {
-        let isSelected = selectedProviderType == type
-        Button {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                selectedProviderType = type
-                UserDefaults.standard.set(type.rawValue, forKey: "droopies_selected_provider")
-                if type != .dropbox {
-                    isCloudConnected = false
-                    cloudStatusMessage = "\(label) sera activé très prochainement. Veuillez utiliser Dropbox pour le moment."
-                }
-            }
-            if type == .dropbox {
-                Task { await autoDetectExistingConnection() }
-            }
-        } label: {
-            VStack(spacing: 8) {
-                CloudBrandIconView(type: type, size: 28, isSelected: isSelected)
-                    .frame(height: 28)
-
-                Text(label)
-                    .font(.system(size: 11, weight: isSelected ? .bold : .medium))
-                    .foregroundColor(isSelected ? .white : .primary)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .background(
-                Group {
-                    if isSelected {
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(LinearGradient(colors: [color, color.opacity(0.85)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                            .shadow(color: color.opacity(0.4), radius: 8, y: 3)
-                    } else {
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(Color.primary.opacity(0.04))
-                    }
-                }
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(isSelected ? Color.white.opacity(0.35) : Color.primary.opacity(0.08), lineWidth: 1)
-            )
-        }
-        .buttonStyle(.plain)
-    }
-
-    // MARK: - Section 2 : Connexion Compte
-
-    private var cloudAccountConnectionSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                ZStack {
-                    Circle()
-                        .fill(isCloudConnected ? Color.green.opacity(0.15) : Color.blue.opacity(0.15))
-                        .frame(width: 32, height: 32)
-                    if isCloudConnected {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(.green)
-                    } else {
-                        CloudBrandIconView(type: selectedProviderType, size: 18)
-                    }
-                }
-
-                Text("2. Connexion au compte \(selectedProviderType.displayName)")
-                    .font(.subheadline.bold())
-
-                Spacer()
-
-                if isCheckingCloud || isConnectingCloud {
-                    ProgressView().scaleEffect(0.8)
-                } else if isCloudConnected {
-                    BadgeView("Connecté", style: .success)
-                } else {
-                    BadgeView("Non connecté", style: .warning)
-                }
-            }
-
-            if selectedProviderType == .nextcloud {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Connecter votre espace Nuage Éducation (Nextcloud WebDAV) :")
-                        .font(.caption.bold())
-                        .foregroundColor(.primary)
-
-                    VStack(spacing: 8) {
-                        TextField("URL du serveur (ex: https://nuage03.apps.education.fr/...)", text: .constant(""))
-                            .textFieldStyle(.roundedBorder)
-                            .font(.caption)
-
-                        HStack(spacing: 8) {
-                            TextField("Identifiant enseignant", text: .constant(""))
-                                .textFieldStyle(.roundedBorder)
-                                .font(.caption)
-
-                            SecureField("Mot de passe d'application", text: .constant(""))
-                                .textFieldStyle(.roundedBorder)
-                                .font(.caption)
-                        }
-                    }
-
-                    HStack(spacing: 6) {
-                        Image(systemName: "sparkles")
-                            .foregroundColor(.blue)
-                        Text("Connecteur Nuage Éducation en cours d'intégration native.")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                .padding(14)
-                .background(Color.blue.opacity(0.06))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .padding(.leading, 36)
-            } else if selectedProviderType == .oneDrive {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Connecter votre compte Microsoft 365 Éducation :")
-                        .font(.caption.bold())
-                        .foregroundColor(.primary)
-
-                    Button {} label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: "server.rack")
-                            Text("Se connecter avec Microsoft")
-                                .font(.subheadline.bold())
-                        }
-                        .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(VibrantGradientButtonStyle(gradient: .electricBlue, isCompact: true))
-                    .disabled(true)
-                    .opacity(0.6)
-
-                    Text("Le support Microsoft OneDrive sera activé dans la prochaine mise à jour.")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                }
-                .padding(14)
-                .background(Color.blue.opacity(0.06))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .padding(.leading, 36)
-            } else if selectedProviderType == .googleDrive {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Connecter votre compte Google Workspace Éducation :")
-                        .font(.caption.bold())
-                        .foregroundColor(.primary)
-
-                    Button {} label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: "triangle.fill")
-                            Text("Se connecter avec Google")
-                                .font(.subheadline.bold())
-                        }
-                        .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(VibrantGradientButtonStyle(gradient: .electricBlue, isCompact: true))
-                    .disabled(true)
-                    .opacity(0.6)
-
-                    Text("Le support Google Drive sera activé dans la prochaine mise à jour.")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                }
-                .padding(14)
-                .background(Color.green.opacity(0.06))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .padding(.leading, 36)
-            } else if isCloudConnected {
-                // Compte connecté
-                HStack(spacing: 12) {
-                    Image(systemName: "person.crop.circle.badge.checkmark")
-                        .font(.title2)
-                        .foregroundColor(.green)
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(connectedUserDisplayName ?? "Enseignant Dropbox")
-                            .font(.subheadline.bold())
-                            .foregroundColor(.primary)
-
-                        Text(connectedUserEmail ?? "Compte actif et synchronisé")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-
-                    Spacer()
-
-                    Button("Déconnecter") {
-                        disconnectDropbox()
-                    }
-                    .font(.caption.bold())
-                    .foregroundColor(.red)
-                    .buttonStyle(.plain)
-                }
-                .padding(12)
-                .background(Color.green.opacity(0.08))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color.green.opacity(0.2), lineWidth: 1)
-                )
-                .padding(.leading, 36)
-            } else {
-                // Non connecté : 1-clic connexion
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Connectez votre compte Dropbox en 1 clic pour gérer vos évaluations directement dans le Cloud :")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-
-                    Button {
-                        connectWithDropbox1Click()
-                    } label: {
-                        HStack(spacing: 8) {
-                            if isConnectingCloud {
-                                ProgressView()
-                                    .controlSize(.small)
-                                    .tint(.white)
-                                Text("Connexion en cours...")
-                                    .font(.headline.bold())
-                            } else {
-                                Image(systemName: "link")
-                                    .font(.system(size: 15, weight: .bold))
-                                Text("Se connecter avec Dropbox")
-                                    .font(.headline.bold())
-                            }
-                        }
-                        .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(VibrantGradientButtonStyle(gradient: .electricBlue))
-                    .disabled(isConnectingCloud || isCheckingCloud)
-
-                    // Option avancée dépliable : App Key personnalisée si l'enseignant le souhaite
-                    DisclosureGroup(isExpanded: $showAdvancedAppKey) {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Par défaut, Droopies utilise l'App Key officielle intégrée. Vous pouvez renseigner votre propre clé de Scoped App créée sur la console Dropbox :")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-
-                            HStack {
-                                TextField("App Key personnalisée (ex: cpb97d4akmmhn3j)", text: $customAppKey)
-                                    .textFieldStyle(.roundedBorder)
-                                    .font(.system(.caption, design: .monospaced))
-
-                                if !customAppKey.isEmpty {
-                                    Button("Effacer") {
-                                        customAppKey = ""
-                                        DropboxOAuthManager.shared.effectiveAppKey = ""
-                                    }
-                                    .font(.caption2)
-                                }
-                            }
-                        }
-                        .padding(.top, 4)
-                    } label: {
-                        Text("Options avancées (App Key personnalisée)")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                .padding(.leading, 36)
-            }
-        }
-    }
-
-    // MARK: - Section 3 : Dossier Source dans l'Arborescence Cloud
-
-    private var sourceFolderPickerSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                ZStack {
-                    Circle()
-                        .fill(isFolderValidated ? Color.green.opacity(0.15) : Color.orange.opacity(0.15))
-                        .frame(width: 32, height: 32)
-                    Image(systemName: isFolderValidated ? "checkmark" : "folder.badge.gearshape")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(isFolderValidated ? .green : .orange)
-                }
-
-                Text("3. Dossier Source dans votre Cloud")
-                    .font(.subheadline.bold())
-
-                Spacer()
-
-                if isCheckingFolder || isLoadingData {
-                    ProgressView().scaleEffect(0.8)
-                } else if isFolderValidated {
-                    BadgeView("Configuré", style: .success)
-                }
-            }
-
-            VStack(alignment: .leading, spacing: 12) {
-                if rootFolder.isEmpty {
-                    Text("Choisissez le dossier où Droopies organisera vos évaluations dans Dropbox (ex: \(AppSettings.currentSchoolYear) ou un dossier de test) :")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-
-                    VStack(spacing: 10) {
-                        // Action 1-clic : Année scolaire en cours (Recommandé)
-                        Button {
-                            let targetYear = "/\(AppSettings.currentSchoolYear)"
-                            Task {
-                                await applyAndValidateSourceFolder(targetYear)
-                            }
-                        } label: {
-                            HStack(spacing: 8) {
-                                Image(systemName: "sparkles")
-                                    .font(.system(size: 15, weight: .bold))
-                                Text("Créer le dossier de l'année scolaire : \(AppSettings.currentSchoolYear)")
-                                    .font(.headline.bold())
-                            }
-                            .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(VibrantGradientButtonStyle(gradient: .electricBlue))
-
-                        // Action 2 : Parcourir / Choisir un autre dossier (dossier de test, etc.)
-                        Button {
-                            showFolderPicker = true
-                        } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: "folder.badge.gearshape")
-                                Text("Parcourir ou choisir un autre dossier (Dossier Test, etc.)...")
-                            }
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.top, 2)
-                    }
-                } else {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack(spacing: 10) {
-                            HStack(spacing: 8) {
-                                CloudBrandIconView(type: selectedProviderType, size: 18)
-                                Text(URL(fileURLWithPath: rootFolder).lastPathComponent.isEmpty ? "Racine \(selectedProviderType.displayName)" : URL(fileURLWithPath: rootFolder).lastPathComponent)
-                                    .font(.system(.subheadline, design: .monospaced, weight: .bold))
-                            }
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(Color.blue.opacity(0.1))
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-
-                            Spacer()
-
-                            Button {
-                                showFolderPicker = true
-                            } label: {
-                                Label("Modifier", systemImage: "folder")
-                                    .font(.caption.bold())
-                            }
-                            .buttonStyle(.bordered)
-                        }
-
-                        Text("Chemin Cloud : \(rootFolder.isEmpty ? "/" : rootFolder)")
-                            .font(.system(.caption2, design: .monospaced))
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                    }
-
-                    if let msg = folderStatusMessage {
-                        Text(msg)
-                            .font(.caption)
-                            .foregroundColor(isFolderValidated ? .green : .secondary)
-                    }
-
-                    if isFolderValidated && isCloudConnected {
-                        Button {
-                            Task {
-                                await applyAndValidateSourceFolder(rootFolder)
-                            }
-                        } label: {
-                            HStack(spacing: 8) {
-                                Image(systemName: "checkmark.circle.fill")
-                                Text(isSwitcherMode ? "Basculer sur ce Cloud & Charger l'environnement" : "Ouvrir Droopies avec cet environnement")
-                                    .font(.subheadline.bold())
-                            }
-                            .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(VibrantGradientButtonStyle(gradient: .emeraldGreen, isCompact: true))
-                        .padding(.top, 4)
-                    }
-                }
-            }
-            .padding(.leading, 36)
-        }
-    }
-
     // MARK: - Logique d'initialisation & actions
 
     @MainActor
@@ -767,16 +926,55 @@ public struct SplashSetupView: View {
         isCheckingCloud = true
         defer { isCheckingCloud = false }
 
+        if CommandLine.arguments.contains("-testStep1Selected") {
+            self.selectedProviderType = .dropbox
+            self.currentStep = 1
+            self.isShowingManualSetup = true
+            return
+        }
+        if CommandLine.arguments.contains("-testStep2") {
+            self.selectedProviderType = .dropbox
+            self.currentStep = 2
+            self.isShowingManualSetup = true
+            return
+        }
+        if CommandLine.arguments.contains("-testStep2Connected") {
+            self.selectedProviderType = .dropbox
+            self.isCloudConnected = true
+            self.connectedUserDisplayName = "Enseignant Dropbox"
+            self.connectedUserEmail = "enseignant@ac-academie.fr"
+            self.currentStep = 2
+            self.isShowingManualSetup = true
+            return
+        }
+        if CommandLine.arguments.contains("-testStep3") {
+            self.selectedProviderType = .dropbox
+            self.isCloudConnected = true
+            self.connectedUserDisplayName = "Enseignant Dropbox"
+            self.connectedUserEmail = "enseignant@ac-academie.fr"
+            self.currentStep = 3
+            self.isShowingManualSetup = true
+            return
+        }
+        if CommandLine.arguments.contains("-testSplash") {
+            self.isShowingManualSetup = false
+            self.isFirstLaunchOfflineBlocked = false
+            self.updateProgress(value: 0.65, label: "Chargement des classes et élèves...")
+            return
+        }
+
         if CommandLine.arguments.contains("-testOfflineFirstLaunch") {
             NetworkMonitor.shared.isForcedOffline = true
         }
 
-        let isSimulatedFresh = CommandLine.arguments.contains("-testOfflineFirstLaunch")
-        let isOnline = isSimulatedFresh ? false : NetworkMonitor.shared.isOnline
+        let isSimulatedOfflineFresh = CommandLine.arguments.contains("-testOfflineFirstLaunch")
+        let isSimulatedStepper = CommandLine.arguments.contains("-testStepper")
+
+        let isOnline = isSimulatedOfflineFresh ? false : NetworkMonitor.shared.isOnline
 
         let provider = DropboxStorageProvider()
-        let hasCache = isSimulatedFresh ? false : ((try? await appState.storageManager.localCacheProvider.itemExists(at: "Configuration/eleves.json")) ?? false)
-        let hasSession = isSimulatedFresh ? false : provider.isConnected
+        let hasCache = (isSimulatedOfflineFresh || isSimulatedStepper) ? false : ((try? await appState.storageManager.localCacheProvider.itemExists(at: "Configuration/eleves.json")) ?? false)
+        let hasSession = (isSimulatedOfflineFresh || isSimulatedStepper) ? false : provider.isConnected
 
         // MARK: - CAS 1 : Hors-Ligne
         if !isOnline {
@@ -806,10 +1004,11 @@ public struct SplashSetupView: View {
         self.isFirstLaunchOfflineBlocked = false
 
         // Si aucun compte Cloud n'est encore associé (premier démarrage en ligne)
-        if !provider.isConnected {
-            print("[SplashSetupView] Premier lancement en ligne : aucun compte Cloud lié, affichage de l'assistant.")
+        if !provider.isConnected || isSimulatedStepper {
+            print("[SplashSetupView] Premier lancement en ligne : aucun compte Cloud lié, affichage du Stepper.")
             self.isCloudConnected = false
             self.isCheckingCloud = false
+            self.currentStep = 1
             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                 self.isShowingManualSetup = true
             }
@@ -833,8 +1032,6 @@ public struct SplashSetupView: View {
             }
             let cleanSaved = savedFolder.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
 
-            // Si le chemin sauvegardé est vide, "/", ou un ancien dossier par défaut obsolète,
-            // il n'est pas considéré comme un sous-dossier source valide.
             if cleanSaved.isEmpty || savedFolder == "/Droopies" || savedFolder == "Droopies" || savedFolder == "/Droopy" || savedFolder == "Droopy" {
                 savedFolder = ""
                 provider.setRootFolderPath("")
@@ -842,7 +1039,6 @@ public struct SplashSetupView: View {
                 UserDefaults.standard.removeObject(forKey: "droopies_selected_folder")
             }
 
-            // Vérifier si le dossier mémorisé existe RÉELLEMENT sur Dropbox
             var folderExists = false
             if !savedFolder.isEmpty {
                 if !isShowingManualSetup {
@@ -858,14 +1054,16 @@ public struct SplashSetupView: View {
             self.cloudStatusMessage = "\(info.name) (\(info.email))"
             self.rootFolder = savedFolder
             self.isFolderValidated = folderExists
+
             if !folderExists {
                 self.isDataLoaded = false
+                self.currentStep = 3 // Le compte est connecté, on propose directement de choisir le dossier
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                     self.isShowingManualSetup = true
                 }
             }
 
-            // Transition automatique : uniquement au démarrage initial (Splashscreen froid) !
+            // Transition automatique : uniquement au démarrage normal avec dossier valide !
             if !isShowingManualSetup && !isSwitcherMode && folderExists && !savedFolder.isEmpty {
                 await applyAndValidateSourceFolder(savedFolder)
             }
@@ -885,6 +1083,7 @@ public struct SplashSetupView: View {
             }
 
             self.isCloudConnected = false
+            self.currentStep = 1
             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                 self.isShowingManualSetup = true
             }
@@ -910,11 +1109,6 @@ public struct SplashSetupView: View {
                     self.connectedUserEmail = session.email
                     self.cloudStatusMessage = "\(session.displayName) (\(session.email))"
                     self.isConnectingCloud = false
-
-                    // Si aucun dossier n'est configuré, ouvrir directement l'explorateur modal Dropbox
-                    if self.rootFolder.isEmpty {
-                        self.showFolderPicker = true
-                    }
                 }
 
                 if !rootFolder.isEmpty {
@@ -944,6 +1138,9 @@ public struct SplashSetupView: View {
                 self.isDataLoaded = false
                 self.rootFolder = ""
                 UserDefaults.standard.removeObject(forKey: "droopies_selected_folder")
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                    self.currentStep = 2
+                }
             }
         }
     }
@@ -991,6 +1188,10 @@ public struct SplashSetupView: View {
             }
         } catch {
             self.errorMessage = "Erreur configuration dossier Cloud : \(error.localizedDescription)"
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                self.isShowingManualSetup = true
+                self.currentStep = 3
+            }
         }
     }
 
