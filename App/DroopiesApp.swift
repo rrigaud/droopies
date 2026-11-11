@@ -43,6 +43,9 @@ struct DroopiesApp: App {
             .environment(\.locale, activeLocale)
             #if os(macOS)
             .frame(minWidth: 950, minHeight: 650)
+            .onAppear {
+                NSApplication.shared.activate(ignoringOtherApps: true)
+            }
             #endif
         }
         #if os(macOS)

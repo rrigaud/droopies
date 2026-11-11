@@ -347,9 +347,7 @@ public struct MainSplitView: View {
                 }
             }
             .font(.system(size: 13, weight: .medium))
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .contentShape(Capsule())
+            .nativeToolbarPlatter()
         }
         .disabled(!appState.isOnline || appState.isPortalGenerating || appState.students.isEmpty)
         .help(!appState.isOnline
@@ -375,9 +373,7 @@ public struct MainSplitView: View {
                     Text(isCompact ? "Ajouter" : "Ajouter un élève")
                 }
                 .font(.system(size: 13, weight: .medium))
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .contentShape(Capsule())
+                .nativeToolbarPlatter()
             }
             .disabled(!appState.isOnline)
             .help(appState.isOnline ? "Ajouter un élève" : "Disponible en ligne uniquement")
@@ -392,9 +388,7 @@ public struct MainSplitView: View {
                     Text(isCompact ? "Importer" : "Importer CSV")
                 }
                 .font(.system(size: 13, weight: .medium))
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .contentShape(Capsule())
+                .nativeToolbarPlatter()
             }
             .disabled(!appState.isOnline)
             .help(appState.isOnline ? "Importer un fichier CSV" : "Disponible en ligne uniquement")
@@ -871,5 +865,36 @@ public struct MainSplitView: View {
         }
         .buttonStyle(.plain)
         .disabled(!isScreenAvailable)
+    }
+}
+
+// MARK: - Native Toolbar Platter (iPad Liquid Glass & macOS Hover Shape)
+
+private struct NativeToolbarPlatterModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        #if os(iOS)
+        content
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(.bar, in: Capsule())
+            .overlay(
+                Capsule()
+                    .strokeBorder(Color.white.opacity(0.35), lineWidth: 0.5)
+            )
+            .shadow(color: Color.black.opacity(0.06), radius: 3, x: 0, y: 1)
+            .contentShape(Capsule())
+            .hoverEffect(.highlight)
+        #else
+        content
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .contentShape(Capsule())
+        #endif
+    }
+}
+
+extension View {
+    fileprivate func nativeToolbarPlatter() -> some View {
+        self.modifier(NativeToolbarPlatterModifier())
     }
 }
