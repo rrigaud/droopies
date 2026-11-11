@@ -114,31 +114,6 @@ public struct MainSplitView: View {
                 .navigationTitle("")
                 #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
-                .background {
-                    CenterItemGroupsBridge(
-                        screen: activeScreen,
-                        isOnline: appState.isOnline,
-                        isPortalGenerating: appState.isPortalGenerating,
-                        studentsEmpty: appState.students.isEmpty,
-                        portalSyncStatus: appState.portalSyncStatus,
-                        isCompact: isCompact,
-                        onAddStudent: {
-                            if appState.isOnline {
-                                appState.showAddStudentSheet = true
-                            }
-                        },
-                        onImportCSV: {
-                            if appState.isOnline {
-                                appState.showCSVImportSheet = true
-                            }
-                        },
-                        onGeneratePortal: {
-                            if appState.isOnline && !appState.isPortalGenerating && !appState.students.isEmpty {
-                                appState.triggerPortalGeneration += 1
-                            }
-                        }
-                    )
-                }
                 #endif
                 .toolbar {
                     #if os(macOS)
@@ -147,10 +122,7 @@ public struct MainSplitView: View {
                     }
 
                     ToolbarItem(placement: .navigation) {
-                        HStack(spacing: 0) {
-                            mainModeTabsControlGroup
-                        }
-                        .padding(.leading, 8)
+                        mainModeTabsControlGroup
                     }
                     #else
                     ToolbarItem(placement: .topBarLeading) {
@@ -168,12 +140,8 @@ public struct MainSplitView: View {
                         }
                     }
 
-                    ToolbarItem(placement: .primaryAction) {
-                        if activeScreen == .correction && appState.activeCorrectionScan != nil {
-                            topTrailingHistoryToolbar
-                        } else {
-                            topTrailingCloudToolbar
-                        }
+                    ToolbarItemGroup(placement: .primaryAction) {
+                        topTrailingToolbar
                     }
                 }
                 #if os(macOS)
@@ -223,6 +191,9 @@ public struct MainSplitView: View {
         .onAppear {
             if CommandLine.arguments.contains("-testOffline") {
                 appState.isOnline = false
+            }
+            if CommandLine.arguments.contains("-testSidebar") {
+                isSidebarOpen = true
             }
             if CommandLine.arguments.contains("-testManyClasses") {
                 if !appState.students.contains(where: { $0.classe == "3e1" }) {
@@ -310,207 +281,35 @@ public struct MainSplitView: View {
     // MARK: - Outils Contextuels Centraux
 
     private var hasCenterToolbar: Bool {
-        #if os(iOS)
-        // Sur iOS/iPadOS, les boutons étudiants et portail sont gérés nativement par UIBarButtonItemGroup
-        // via centerItemGroups, pour avoir exactement les bulles natives Liquid Glass d'Aperçu.
         switch activeScreen {
         case .correction:
-            return appState.activeCorrectionScan != nil || !appState.openCorrectionScans.isEmpty
+            return appState.activeCorrectionScan != nil
         case .distribution:
             return appState.isOnline
         default:
             return false
         }
-        #else
-        switch activeScreen {
-        case .correction:
-            return appState.activeCorrectionScan != nil || !appState.openCorrectionScans.isEmpty
-        case .distribution:
-            return appState.isOnline
-        case .students:
-            return true
-        case .portal:
-            return true
-        default:
-            return false
-        }
-        #endif
     }
 
     @ViewBuilder
     private func topCenterToolbar(isCompact: Bool, isPortrait: Bool) -> some View {
         switch activeScreen {
         case .correction:
-            correctionCenterTabsToolbar(isCompact: isCompact, isPortrait: isPortrait)
+            if let activeScan = appState.activeCorrectionScan {
+                correctionDocumentTitleMenu(activeScan: activeScan)
+            }
 
         case .distribution:
             distributionStepperToolbar(isCompact: isCompact || isPortrait)
-
-        case .students:
-            studentsCenterActionToolbar(isCompact: isCompact)
-
-        case .portal:
-            portalCenterActionToolbar(isCompact: isCompact)
 
         default:
             EmptyView()
         }
     }
 
-    // MARK: - Center Toolbar : Actions du Portail Élèves (macOS)
+    // MARK: - Center Toolbar : Menu Titre Document d'Évaluation (Approche 1 Aperçu / Pages)
 
-    private func portalCenterActionToolbar(isCompact: Bool) -> some View {
-        Button {
-            if appState.isOnline && !appState.isPortalGenerating && !appState.students.isEmpty {
-                appState.triggerPortalGeneration += 1
-            }
-        } label: {
-            HStack(spacing: 6) {
-                switch appState.portalSyncStatus {
-                case .generating:
-                    ProgressView()
-                        .controlSize(.small)
-                    Text(isCompact ? "Génération..." : "Génération en cours...")
-                case .upToDateOnline:
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.green)
-                    Text(isCompact ? "À jour" : "Portail à jour")
-                case .generatedReadyToUpload:
-                    Image(systemName: "arrow.up.circle.fill")
-                        .foregroundColor(.blue)
-                    Text(isCompact ? "Publier" : "Mettre en ligne")
-                default:
-                    Image(systemName: "bolt.badge.clock.fill")
-                    Text(isCompact ? "Générer" : "Générer le portail")
-                }
-            }
-            .font(.system(size: 13, weight: .medium))
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .contentShape(Capsule())
-        }
-        .disabled(!appState.isOnline || appState.isPortalGenerating || appState.students.isEmpty)
-        .help(!appState.isOnline
-            ? "Disponible en ligne uniquement"
-            : (appState.students.isEmpty
-               ? "Veuillez d'abord importer des élèves"
-               : (appState.portalSyncStatus == .generatedReadyToUpload
-                  ? "Portail généré prêt à être mis en ligne sur votre hébergeur. Cliquez pour re-générer."
-                  : "Générer et publier le portail web chiffré")))
-    }
-
-    // MARK: - Center Toolbar : Actions Gestion des Élèves (macOS)
-
-    private func studentsCenterActionToolbar(isCompact: Bool) -> some View {
-        HStack(spacing: 8) {
-            Button {
-                if appState.isOnline {
-                    appState.showAddStudentSheet = true
-                }
-            } label: {
-                HStack(spacing: 5) {
-                    Image(systemName: "person.badge.plus")
-                    Text(isCompact ? "Ajouter" : "Ajouter un élève")
-                }
-                .font(.system(size: 13, weight: .medium))
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .contentShape(Capsule())
-            }
-            .disabled(!appState.isOnline)
-            .help(appState.isOnline ? "Ajouter un élève" : "Disponible en ligne uniquement")
-
-            Button {
-                if appState.isOnline {
-                    appState.showCSVImportSheet = true
-                }
-            } label: {
-                HStack(spacing: 5) {
-                    Image(systemName: "arrow.down.doc")
-                    Text(isCompact ? "Importer" : "Importer CSV")
-                }
-                .font(.system(size: 13, weight: .medium))
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .contentShape(Capsule())
-            }
-            .disabled(!appState.isOnline)
-            .help(appState.isOnline ? "Importer un fichier CSV" : "Disponible en ligne uniquement")
-        }
-    }
-
-    // MARK: - Center Toolbar : Onglets d'Évaluations (Correction)
-
-    private func correctionCenterTabsToolbar(isCompact: Bool, isPortrait: Bool) -> some View {
-        let shouldCollapse = (isPortrait || isCompact)
-            ? appState.openCorrectionScans.count >= 3
-            : appState.openCorrectionScans.count > 4
-
-        return Group {
-            if shouldCollapse {
-                compactEvaluationsMenu
-            } else {
-                HStack(spacing: 6) {
-                    ForEach(appState.openCorrectionScans) { scan in
-                        evaluationTabItem(scan: scan)
-                    }
-                }
-            }
-        }
-    }
-
-    private func evaluationTabItem(scan: StorageManager.ScanItem) -> some View {
-        let isTabActive = (activeScreen == .correction && appState.activeCorrectionScan?.id == scan.id)
-
-        return HStack(spacing: 5) {
-            Button {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                    activeScreen = .correction
-                    appState.activeCorrectionScan = scan
-                    if isSidebarOpen {
-                        isSidebarOpen = false
-                    }
-                }
-            } label: {
-                HStack(spacing: 5) {
-                    Image(systemName: scan.isCorrected ? "checkmark.seal.fill" : "doc.text.fill")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(isTabActive ? .white : (scan.isCorrected ? Color(hex: "10B981") : .secondary))
-
-                    Text(scan.cleanTitle)
-                        .font(.system(size: 12, weight: isTabActive ? .bold : .medium))
-                        .lineLimit(1)
-                        .frame(maxWidth: 130)
-                }
-            }
-            .buttonStyle(.plain)
-
-            Button {
-                closeCorrectionTab(scan)
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 8, weight: .bold))
-                    .foregroundColor(isTabActive ? .white.opacity(0.85) : .secondary)
-                    .frame(width: 16, height: 16)
-                    .background(isTabActive ? Color.white.opacity(0.2) : Color.primary.opacity(0.08))
-                    .clipShape(Circle())
-            }
-            .buttonStyle(.plain)
-            .help("Fermer l'évaluation « \(scan.cleanTitle) »")
-        }
-        .padding(.leading, 10)
-        .padding(.trailing, 6)
-        .padding(.vertical, 5)
-        .background(
-            isTabActive
-                ? Color.accentColor
-                : Color.primary.opacity(0.06)
-        )
-        .foregroundColor(isTabActive ? .white : .primary)
-        .clipShape(Capsule())
-    }
-
-    private var compactEvaluationsMenu: some View {
+    private func correctionDocumentTitleMenu(activeScan: StorageManager.ScanItem) -> some View {
         Menu {
             Section("Évaluations ouvertes (\(appState.openCorrectionScans.count))") {
                 ForEach(appState.openCorrectionScans) { scan in
@@ -525,7 +324,7 @@ public struct MainSplitView: View {
                     } label: {
                         HStack {
                             Label(scan.cleanTitle, systemImage: scan.isCorrected ? "checkmark.seal.fill" : "doc.text.fill")
-                            if appState.activeCorrectionScan?.id == scan.id && activeScreen == .correction {
+                            if appState.activeCorrectionScan?.id == scan.id {
                                 Image(systemName: "checkmark")
                             }
                         }
@@ -536,18 +335,44 @@ public struct MainSplitView: View {
             Divider()
 
             Button(role: .destructive) {
-                closeAllCorrectionTabs()
+                closeCorrectionTab(activeScan)
             } label: {
-                Label("Fermer toutes les évaluations", systemImage: "xmark.circle")
+                Label("Fermer cette évaluation", systemImage: "xmark")
+            }
+
+            if appState.openCorrectionScans.count > 1 {
+                Button(role: .destructive) {
+                    closeAllCorrectionTabs()
+                } label: {
+                    Label("Fermer toutes les évaluations", systemImage: "xmark.circle")
+                }
+            }
+
+            Divider()
+
+            Button {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                    appState.activeCorrectionScan = nil
+                    if isSidebarOpen {
+                        isSidebarOpen = false
+                    }
+                }
+            } label: {
+                Label("Retour à la mosaïque", systemImage: "square.grid.2x2")
             }
         } label: {
-            HStack(spacing: 5) {
-                let activeScan = (activeScreen == .correction) ? appState.activeCorrectionScan : nil
-                Image(systemName: (activeScan?.isCorrected == true) ? "checkmark.seal.fill" : (activeScan != nil ? "doc.text.fill" : "doc.on.doc.fill"))
-                Text(activeScan?.cleanTitle ?? "\(appState.openCorrectionScans.count) évaluations")
+            HStack(spacing: 6) {
+                Image(systemName: activeScan.isCorrected ? "checkmark.seal.fill" : "doc.text.fill")
+                    .foregroundColor(activeScan.isCorrected ? Color(hex: "10B981") : .accentColor)
+                Text(activeScan.cleanTitle)
+                    .fontWeight(.semibold)
                     .lineLimit(1)
+                Image(systemName: "chevron.down")
+                    .font(.caption2.bold())
+                    .foregroundColor(.secondary)
             }
         }
+        .help("Menu de l'évaluation : changer de copie ou fermer")
     }
 
     private func closeAllCorrectionTabs() {
@@ -665,72 +490,77 @@ public struct MainSplitView: View {
         }
     }
 
-    // MARK: - Toolbar 2 : Haut-Droite (Widget Cloud Déroulant façon Aperçu)
+    // MARK: - Toolbar 2 : Haut-Droite (Actions Contextuelles Primaires 100% Natives)
 
-    private var topTrailingCloudToolbar: some View {
-        Menu {
-            cloudMenuSections
-        } label: {
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(!appState.isOnline ? Color.orange : (appState.storageManager.activeProvider.isConnected ? Color.green : Color.orange))
-                    .frame(width: 7, height: 7)
-
-                Image(systemName: !appState.isOnline ? "bolt.slash.fill" : appState.storageManager.activeProvider.providerType.iconName)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(!appState.isOnline ? .orange : .accentColor)
-
-                Text(!appState.isOnline ? "Hors-ligne" : appState.storageManager.activeProvider.providerType.displayName)
-                    .font(.system(size: 13, weight: .medium))
+    @ViewBuilder
+    private var topTrailingToolbar: some View {
+        switch activeScreen {
+        case .correction:
+            if appState.activeCorrectionScan != nil {
+                topTrailingHistoryToolbar
             }
+        case .students:
+            studentsActionToolbar
+        case .portal:
+            portalActionToolbar
+        default:
+            EmptyView()
         }
     }
 
-    @ViewBuilder
-    private var cloudMenuSections: some View {
-        if !appState.isOnline {
-            Section("Mode Hors-Ligne") {
-                Label("Connexion Internet inactive", systemImage: "bolt.slash.fill")
-                Text("Vos copies annotées sont enregistrées localement et seront synchronisées dès le retour de la connexion.")
-            }
+    // MARK: - Actions Gestion des Élèves (Haut-Droite)
 
-            Divider()
+    private var studentsActionToolbar: some View {
+        ControlGroup {
+            Button {
+                if appState.isOnline {
+                    appState.showAddStudentSheet = true
+                }
+            } label: {
+                Label("Ajouter un élève", systemImage: "person.badge.plus")
+            }
+            .disabled(!appState.isOnline)
+            .help(appState.isOnline ? "Ajouter un élève" : "Disponible en ligne uniquement")
 
             Button {
-                Task { await appState.loadInitialData() }
+                if appState.isOnline {
+                    appState.showCSVImportSheet = true
+                }
             } label: {
-                Label(appState.t(.navReloadData), systemImage: "arrow.clockwise")
+                Label("Importer CSV", systemImage: "arrow.down.doc")
             }
-        } else {
-            Section {
-                Label(appState.storageManager.activeProvider.providerType.displayName, systemImage: appState.storageManager.activeProvider.providerType.iconName)
-                Label("Dossier Source : \(activeRootPath)", systemImage: "folder")
-            } header: {
-                Text("Stockage Cloud Actif")
+            .disabled(!appState.isOnline)
+            .help(appState.isOnline ? "Importer un fichier CSV" : "Disponible en ligne uniquement")
+        }
+    }
+
+    // MARK: - Actions Portail Élèves (Haut-Droite)
+
+    private var portalActionToolbar: some View {
+        Button {
+            if appState.isOnline && !appState.isPortalGenerating && !appState.students.isEmpty {
+                appState.triggerPortalGeneration += 1
             }
-
-            Divider()
-
-            Button {
-                showFolderPicker = true
-            } label: {
-                Label(appState.t(.navChangeFolder), systemImage: "folder.badge.gearshape")
-            }
-
-            Button {
-                showCloudSetupSheet = true
-            } label: {
-                Label(appState.t(.navChangeCloud), systemImage: "arrow.triangle.2.circlepath")
-            }
-
-            Divider()
-
-            Button {
-                Task { await appState.loadInitialData() }
-            } label: {
-                Label(appState.t(.navReloadData), systemImage: "arrow.clockwise")
+        } label: {
+            switch appState.portalSyncStatus {
+            case .generating:
+                Label("Génération...", systemImage: "arrow.triangle.2.circlepath")
+            case .upToDateOnline:
+                Label("Portail à jour", systemImage: "checkmark.circle.fill")
+            case .generatedReadyToUpload:
+                Label("Mettre en ligne", systemImage: "arrow.up.circle.fill")
+            default:
+                Label("Générer le portail", systemImage: "bolt.badge.clock.fill")
             }
         }
+        .disabled(!appState.isOnline || appState.isPortalGenerating || appState.students.isEmpty)
+        .help(!appState.isOnline
+            ? "Disponible en ligne uniquement"
+            : (appState.students.isEmpty
+               ? "Veuillez d'abord importer des élèves"
+               : (appState.portalSyncStatus == .generatedReadyToUpload
+                  ? "Portail généré prêt à être mis en ligne sur votre hébergeur. Cliquez pour re-générer."
+                  : "Générer et publier le portail web chiffré")))
     }
 
     // MARK: - 4. Sidebar Flottante en Liquid Glass (Tiroir suspendu)
@@ -770,6 +600,9 @@ public struct MainSplitView: View {
                     .padding(.top, 44),
                 alignment: .bottom
             )
+
+            // Bloc d'information et d'actions Cloud & Connexion
+            sidebarCloudSection
 
             // Liste de navigation
             VStack(alignment: .leading, spacing: 18) {
@@ -910,151 +743,87 @@ public struct MainSplitView: View {
         .buttonStyle(.plain)
         .disabled(!isScreenAvailable)
     }
-}
 
-// MARK: - Bridge UIKit pour les Bulles Liquid Glass Natives (iPadOS)
-// En utilisant UIBarButtonItemGroup avec centerItemGroups et le style .editor de Desktop-Class iPad,
-// iPadOS génère automatiquement la bulle Liquid Glass flottante exacte d'Apple (identique à Aperçu)
-// avec ses séparateurs natifs et son effet de survol pointer morphing parfait.
+    // MARK: - Bloc d'information et d'actions Cloud (Sidebar)
 
-#if os(iOS)
-import UIKit
+    private var sidebarCloudSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // Ligne 1 : Fournisseur et statut de connexion
+            HStack(spacing: 8) {
+                Image(systemName: !appState.isOnline ? "bolt.slash.fill" : appState.storageManager.activeProvider.providerType.iconName)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(!appState.isOnline ? .orange : .accentColor)
 
-final class CenterItemGroupsViewController: UIViewController {
-    var updateHandler: ((UINavigationItem?) -> Void)?
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(!appState.isOnline ? "Mode Hors-ligne" : appState.storageManager.activeProvider.providerType.displayName)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.primary)
 
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        view.backgroundColor = .clear
-        view.isUserInteractionEnabled = false
-    }
-
-    override func didMove(toParent parent: UIViewController?) {
-        super.didMove(toParent: parent)
-        findAndConfigureNavigationItem()
-    }
-
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        findAndConfigureNavigationItem()
-    }
-
-    func findAndConfigureNavigationItem() {
-        var targetVC: UIViewController? = self.parent
-        if targetVC == nil {
-            targetVC = self.navigationController?.topViewController
-        }
-        while let p = targetVC?.parent, !(p is UINavigationController) {
-            targetVC = p
-        }
-        let navItem = targetVC?.navigationItem ?? self.navigationController?.topViewController?.navigationItem
-        updateHandler?(navItem)
-    }
-}
-
-struct CenterItemGroupsBridge: UIViewControllerRepresentable {
-    let screen: AppScreen
-    let isOnline: Bool
-    let isPortalGenerating: Bool
-    let studentsEmpty: Bool
-    let portalSyncStatus: PortalSyncStatus
-    let isCompact: Bool
-    let onAddStudent: () -> Void
-    let onImportCSV: () -> Void
-    let onGeneratePortal: () -> Void
-
-    func makeUIViewController(context: Context) -> CenterItemGroupsViewController {
-        let vc = CenterItemGroupsViewController()
-        vc.updateHandler = { navItem in
-            configure(navItem: navItem)
-        }
-        return vc
-    }
-
-    func updateUIViewController(_ uiViewController: CenterItemGroupsViewController, context: Context) {
-        uiViewController.updateHandler = { navItem in
-            configure(navItem: navItem)
-        }
-        DispatchQueue.main.async {
-            uiViewController.findAndConfigureNavigationItem()
-        }
-    }
-
-    private func configure(navItem: UINavigationItem?) {
-        guard let navItem else { return }
-        navItem.style = .editor
-
-        switch screen {
-        case .students:
-            var addConfig = UIButton.Configuration.plain()
-            addConfig.title = isCompact ? "Ajouter" : "Ajouter un élève"
-            addConfig.image = UIImage(systemName: "person.badge.plus")
-            addConfig.imagePadding = 6
-            addConfig.baseForegroundColor = .label
-            addConfig.contentInsets = NSDirectionalEdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 8)
-            let btnAddView = UIButton(configuration: addConfig, primaryAction: UIAction { _ in
-                onAddStudent()
-            })
-            btnAddView.isEnabled = isOnline
-            let btnAdd = UIBarButtonItem(customView: btnAddView)
-
-            var importConfig = UIButton.Configuration.plain()
-            importConfig.title = isCompact ? "Importer" : "Importer CSV"
-            importConfig.image = UIImage(systemName: "arrow.down.doc")
-            importConfig.imagePadding = 6
-            importConfig.baseForegroundColor = .label
-            importConfig.contentInsets = NSDirectionalEdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 8)
-            let btnImportView = UIButton(configuration: importConfig, primaryAction: UIAction { _ in
-                onImportCSV()
-            })
-            btnImportView.isEnabled = isOnline
-            let btnImport = UIBarButtonItem(customView: btnImportView)
-
-            let sepView = UIView()
-            sepView.backgroundColor = UIColor.separator.withAlphaComponent(0.35)
-            sepView.translatesAutoresizingMaskIntoConstraints = false
-            NSLayoutConstraint.activate([
-                sepView.widthAnchor.constraint(equalToConstant: 1),
-                sepView.heightAnchor.constraint(equalToConstant: 16)
-            ])
-            let sepItem = UIBarButtonItem(customView: sepView)
-
-            let group = UIBarButtonItemGroup(barButtonItems: [btnAdd, sepItem, btnImport], representativeItem: nil)
-            navItem.centerItemGroups = [group]
-
-        case .portal:
-            let (title, imageName): (String, String) = {
-                switch portalSyncStatus {
-                case .generating:
-                    return (isCompact ? "Génération..." : "Génération en cours...", "arrow.triangle.2.circlepath")
-                case .upToDateOnline:
-                    return (isCompact ? "À jour" : "Portail à jour", "checkmark.circle.fill")
-                case .generatedReadyToUpload:
-                    return (isCompact ? "Publier" : "Mettre en ligne", "arrow.up.circle.fill")
-                default:
-                    return (isCompact ? "Générer" : "Générer le portail", "bolt.badge.clock.fill")
+                    HStack(spacing: 5) {
+                        Circle()
+                            .fill(!appState.isOnline ? Color.orange : (appState.storageManager.activeProvider.isConnected ? Color.green : Color.orange))
+                            .frame(width: 6, height: 6)
+                        Text(!appState.isOnline ? "Non connecté" : (appState.storageManager.activeProvider.isConnected ? "Connecté & synchronisé" : "Connexion en cours"))
+                            .font(.system(size: 10.5))
+                            .foregroundColor(.secondary)
+                    }
                 }
-            }()
 
-            var config = UIButton.Configuration.plain()
-            config.title = title
-            config.image = UIImage(systemName: imageName)
-            config.imagePadding = 6
-            config.baseForegroundColor = .label
-            config.contentInsets = NSDirectionalEdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 8)
+                Spacer()
 
-            let button = UIButton(configuration: config, primaryAction: UIAction { _ in
-                onGeneratePortal()
-            })
-            button.isEnabled = isOnline && !isPortalGenerating && !studentsEmpty
+                Button {
+                    Task { await appState.loadInitialData() }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Recharger les données du Cloud")
+            }
 
-            let btnGen = UIBarButtonItem(customView: button)
-            let group = UIBarButtonItemGroup(barButtonItems: [btnGen], representativeItem: nil)
-            navItem.centerItemGroups = [group]
+            // Ligne 2 : Dossier Source
+            HStack(spacing: 6) {
+                Image(systemName: "folder")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                Text(activeRootPath)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.primary.opacity(0.04))
+            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
 
-        default:
-            navItem.centerItemGroups = []
+            // Ligne 3 : Boutons d'action Cloud natifs
+            HStack(spacing: 8) {
+                Button {
+                    showFolderPicker = true
+                } label: {
+                    Label("Dossier", systemImage: "folder.badge.gearshape")
+                        .font(.system(size: 11, weight: .medium))
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+
+                Button {
+                    showCloudSetupSheet = true
+                } label: {
+                    Label("Compte", systemImage: "arrow.triangle.2.circlepath")
+                        .font(.system(size: 11, weight: .medium))
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
         }
+        .padding(10)
+        .background(Color.primary.opacity(0.04))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }
-#endif
