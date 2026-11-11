@@ -516,7 +516,10 @@ public struct MainSplitView: View {
                     appState.showAddStudentSheet = true
                 }
             } label: {
-                Label("Ajouter un élève", systemImage: "person.badge.plus")
+                HStack(spacing: 5) {
+                    Image(systemName: "person.badge.plus")
+                    Text("Ajouter")
+                }
             }
             .disabled(!appState.isOnline)
             .help(appState.isOnline ? "Ajouter un élève" : "Disponible en ligne uniquement")
@@ -526,7 +529,10 @@ public struct MainSplitView: View {
                     appState.showCSVImportSheet = true
                 }
             } label: {
-                Label("Importer CSV", systemImage: "arrow.down.doc")
+                HStack(spacing: 5) {
+                    Image(systemName: "arrow.down.doc")
+                    Text("Importer")
+                }
             }
             .disabled(!appState.isOnline)
             .help(appState.isOnline ? "Importer un fichier CSV" : "Disponible en ligne uniquement")
@@ -541,15 +547,21 @@ public struct MainSplitView: View {
                 appState.triggerPortalGeneration += 1
             }
         } label: {
-            switch appState.portalSyncStatus {
-            case .generating:
-                Label("Génération...", systemImage: "arrow.triangle.2.circlepath")
-            case .upToDateOnline:
-                Label("Portail à jour", systemImage: "checkmark.circle.fill")
-            case .generatedReadyToUpload:
-                Label("Mettre en ligne", systemImage: "arrow.up.circle.fill")
-            default:
-                Label("Générer le portail", systemImage: "bolt.badge.clock.fill")
+            HStack(spacing: 6) {
+                switch appState.portalSyncStatus {
+                case .generating:
+                    ProgressView().controlSize(.small)
+                    Text("Génération...")
+                case .upToDateOnline:
+                    Image(systemName: "checkmark.circle.fill")
+                    Text("Portail à jour")
+                case .generatedReadyToUpload:
+                    Image(systemName: "arrow.up.circle.fill")
+                    Text("Mettre en ligne")
+                default:
+                    Image(systemName: "bolt.badge.clock.fill")
+                    Text("Générer le portail")
+                }
             }
         }
         .disabled(!appState.isOnline || appState.isPortalGenerating || appState.students.isEmpty)
