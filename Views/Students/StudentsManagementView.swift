@@ -102,14 +102,12 @@ public struct StudentsManagementView: View {
 
             ZStack(alignment: .bottom) {
                 ScrollView {
-                    VStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 18) {
+                        // 0. En-tête de page Liquid Glass
+                        studentsPageHeader
+
                         // MARK: - Barre de Filtre par Classe, Recherche & Sélection
                         classesFilterBar(isCompact: isCompact)
-                            #if os(iOS)
-                            .padding(.top, -12)
-                            #else
-                            .padding(.top, 12)
-                            #endif
 
                         // MARK: - Tableau des élèves (Adaptatif : Accordéon si Portrait/Compact, Grand Tableau si Paysage/Large)
                         if isCompact {
@@ -118,7 +116,12 @@ public struct StudentsManagementView: View {
                             studentsTableView
                         }
                     }
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, 24)
+                    #if os(iOS)
+                    .padding(.top, -10)
+                    #else
+                    .padding(.top, 12)
+                    #endif
                     .padding(.bottom, 80)
                 }
                 .background(Color.clear)
@@ -214,6 +217,21 @@ public struct StudentsManagementView: View {
                 }
             }
         }
+    }
+
+    // MARK: - 0. En-tête de page Liquid Glass
+
+    private var studentsPageHeader: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(appState.t(.studentsTitle))
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .foregroundColor(.primary)
+
+            Text("Classes, répertoires Cloud, mots de passe et suivi des accès élèves")
+                .font(.system(size: 13.5))
+                .foregroundColor(.secondary)
+        }
+        .padding(.bottom, 2)
     }
 
     // MARK: - Barre Unifiée : Recherche, Filtres de Classes & Sélection
