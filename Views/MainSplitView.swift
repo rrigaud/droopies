@@ -114,6 +114,31 @@ public struct MainSplitView: View {
                 .navigationTitle("")
                 #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
+                .background {
+                    CenterItemGroupsBridge(
+                        screen: activeScreen,
+                        isOnline: appState.isOnline,
+                        isPortalGenerating: appState.isPortalGenerating,
+                        studentsEmpty: appState.students.isEmpty,
+                        portalSyncStatus: appState.portalSyncStatus,
+                        isCompact: isCompact,
+                        onAddStudent: {
+                            if appState.isOnline {
+                                appState.showAddStudentSheet = true
+                            }
+                        },
+                        onImportCSV: {
+                            if appState.isOnline {
+                                appState.showCSVImportSheet = true
+                            }
+                        },
+                        onGeneratePortal: {
+                            if appState.isOnline && !appState.isPortalGenerating && !appState.students.isEmpty {
+                                appState.triggerPortalGeneration += 1
+                            }
+                        }
+                    )
+                }
                 #endif
                 .toolbar {
                     #if os(macOS)
@@ -285,6 +310,18 @@ public struct MainSplitView: View {
     // MARK: - Outils Contextuels Centraux
 
     private var hasCenterToolbar: Bool {
+        #if os(iOS)
+        // Sur iOS/iPadOS, les boutons étudiants et portail sont gérés nativement par UIBarButtonItemGroup
+        // via centerItemGroups, pour avoir exactement les bulles natives Liquid Glass d'Aperçu.
+        switch activeScreen {
+        case .correction:
+            return appState.activeCorrectionScan != nil || !appState.openCorrectionScans.isEmpty
+        case .distribution:
+            return appState.isOnline
+        default:
+            return false
+        }
+        #else
         switch activeScreen {
         case .correction:
             return appState.activeCorrectionScan != nil || !appState.openCorrectionScans.isEmpty
@@ -297,6 +334,7 @@ public struct MainSplitView: View {
         default:
             return false
         }
+        #endif
     }
 
     @ViewBuilder
@@ -319,7 +357,7 @@ public struct MainSplitView: View {
         }
     }
 
-    // MARK: - Center Toolbar : Actions du Portail Élèves
+    // MARK: - Center Toolbar : Actions du Portail Élèves (macOS)
 
     private func portalCenterActionToolbar(isCompact: Bool) -> some View {
         Button {
@@ -347,24 +385,10 @@ public struct MainSplitView: View {
                 }
             }
             .font(.system(size: 13, weight: .medium))
-            #if os(iOS)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .background(.ultraThinMaterial, in: Capsule())
-            .overlay(
-                Capsule()
-                    .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.5)
-            )
-            #else
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
-            #endif
             .contentShape(Capsule())
         }
-        #if os(iOS)
-        .contentShape(.hoverEffect, Capsule())
-        .hoverEffect()
-        #endif
         .disabled(!appState.isOnline || appState.isPortalGenerating || appState.students.isEmpty)
         .help(!appState.isOnline
             ? "Disponible en ligne uniquement"
@@ -375,7 +399,7 @@ public struct MainSplitView: View {
                   : "Générer et publier le portail web chiffré")))
     }
 
-    // MARK: - Center Toolbar : Actions Gestion des Élèves
+    // MARK: - Center Toolbar : Actions Gestion des Élèves (macOS)
 
     private func studentsCenterActionToolbar(isCompact: Bool) -> some View {
         HStack(spacing: 8) {
@@ -389,24 +413,10 @@ public struct MainSplitView: View {
                     Text(isCompact ? "Ajouter" : "Ajouter un élève")
                 }
                 .font(.system(size: 13, weight: .medium))
-                #if os(iOS)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .background(.ultraThinMaterial, in: Capsule())
-                .overlay(
-                    Capsule()
-                        .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.5)
-                )
-                #else
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
-                #endif
                 .contentShape(Capsule())
             }
-            #if os(iOS)
-            .contentShape(.hoverEffect, Capsule())
-            .hoverEffect()
-            #endif
             .disabled(!appState.isOnline)
             .help(appState.isOnline ? "Ajouter un élève" : "Disponible en ligne uniquement")
 
@@ -420,24 +430,10 @@ public struct MainSplitView: View {
                     Text(isCompact ? "Importer" : "Importer CSV")
                 }
                 .font(.system(size: 13, weight: .medium))
-                #if os(iOS)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .background(.ultraThinMaterial, in: Capsule())
-                .overlay(
-                    Capsule()
-                        .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.5)
-                )
-                #else
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
-                #endif
                 .contentShape(Capsule())
             }
-            #if os(iOS)
-            .contentShape(.hoverEffect, Capsule())
-            .hoverEffect()
-            #endif
             .disabled(!appState.isOnline)
             .help(appState.isOnline ? "Importer un fichier CSV" : "Disponible en ligne uniquement")
         }
@@ -915,3 +911,150 @@ public struct MainSplitView: View {
         .disabled(!isScreenAvailable)
     }
 }
+
+// MARK: - Bridge UIKit pour les Bulles Liquid Glass Natives (iPadOS)
+// En utilisant UIBarButtonItemGroup avec centerItemGroups et le style .editor de Desktop-Class iPad,
+// iPadOS génère automatiquement la bulle Liquid Glass flottante exacte d'Apple (identique à Aperçu)
+// avec ses séparateurs natifs et son effet de survol pointer morphing parfait.
+
+#if os(iOS)
+import UIKit
+
+final class CenterItemGroupsViewController: UIViewController {
+    var updateHandler: ((UINavigationItem?) -> Void)?
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .clear
+        view.isUserInteractionEnabled = false
+    }
+
+    override func didMove(toParent parent: UIViewController?) {
+        super.didMove(toParent: parent)
+        findAndConfigureNavigationItem()
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        findAndConfigureNavigationItem()
+    }
+
+    func findAndConfigureNavigationItem() {
+        var targetVC: UIViewController? = self.parent
+        if targetVC == nil {
+            targetVC = self.navigationController?.topViewController
+        }
+        while let p = targetVC?.parent, !(p is UINavigationController) {
+            targetVC = p
+        }
+        let navItem = targetVC?.navigationItem ?? self.navigationController?.topViewController?.navigationItem
+        updateHandler?(navItem)
+    }
+}
+
+struct CenterItemGroupsBridge: UIViewControllerRepresentable {
+    let screen: AppScreen
+    let isOnline: Bool
+    let isPortalGenerating: Bool
+    let studentsEmpty: Bool
+    let portalSyncStatus: PortalSyncStatus
+    let isCompact: Bool
+    let onAddStudent: () -> Void
+    let onImportCSV: () -> Void
+    let onGeneratePortal: () -> Void
+
+    func makeUIViewController(context: Context) -> CenterItemGroupsViewController {
+        let vc = CenterItemGroupsViewController()
+        vc.updateHandler = { navItem in
+            configure(navItem: navItem)
+        }
+        return vc
+    }
+
+    func updateUIViewController(_ uiViewController: CenterItemGroupsViewController, context: Context) {
+        uiViewController.updateHandler = { navItem in
+            configure(navItem: navItem)
+        }
+        DispatchQueue.main.async {
+            uiViewController.findAndConfigureNavigationItem()
+        }
+    }
+
+    private func configure(navItem: UINavigationItem?) {
+        guard let navItem else { return }
+        navItem.style = .editor
+
+        switch screen {
+        case .students:
+            var addConfig = UIButton.Configuration.plain()
+            addConfig.title = isCompact ? "Ajouter" : "Ajouter un élève"
+            addConfig.image = UIImage(systemName: "person.badge.plus")
+            addConfig.imagePadding = 6
+            addConfig.baseForegroundColor = .label
+            addConfig.contentInsets = NSDirectionalEdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 8)
+            let btnAddView = UIButton(configuration: addConfig, primaryAction: UIAction { _ in
+                onAddStudent()
+            })
+            btnAddView.isEnabled = isOnline
+            let btnAdd = UIBarButtonItem(customView: btnAddView)
+
+            var importConfig = UIButton.Configuration.plain()
+            importConfig.title = isCompact ? "Importer" : "Importer CSV"
+            importConfig.image = UIImage(systemName: "arrow.down.doc")
+            importConfig.imagePadding = 6
+            importConfig.baseForegroundColor = .label
+            importConfig.contentInsets = NSDirectionalEdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 8)
+            let btnImportView = UIButton(configuration: importConfig, primaryAction: UIAction { _ in
+                onImportCSV()
+            })
+            btnImportView.isEnabled = isOnline
+            let btnImport = UIBarButtonItem(customView: btnImportView)
+
+            let sepView = UIView()
+            sepView.backgroundColor = UIColor.separator.withAlphaComponent(0.35)
+            sepView.translatesAutoresizingMaskIntoConstraints = false
+            NSLayoutConstraint.activate([
+                sepView.widthAnchor.constraint(equalToConstant: 1),
+                sepView.heightAnchor.constraint(equalToConstant: 16)
+            ])
+            let sepItem = UIBarButtonItem(customView: sepView)
+
+            let group = UIBarButtonItemGroup(barButtonItems: [btnAdd, sepItem, btnImport], representativeItem: nil)
+            navItem.centerItemGroups = [group]
+
+        case .portal:
+            let (title, imageName): (String, String) = {
+                switch portalSyncStatus {
+                case .generating:
+                    return (isCompact ? "Génération..." : "Génération en cours...", "arrow.triangle.2.circlepath")
+                case .upToDateOnline:
+                    return (isCompact ? "À jour" : "Portail à jour", "checkmark.circle.fill")
+                case .generatedReadyToUpload:
+                    return (isCompact ? "Publier" : "Mettre en ligne", "arrow.up.circle.fill")
+                default:
+                    return (isCompact ? "Générer" : "Générer le portail", "bolt.badge.clock.fill")
+                }
+            }()
+
+            var config = UIButton.Configuration.plain()
+            config.title = title
+            config.image = UIImage(systemName: imageName)
+            config.imagePadding = 6
+            config.baseForegroundColor = .label
+            config.contentInsets = NSDirectionalEdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 8)
+
+            let button = UIButton(configuration: config, primaryAction: UIAction { _ in
+                onGeneratePortal()
+            })
+            button.isEnabled = isOnline && !isPortalGenerating && !studentsEmpty
+
+            let btnGen = UIBarButtonItem(customView: button)
+            let group = UIBarButtonItemGroup(barButtonItems: [btnGen], representativeItem: nil)
+            navItem.centerItemGroups = [group]
+
+        default:
+            navItem.centerItemGroups = []
+        }
+    }
+}
+#endif
