@@ -329,28 +329,27 @@ public struct MainSplitView: View {
         } label: {
             HStack(spacing: 6) {
                 switch appState.portalSyncStatus {
-                case .generating, .checking:
+                case .generating:
                     ProgressView()
                         .controlSize(.small)
-                    Text(isCompact ? "Génération..." : "Génération du portail...")
-                case .needsGeneration:
-                    Image(systemName: "bolt.badge.clock")
-                    Text(isCompact ? "Générer" : "Générer le portail")
-                case .generatedReadyToUpload:
-                    Image(systemName: "arrow.up.circle")
-                    Text("Mettre en ligne")
+                    Text(isCompact ? "Génération..." : "Génération en cours...")
                 case .upToDateOnline:
-                    Image(systemName: "checkmark.circle")
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
                     Text(isCompact ? "À jour" : "Portail à jour")
-                case .noStudents:
-                    Image(systemName: "person.slash")
-                    Text("Aucun élève")
+                case .generatedReadyToUpload:
+                    Image(systemName: "arrow.up.circle.fill")
+                        .foregroundColor(.blue)
+                    Text(isCompact ? "Publier" : "Mettre en ligne")
+                default:
+                    Image(systemName: "bolt.badge.clock.fill")
+                    Text(isCompact ? "Générer" : "Générer le portail")
                 }
             }
+            .font(.system(size: 13, weight: .medium))
         }
         .buttonStyle(.bordered)
         .controlSize(.regular)
-        .fixedSize()
         .disabled(!appState.isOnline || appState.isPortalGenerating || appState.students.isEmpty)
         .help(!appState.isOnline
             ? "Disponible en ligne uniquement"
