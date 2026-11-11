@@ -204,16 +204,15 @@ public struct GlassCapsuleModifier: ViewModifier {
 
     public func body(content: Content) -> some View {
         content
-            // Verre dépoli Liquid Glass 100% natif Apple (conforme au réglage système 50% sans opacité artificielle)
+            // Verre dépoli Liquid Glass 100% natif Apple (conforme au style Aperçu / macOS / iPadOS)
             .background(.thinMaterial, in: Capsule())
             .overlay(
-                // Biseau de lumière zénithale façon verre Apple (Aperçu)
                 Capsule()
                     .strokeBorder(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(colorScheme == .dark ? 0.35 : 0.55),
-                                Color.white.opacity(colorScheme == .dark ? 0.06 : 0.10)
+                                Color.white.opacity(colorScheme == .dark ? 0.25 : 0.45),
+                                Color.white.opacity(colorScheme == .dark ? 0.05 : 0.10)
                             ],
                             startPoint: .top,
                             endPoint: .bottom
@@ -221,7 +220,6 @@ public struct GlassCapsuleModifier: ViewModifier {
                         lineWidth: 0.75
                     )
             )
-            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.20 : 0.06), radius: 6, x: 0, y: 2)
     }
 }
 

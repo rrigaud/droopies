@@ -101,18 +101,23 @@ public struct StudentsManagementView: View {
             let isCompact = geometry.size.width < 960
 
             ZStack(alignment: .bottom) {
-                VStack(spacing: 0) {
-                    // MARK: - Barre de Filtre par Classe, Recherche & Sélection
-                    classesFilterBar(isCompact: isCompact)
-                        .padding(.bottom, 4)
+                ScrollView {
+                    VStack(spacing: 12) {
+                        // MARK: - Barre de Filtre par Classe, Recherche & Sélection
+                        classesFilterBar(isCompact: isCompact)
+                            .padding(.top, 12)
 
-                    // MARK: - Tableau des élèves (Adaptatif : Accordéon si Portrait/Compact, Grand Tableau si Paysage/Large)
-                    if isCompact {
-                        studentsCompactAccordionView
-                    } else {
-                        studentsTableView
+                        // MARK: - Tableau des élèves (Adaptatif : Accordéon si Portrait/Compact, Grand Tableau si Paysage/Large)
+                        if isCompact {
+                            studentsCompactAccordionView
+                        } else {
+                            studentsTableView
+                        }
                     }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 80)
                 }
+                .background(Color.clear)
 
                 // MARK: - Barre d'Actions Groupées Flottante (Liquid Glass Batch Bar)
                 if isSelectionMode && !selectedStudentIds.isEmpty && appState.isOnline {
@@ -467,20 +472,30 @@ public struct StudentsManagementView: View {
             if filteredStudents.isEmpty {
                 emptyStudentsPlaceholder
             } else {
-                List {
+                LazyVStack(spacing: 6) {
                     ForEach(filteredStudents) { student in
                         studentRow(student: student)
-                            .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
-                            .listRowBackground(
-                                selectedStudentIds.contains(student.id)
-                                ? Color.blue.opacity(0.08)
-                                : Color.clear
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .fill(
+                                        selectedStudentIds.contains(student.id)
+                                            ? Color.blue.opacity(0.12)
+                                            : Color.primary.opacity(0.025)
+                                    )
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .stroke(
+                                        selectedStudentIds.contains(student.id)
+                                            ? Color.blue.opacity(0.4)
+                                            : Color.primary.opacity(0.06),
+                                        lineWidth: 1
+                                    )
                             )
                     }
                 }
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
-                .background(Color.clear)
             }
         }
     }
@@ -518,16 +533,13 @@ public struct StudentsManagementView: View {
             if filteredStudents.isEmpty {
                 emptyStudentsPlaceholder
             } else {
-                ScrollView {
-                    LazyVStack(spacing: 8) {
-                        ForEach(filteredStudents) { student in
-                            studentCompactAccordionCard(student: student)
-                        }
+                LazyVStack(spacing: 8) {
+                    ForEach(filteredStudents) { student in
+                        studentCompactAccordionCard(student: student)
                     }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .padding(.bottom, isSelectionMode && !selectedStudentIds.isEmpty ? 80 : 20)
                 }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
             }
         }
     }

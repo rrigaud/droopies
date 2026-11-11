@@ -317,87 +317,99 @@ public struct MainSplitView: View {
     // MARK: - Center Toolbar : Actions du Portail Élèves
 
     private func portalCenterActionToolbar(isCompact: Bool) -> some View {
-        HStack(spacing: 3) {
-            Button {
-                if appState.isOnline && !appState.isPortalGenerating {
-                    appState.triggerPortalGeneration += 1
-                }
-            } label: {
+        PortalToolbarItemButton(
+            status: appState.portalSyncStatus,
+            isCompact: isCompact,
+            isEnabled: appState.isOnline && !appState.isPortalGenerating && !appState.students.isEmpty,
+            helpText: !appState.isOnline
+                ? "Disponible en ligne uniquement"
+                : (appState.students.isEmpty
+                   ? "Veuillez d'abord importer des élèves"
+                   : (appState.portalSyncStatus == .generatedReadyToUpload
+                      ? "Portail généré prêt à être mis en ligne sur votre hébergeur. Cliquez pour re-générer."
+                      : "Générer et publier le portail web chiffré"))
+        ) {
+            if appState.isOnline && !appState.isPortalGenerating {
+                appState.triggerPortalGeneration += 1
+            }
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
+        .glassCapsule(strokeOpacity: 0.4)
+    }
+
+    private struct PortalToolbarItemButton: View {
+        let status: PortalSyncStatus
+        let isCompact: Bool
+        let isEnabled: Bool
+        let helpText: String
+        let action: () -> Void
+
+        @State private var isHovered: Bool = false
+        @Environment(\.colorScheme) private var colorScheme
+
+        var body: some View {
+            Button(action: action) {
                 HStack(spacing: 6) {
-                    switch appState.portalSyncStatus {
-                    case .generating:
+                    switch status {
+                    case .generating, .checking:
                         ProgressView()
                             .controlSize(.small)
                         Text(isCompact ? "Génération..." : "Génération du portail...")
-                            .font(.system(size: 12.5, weight: .bold))
-                            .foregroundColor(.primary)
-
-                    case .checking:
-                        ProgressView()
-                            .controlSize(.small)
-                        Text(isCompact ? "Vérification..." : "Vérification du portail...")
-                            .font(.system(size: 12.5, weight: .medium))
-                            .foregroundColor(.secondary)
+                            .font(.system(size: 13, weight: .semibold))
 
                     case .needsGeneration:
-                        Image(systemName: "bolt.badge.clock.fill")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundColor(.orange)
-                        Text(isCompact ? "Générer (MAJ)" : "Générer le portail (MAJ Nécessaire)")
-                            .font(.system(size: 12.5, weight: .bold))
-                            .foregroundColor(.orange)
+                        Image(systemName: "bolt.badge.clock")
+                            .font(.system(size: 13, weight: .semibold))
+                        Text(isCompact ? "Générer" : "Générer le portail")
+                            .font(.system(size: 13, weight: .semibold))
 
                     case .generatedReadyToUpload:
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundColor(.orange)
-                        Text(isCompact ? "À mettre en ligne" : "Portail généré (À mettre en ligne)")
-                            .font(.system(size: 12.5, weight: .semibold))
-                            .foregroundColor(.orange)
+                        Image(systemName: "arrow.up.circle")
+                            .font(.system(size: 13, weight: .semibold))
+                        Text(isCompact ? "Mettre en ligne" : "Mettre en ligne")
+                            .font(.system(size: 13, weight: .semibold))
 
                     case .upToDateOnline:
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundColor(.green)
+                        Image(systemName: "checkmark.circle")
+                            .font(.system(size: 13, weight: .semibold))
                         Text(isCompact ? "À jour" : "Portail à jour")
-                            .font(.system(size: 12.5, weight: .semibold))
-                            .foregroundColor(.green)
+                            .font(.system(size: 13, weight: .semibold))
 
                     case .noStudents:
                         Image(systemName: "person.slash")
                             .font(.system(size: 13, weight: .medium))
                         Text("Aucun élève")
-                            .font(.system(size: 12.5, weight: .medium))
+                            .font(.system(size: 13, weight: .medium))
                     }
                 }
+                .foregroundColor(isEnabled ? .primary : .secondary.opacity(0.35))
+                .padding(.horizontal, 11)
+                .padding(.vertical, 7)
+                .background(
+                    Group {
+                        if isHovered && isEnabled {
+                            Capsule()
+                                .fill(Color.primary.opacity(colorScheme == .dark ? 0.15 : 0.08))
+                                .overlay(
+                                    Capsule()
+                                        .stroke(Color.primary.opacity(0.12), lineWidth: 0.75)
+                                )
+                        } else {
+                            Color.clear
+                        }
+                    }
+                )
+                .clipShape(Capsule())
             }
-            .buttonStyle(.bordered)
-            .buttonBorderShape(.capsule)
-            .controlSize(.regular)
-            .tint(portalButtonTint)
-            .disabled(!appState.isOnline || appState.isPortalGenerating || appState.students.isEmpty)
-            .help(
-                !appState.isOnline
-                    ? "Disponible en ligne uniquement"
-                    : (appState.students.isEmpty
-                       ? "Veuillez d'abord importer des élèves"
-                       : (appState.portalSyncStatus == .generatedReadyToUpload
-                          ? "Portail généré prêt à être mis en ligne sur votre hébergeur. Cliquez pour re-générer."
-                          : "Générer et publier le portail web chiffré"))
-            )
-        }
-        .padding(3)
-        .glassCapsule(strokeOpacity: 0.4)
-    }
-
-    private var portalButtonTint: Color {
-        switch appState.portalSyncStatus {
-        case .needsGeneration, .generatedReadyToUpload:
-            return .orange
-        case .upToDateOnline:
-            return .green
-        default:
-            return .secondary
+            .buttonStyle(GlassHUDPressStyle())
+            .disabled(!isEnabled)
+            .onHover { hovering in
+                withAnimation(.easeInOut(duration: 0.16)) {
+                    isHovered = hovering
+                }
+            }
+            .help(helpText)
         }
     }
 
@@ -601,7 +613,6 @@ public struct MainSplitView: View {
                                 )
                             )
                             .matchedGeometryEffect(id: "activeMainPill", in: toolbarNamespace)
-                            .shadow(color: Color.blue.opacity(0.25), radius: 4, y: 1)
                     } else {
                         Color.clear
                     }
@@ -664,7 +675,6 @@ public struct MainSplitView: View {
                     Capsule()
                         .fill(LinearGradient.electricBlue)
                         .matchedGeometryEffect(id: "activeCenterTabPill", in: toolbarNamespace)
-                        .shadow(color: Color.blue.opacity(0.3), radius: 6, y: 2)
                 } else {
                     Capsule()
                         .fill(Color.primary.opacity(0.04))
@@ -761,7 +771,6 @@ public struct MainSplitView: View {
                     Capsule()
                         .fill(LinearGradient.electricBlue)
                         .matchedGeometryEffect(id: "activeCenterTabPill", in: toolbarNamespace)
-                        .shadow(color: Color.blue.opacity(0.3), radius: 6, y: 2)
                 } else {
                     Capsule()
                         .fill(Color.primary.opacity(0.04))
@@ -833,7 +842,6 @@ public struct MainSplitView: View {
                                 )
                             )
                             .matchedGeometryEffect(id: "activeMainPill", in: toolbarNamespace)
-                            .shadow(color: Color.green.opacity(0.25), radius: 4, y: 1)
                     } else {
                         Color.clear
                     }
@@ -977,13 +985,30 @@ public struct MainSplitView: View {
         .padding(.vertical, 3)
     }
 
-    // MARK: - Toolbar 2 : Haut-Droite (Widget Cloud Déroulant)
+    // MARK: - Toolbar 2 : Haut-Droite (Widget Cloud Déroulant façon Aperçu)
 
     private var topTrailingCloudToolbar: some View {
         Menu {
             cloudMenuSections
         } label: {
-            cloudStatusCapsuleView
+            HStack(spacing: 6) {
+                CloudBrandIconView(
+                    type: appState.storageManager.activeProvider.providerType,
+                    size: 16,
+                    statusDotColor: !appState.isOnline ? .orange : (appState.storageManager.activeProvider.isConnected ? .green : .orange)
+                )
+
+                Text(!appState.isOnline ? "Hors-ligne" : appState.storageManager.activeProvider.providerType.displayName)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.primary)
+
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal, 11)
+            .padding(.vertical, 7)
+            .contentShape(Capsule())
         }
         .buttonStyle(.plain)
         .glassCapsule(strokeOpacity: 0.4)
@@ -994,8 +1019,7 @@ public struct MainSplitView: View {
         if !appState.isOnline {
             Section("Mode Hors-Ligne") {
                 Label("Connexion Internet inactive", systemImage: "bolt.slash.fill")
-                Text("Vos copies annotées sont enregistrées localement et seront envoyées sur Dropbox dès le retour de la connexion.")
-                    .font(.caption2)
+                Text("Vos copies annotées sont enregistrées localement et seront synchronisées dès le retour de la connexion.")
             }
 
             Divider()
@@ -1006,9 +1030,11 @@ public struct MainSplitView: View {
                 Label(appState.t(.navReloadData), systemImage: "arrow.clockwise")
             }
         } else {
-            Section(appState.t(.navActiveStorage)) {
+            Section {
                 Label(appState.storageManager.activeProvider.providerType.displayName, systemImage: appState.storageManager.activeProvider.providerType.iconName)
-                Label("\(appState.t(.navSourceFolder)) \(activeRootPath)", systemImage: "folder")
+                Label("Dossier Source : \(activeRootPath)", systemImage: "folder")
+            } header: {
+                Text("Stockage Cloud Actif")
             }
 
             Divider()
@@ -1033,61 +1059,6 @@ public struct MainSplitView: View {
                 Label(appState.t(.navReloadData), systemImage: "arrow.clockwise")
             }
         }
-    }
-
-    private var cloudStatusCapsuleView: some View {
-        HStack(spacing: 8) {
-            if !appState.isOnline {
-                CloudBrandIconView(
-                    type: appState.storageManager.activeProvider.providerType,
-                    size: 16,
-                    statusDotColor: .orange
-                )
-
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Hors-ligne")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(.primary)
-
-                    Text("Cache local actif")
-                        .font(.system(size: 9))
-                        .foregroundColor(Color.primary.opacity(0.65))
-                }
-            } else {
-                CloudBrandIconView(
-                    type: appState.storageManager.activeProvider.providerType,
-                    size: 16,
-                    statusDotColor: appState.storageManager.activeProvider.isConnected ? .green : .orange
-                )
-
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(appState.storageManager.activeProvider.providerType.displayName)
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(.primary)
-
-                    HStack(spacing: 4) {
-                        Text(activeRootPath.isEmpty ? "/Test" : activeRootPath)
-                            .font(.system(size: 9.5, weight: .medium, design: .monospaced))
-                            .foregroundColor(Color.primary.opacity(0.65))
-                            .lineLimit(1)
-
-                        if appState.isLoading || OfflineSyncEngine.shared.isSyncing {
-                            ProgressView()
-                                .controlSize(.mini)
-                                .scaleEffect(0.5)
-                        }
-                    }
-                }
-            }
-
-            Image(systemName: "chevron.up.chevron.down")
-                .font(.system(size: 9, weight: .bold))
-                .foregroundColor(Color.primary.opacity(0.65))
-        }
-        .fixedSize(horizontal: true, vertical: false)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .contentShape(Capsule())
     }
 
     // MARK: - 4. Sidebar Flottante en Liquid Glass (Tiroir suspendu)
