@@ -2872,6 +2872,18 @@ private extension UIColor {
     }
 }
 #elseif canImport(AppKit) && !canImport(UIKit)
+final class AutoScalingPDFView: PDFView {
+    private var hasConfiguredInitialScale = false
+
+    override func layout() {
+        super.layout()
+        if bounds.width > 0 && bounds.height > 0 && !hasConfiguredInitialScale {
+            hasConfiguredInitialScale = true
+            autoScales = true
+        }
+    }
+}
+
 public struct InteractivePDFCanvasView: NSViewRepresentable {
     public let document: PDFDocument?
     public let pageIndex: Int
@@ -2943,11 +2955,12 @@ public struct InteractivePDFCanvasView: NSViewRepresentable {
     }
 
     public func makeNSView(context: Context) -> PDFView {
-        let pdfView = PDFView()
+        let pdfView = AutoScalingPDFView()
         pdfView.autoScales = true
-        pdfView.displayMode = .singlePage
-        pdfView.displayDirection = .horizontal
-        pdfView.displaysPageBreaks = false
+        pdfView.displayMode = .singlePageContinuous
+        pdfView.displayDirection = .vertical
+        pdfView.displaysPageBreaks = true
+        pdfView.backgroundColor = .clear
         pdfView.document = document
         if let doc = document, pageIndex >= 0, pageIndex < doc.pageCount, let targetPage = doc.page(at: pageIndex) {
             pdfView.go(to: targetPage)
@@ -2965,8 +2978,8 @@ public struct InteractivePDFCanvasView: NSViewRepresentable {
         context.coordinator.parent = self
         if pdfView.document !== document {
             pdfView.document = document
+            pdfView.autoScales = true
         }
-        pdfView.autoScales = true
         if let doc = document, pageIndex >= 0, pageIndex < doc.pageCount, let targetPage = doc.page(at: pageIndex) {
             if pdfView.currentPage != targetPage {
                 pdfView.go(to: targetPage)

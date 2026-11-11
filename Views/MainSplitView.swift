@@ -112,51 +112,13 @@ public struct MainSplitView: View {
                     }
                 }
                 .navigationTitle("")
-                #if os(iOS)
-                .navigationBarTitleDisplayMode(.inline)
-                #endif
                 .toolbar {
-                    #if os(iOS)
-                    ToolbarItem(placement: .topBarLeading) {
-                        sidebarToggleButton
-                    }
-
-                    ToolbarItem(placement: .topBarLeading) {
-                        mainModePicker
-                    }
-
-                    if activeScreen == .correction && appState.activeCorrectionScan != nil {
-                        ToolbarItem(placement: .topBarLeading) {
-                            mosaicReturnButton
-                        }
-                    }
-
-                    if hasCenterToolbar {
-                        ToolbarItem(placement: .principal) {
-                            topCenterToolbar(isCompact: isCompact, isPortrait: isPortrait)
-                        }
-                    }
-
-                    ToolbarItem(placement: .topBarTrailing) {
-                        if activeScreen == .correction && appState.activeCorrectionScan != nil {
-                            topTrailingHistoryToolbar
-                        } else {
-                            topTrailingCloudToolbar
-                        }
-                    }
-                    #else
                     ToolbarItem(placement: .navigation) {
                         sidebarToggleButton
                     }
 
                     ToolbarItem(placement: .navigation) {
-                        mainModePicker
-                    }
-
-                    if activeScreen == .correction && appState.activeCorrectionScan != nil {
-                        ToolbarItem(placement: .navigation) {
-                            mosaicReturnButton
-                        }
+                        mainModeTabsControlGroup
                     }
 
                     if hasCenterToolbar {
@@ -172,8 +134,10 @@ public struct MainSplitView: View {
                             topTrailingCloudToolbar
                         }
                     }
-                    #endif
                 }
+                #if os(macOS)
+                .toolbarBackground(.hidden, for: .windowToolbar)
+                #endif
             }
         }
         .sheet(isPresented: $showFolderPicker) {
@@ -567,37 +531,42 @@ public struct MainSplitView: View {
         .help("Afficher ou masquer la barre latérale")
     }
 
-    private var mainModePicker: some View {
-        Picker("Mode", selection: Binding(
-            get: { activeScreen },
-            set: { newScreen in
-                if newScreen == .distribution && !appState.isOnline {
-                    return
-                }
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                    activeScreen = newScreen
-                    if newScreen == .correction {
+    private var mainModeTabsControlGroup: some View {
+        ControlGroup {
+            Button {
+                if activeScreen != .correction {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                        activeScreen = .correction
                         appState.activeCorrectionScan = nil
                     }
                 }
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: activeScreen == .correction ? "checkmark.circle.fill" : "pencil.and.outline")
+                        .foregroundColor(activeScreen == .correction ? .blue : .secondary)
+                    Text(appState.t(.tabCorrection))
+                        .fontWeight(activeScreen == .correction ? .semibold : .regular)
+                }
             }
-        )) {
-            Text(appState.t(.tabCorrection)).tag(AppScreen.correction)
-            Text(appState.t(.tabDistribution)).tag(AppScreen.distribution)
-        }
-        .pickerStyle(.segmented)
-        .frame(minWidth: 190)
-    }
+            .help("Atelier de correction au stylet")
 
-    private var mosaicReturnButton: some View {
-        Button {
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                appState.activeCorrectionScan = nil
+            Button {
+                if activeScreen != .distribution && appState.isOnline {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                        activeScreen = .distribution
+                    }
+                }
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: activeScreen == .distribution ? "checkmark.circle.fill" : "paperplane.fill")
+                        .foregroundColor(activeScreen == .distribution ? Color(red: 0.05, green: 0.72, blue: 0.55) : .secondary)
+                    Text(appState.t(.tabDistribution))
+                        .fontWeight(activeScreen == .distribution ? .semibold : .regular)
+                }
             }
-        } label: {
-            Label("Mosaïque", systemImage: "square.grid.2x2")
+            .disabled(!appState.isOnline)
+            .help(appState.isOnline ? "Distribution des copies aux élèves" : "Distribution disponible en ligne uniquement")
         }
-        .help("Retourner à la mosaïque des devoirs")
     }
 
     // MARK: - Center Toolbar : Stepper Flottant de Distribution
@@ -641,7 +610,6 @@ public struct MainSplitView: View {
             cloudMenuSections
         } label: {
             HStack(spacing: 6) {
-                #if os(macOS)
                 Circle()
                     .fill(!appState.isOnline ? Color.orange : (appState.storageManager.activeProvider.isConnected ? Color.green : Color.orange))
                     .frame(width: 7, height: 7)
@@ -649,13 +617,6 @@ public struct MainSplitView: View {
                 Image(systemName: !appState.isOnline ? "bolt.slash.fill" : appState.storageManager.activeProvider.providerType.iconName)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(!appState.isOnline ? .orange : .accentColor)
-                #else
-                CloudBrandIconView(
-                    type: appState.storageManager.activeProvider.providerType,
-                    size: 15,
-                    statusDotColor: !appState.isOnline ? .orange : (appState.storageManager.activeProvider.isConnected ? .green : .orange)
-                )
-                #endif
 
                 Text(!appState.isOnline ? "Hors-ligne" : appState.storageManager.activeProvider.providerType.displayName)
                     .font(.system(size: 13, weight: .medium))
