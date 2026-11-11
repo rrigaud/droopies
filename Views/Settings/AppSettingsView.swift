@@ -83,7 +83,11 @@ public struct AppSettingsView: View {
                 aboutPrivacyCard
             }
             .padding(.horizontal, 24)
-            .padding(.top, 16)
+            #if os(iOS)
+            .padding(.top, -10)
+            #else
+            .padding(.top, 12)
+            #endif
             .padding(.bottom, 36)
         }
         .background(Color.clear)

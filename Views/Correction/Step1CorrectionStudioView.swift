@@ -439,7 +439,11 @@ public struct Step1CorrectionStudioView: View {
                     .padding(.horizontal, 24)
                     .padding(.bottom, 24)
             }
-            .padding(.top, 16)
+            #if os(iOS)
+            .padding(.top, -10)
+            #else
+            .padding(.top, 12)
+            #endif
         }
         .background(Color.clear)
     }

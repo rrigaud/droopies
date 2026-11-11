@@ -105,7 +105,11 @@ public struct StudentsManagementView: View {
                     VStack(spacing: 12) {
                         // MARK: - Barre de Filtre par Classe, Recherche & Sélection
                         classesFilterBar(isCompact: isCompact)
+                            #if os(iOS)
+                            .padding(.top, -12)
+                            #else
                             .padding(.top, 12)
+                            #endif
 
                         // MARK: - Tableau des élèves (Adaptatif : Accordéon si Portrait/Compact, Grand Tableau si Paysage/Large)
                         if isCompact {
