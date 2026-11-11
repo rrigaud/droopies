@@ -347,9 +347,10 @@ public struct MainSplitView: View {
                 }
             }
             .font(.system(size: 13, weight: .medium))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .contentShape(Capsule())
         }
-        .buttonStyle(.bordered)
-        .controlSize(.regular)
         .disabled(!appState.isOnline || appState.isPortalGenerating || appState.students.isEmpty)
         .help(!appState.isOnline
             ? "Disponible en ligne uniquement"
@@ -372,11 +373,12 @@ public struct MainSplitView: View {
                 HStack(spacing: 5) {
                     Image(systemName: "person.badge.plus")
                     Text(isCompact ? "Ajouter" : "Ajouter un élève")
-                        .font(.system(size: 13, weight: .medium))
                 }
+                .font(.system(size: 13, weight: .medium))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .contentShape(Capsule())
             }
-            .buttonStyle(.bordered)
-            .controlSize(.regular)
             .disabled(!appState.isOnline)
             .help(appState.isOnline ? "Ajouter un élève" : "Disponible en ligne uniquement")
 
@@ -388,11 +390,12 @@ public struct MainSplitView: View {
                 HStack(spacing: 5) {
                     Image(systemName: "arrow.down.doc")
                     Text(isCompact ? "Importer" : "Importer CSV")
-                        .font(.system(size: 13, weight: .medium))
                 }
+                .font(.system(size: 13, weight: .medium))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .contentShape(Capsule())
             }
-            .buttonStyle(.bordered)
-            .controlSize(.regular)
             .disabled(!appState.isOnline)
             .help(appState.isOnline ? "Importer un fichier CSV" : "Disponible en ligne uniquement")
         }
@@ -507,7 +510,6 @@ public struct MainSplitView: View {
                     .lineLimit(1)
             }
         }
-        .buttonStyle(.bordered)
     }
 
     private func closeAllCorrectionTabs() {
