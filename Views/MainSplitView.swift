@@ -112,6 +112,9 @@ public struct MainSplitView: View {
                     }
                 }
                 .navigationTitle("")
+                #if os(iOS)
+                .navigationBarTitleDisplayMode(.inline)
+                #endif
                 .toolbar {
                     #if os(macOS)
                     ToolbarItem(placement: .navigation) {
