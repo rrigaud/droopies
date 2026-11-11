@@ -243,13 +243,6 @@ public struct Step1CorrectionStudioView: View {
         return appState.isOnline ? .verifying : .offline
     }
 
-    // MARK: - Gestion de l'Accordéon entre les deux blocs
-    public enum ActiveAccordionSection: Equatable {
-        case pending
-        case corrected
-    }
-    @State private var activeAccordion: ActiveAccordionSection = .pending
-
     public init(appState: AppState, currentStep: Binding<Int>) {
         self.appState = appState
         self._currentStep = currentStep
@@ -275,6 +268,16 @@ public struct Step1CorrectionStudioView: View {
 
     private var correctedScans: [StorageManager.ScanItem] {
         availableScans.filter { $0.isCorrected }
+    }
+
+    private var sortedEvaluations: [StorageManager.ScanItem] {
+        let pending = availableScans
+            .filter { !$0.isCorrected }
+            .sorted { $0.cleanTitle.localizedCaseInsensitiveCompare($1.cleanTitle) == .orderedAscending }
+        let corrected = availableScans
+            .filter { $0.isCorrected }
+            .sorted { $0.cleanTitle.localizedCaseInsensitiveCompare($1.cleanTitle) == .orderedAscending }
+        return pending + corrected
     }
 
     private var responsiveGridColumns: [GridItem] {
@@ -327,9 +330,11 @@ public struct Step1CorrectionStudioView: View {
         .task {
             let autoOpen = CommandLine.arguments.contains("-testOpenScan")
             let multiTabs = CommandLine.arguments.contains("-testMultipleTabs")
-            if multiTabs && appState.openCorrectionScans.isEmpty {
+            let twoTabs = CommandLine.arguments.contains("-testTwoTabs")
+            if (multiTabs || twoTabs) && appState.openCorrectionScans.isEmpty {
                 let scans = appState.storageManager.listLocalScansSync()
-                for scan in scans.prefix(3) {
+                let countToTake = twoTabs ? 2 : 3
+                for scan in scans.prefix(countToTake) {
                     if !appState.openCorrectionScans.contains(where: { $0.id == scan.id }) {
                         appState.openCorrectionScans.append(scan)
                     }
@@ -424,21 +429,15 @@ public struct Step1CorrectionStudioView: View {
 
     private var correctionHomeDashboardView: some View {
         ScrollView {
-            VStack(spacing: 12) {
+            VStack(spacing: 16) {
                 // 1. Bloc d'information horizontal fixe tout en haut
                 correctionTopInfoBanner
                     .padding(.horizontal, 24)
 
-                // 2 & 3. Accordéon répartissant l'espace central
-                VStack(spacing: 10) {
-                    // Bloc Évaluations à corriger
-                    pendingEvaluationsAccordionBlock
-
-                    // Bloc Évaluations corrigées
-                    correctedEvaluationsAccordionBlock
-                }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 24)
+                // 2. Bloc unique "Évaluations" (À corriger en premier puis corrigées, ordre alphabétique)
+                unifiedEvaluationsBlock
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 24)
             }
             .padding(.top, 16)
         }
@@ -506,215 +505,95 @@ public struct Step1CorrectionStudioView: View {
         .glassCard(cornerRadius: 16, strokeOpacity: 0.28)
     }
 
-    // MARK: - 2. Bloc Accordéon : Évaluations à Corriger
+    // MARK: - 2. Bloc Unique d'Évaluations
 
-    private var pendingEvaluationsAccordionBlock: some View {
-        let isExpanded = (activeAccordion == .pending)
+    private var unifiedEvaluationsBlock: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Entête du bloc
+            HStack(spacing: 8) {
+                Image(systemName: "doc.text.fill")
+                    .foregroundColor(.blue)
+                    .font(.system(size: 15, weight: .bold))
 
-        return VStack(alignment: .leading, spacing: 0) {
-            Button {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                    activeAccordion = .pending
+                Text("Évaluations")
+                    .font(.system(size: 14.5, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
+
+                BadgeView("\(availableScans.count)", style: .info)
+
+                if !pendingScans.isEmpty && !correctedScans.isEmpty {
+                    Text("(\(pendingScans.count) à corriger, \(correctedScans.count) corrigée\(correctedScans.count > 1 ? "s" : ""))")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
                 }
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "pencil.and.outline")
-                        .foregroundColor(.blue)
-                        .font(.system(size: 15, weight: .bold))
 
-                    Text("Évaluations à corriger")
-                        .font(.system(size: 14.5, weight: .bold, design: .rounded))
-                        .foregroundColor(.primary)
+                Spacer()
 
-                    BadgeView("\(pendingScans.count)", style: .info)
-
-                    Spacer()
-
-                    if isCheckingCloud {
-                        HStack(spacing: 5) {
-                            ProgressView()
-                                .controlSize(.mini)
-                            Text("Vérification Cloud...")
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundColor(.blue)
-                        }
-                        .padding(.trailing, 4)
-                    }
-
-                    if isLoadingScans && !isCheckingCloud {
+                if isCheckingCloud {
+                    HStack(spacing: 5) {
                         ProgressView()
                             .controlSize(.mini)
-                            .padding(.trailing, 4)
-                    }
-
-                    HStack(spacing: 4) {
-                        Text(isExpanded ? "Masquer" : "Afficher")
-                            .font(.system(size: 11.5, weight: .medium))
-                            .foregroundColor(.secondary)
-
-                        Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                            .font(.system(size: 11, weight: .bold))
+                        Text("Vérification Cloud...")
+                            .font(.system(size: 11, weight: .medium))
                             .foregroundColor(.blue)
                     }
+                    .padding(.trailing, 4)
                 }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .contentShape(Rectangle())
+
+                if isLoadingScans && !isCheckingCloud {
+                    ProgressView()
+                        .controlSize(.mini)
+                        .padding(.trailing, 4)
+                }
             }
-            .buttonStyle(.plain)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
 
-            if isExpanded {
-                Divider()
-                    .padding(.horizontal, 10)
+            Divider()
+                .padding(.horizontal, 10)
 
-                if pendingScans.isEmpty {
-                    emptyPendingPlaceholder
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    ScrollView(.vertical, showsIndicators: true) {
-                        LazyVGrid(columns: responsiveGridColumns, spacing: 16) {
-                            ForEach(pendingScans) { scan in
-                                EvaluationScanCard(
-                                    scan: scan,
-                                    isCorrected: false,
-                                    fileURL: appState.storageManager.localURL(for: "Evaluations/A corriger/\(scan.name)"),
-                                    isProcessing: processingScanId == scan.name,
-                                    syncStatus: currentSyncStatus(for: scan),
-                                    updateToken: thumbnailCacheVersion,
-                                    onOpen: {
-                                        openScanInStudio(scan)
-                                    },
-                                    onToggleStatus: {
-                                        scanPendingConfirmation = scan
-                                    }
-                                )
-                            }
-                        }
-                        .padding(14)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            if sortedEvaluations.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "doc.badge.plus")
+                        .font(.system(size: 36))
+                        .foregroundColor(.secondary)
+                    Text("Aucune évaluation disponible")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    Text("Importez un document PDF de copies ou synchronisez votre dossier Cloud.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
+                .padding(32)
+                .frame(maxWidth: .infinity)
+            } else {
+                LazyVGrid(columns: responsiveGridColumns, spacing: 16) {
+                    ForEach(sortedEvaluations) { scan in
+                        EvaluationScanCard(
+                            scan: scan,
+                            isCorrected: scan.isCorrected,
+                            fileURL: appState.storageManager.localURL(for: scan.path),
+                            isProcessing: processingScanId == scan.name,
+                            syncStatus: currentSyncStatus(for: scan),
+                            updateToken: thumbnailCacheVersion,
+                            onOpen: {
+                                openScanInStudio(scan)
+                            },
+                            onToggleStatus: {
+                                scanPendingConfirmation = scan
+                            }
+                        )
+                    }
+                }
+                .padding(14)
             }
         }
         .background(Color(white: 0.5, opacity: 0.03))
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(isExpanded ? Color.blue.opacity(0.35) : Color.primary.opacity(0.08), lineWidth: 1.2)
+                .stroke(Color.primary.opacity(0.10), lineWidth: 1.2)
         )
-        .frame(maxHeight: isExpanded ? .infinity : 44)
-    }
-
-    // MARK: - 3. Bloc Accordéon : Évaluations Corrigées (Vert)
-
-    private var correctedEvaluationsAccordionBlock: some View {
-        let isExpanded = (activeAccordion == .corrected)
-
-        return VStack(alignment: .leading, spacing: 0) {
-            Button {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                    activeAccordion = .corrected
-                }
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "checkmark.seal.fill")
-                        .foregroundColor(Color(hex: "10B981"))
-                        .font(.system(size: 15, weight: .bold))
-
-                    Text("Évaluations corrigées")
-                        .font(.system(size: 14.5, weight: .bold, design: .rounded))
-                        .foregroundColor(.primary)
-
-                    BadgeView("\(correctedScans.count)", style: .success)
-
-                    Spacer()
-
-                    HStack(spacing: 4) {
-                        Text(isExpanded ? "Masquer" : "Afficher")
-                            .font(.system(size: 11.5, weight: .medium))
-                            .foregroundColor(.secondary)
-
-                        Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(Color(hex: "10B981"))
-                    }
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-
-            if isExpanded {
-                Divider()
-                    .padding(.horizontal, 10)
-
-                if correctedScans.isEmpty {
-                    Text("Aucune évaluation n'a encore été marquée comme corrigée.")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .padding(20)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-                } else {
-                    ScrollView(.vertical, showsIndicators: true) {
-                        LazyVGrid(columns: responsiveGridColumns, spacing: 16) {
-                            ForEach(correctedScans) { scan in
-                                EvaluationScanCard(
-                                    scan: scan,
-                                    isCorrected: true,
-                                    fileURL: appState.storageManager.localURL(for: "Evaluations/A corriger/\(scan.name)"),
-                                    isProcessing: processingScanId == scan.name,
-                                    syncStatus: currentSyncStatus(for: scan),
-                                    updateToken: thumbnailCacheVersion,
-                                    onOpen: {
-                                        openScanInStudio(scan)
-                                    },
-                                    onToggleStatus: {
-                                        scanPendingConfirmation = scan
-                                    }
-                                )
-                            }
-                        }
-                        .padding(14)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
-            }
-        }
-        .background(Color(hex: "10B981").opacity(0.04))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color(hex: "10B981").opacity(isExpanded ? 0.45 : 0.28), lineWidth: 1.2)
-        )
-        .frame(maxHeight: isExpanded ? .infinity : 44)
-    }
-
-    // MARK: - Placeholder si aucune évaluation en attente
-
-    private var emptyPendingPlaceholder: some View {
-        VStack(spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(Color.blue.opacity(0.1))
-                    .frame(width: 72, height: 72)
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 36))
-                    .foregroundColor(Color(hex: "10B981"))
-            }
-
-            Text("Toutes les évaluations sont corrigées !")
-                .font(.headline)
-                .foregroundColor(.primary)
-
-            Text("Importez un nouveau document PDF de copies ou ouvrez l'une de vos évaluations corrigées ci-dessous.")
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 420)
-        }
-        .padding(24)
-        .glassCard(cornerRadius: 16, strokeOpacity: 0.2)
     }
 
     // MARK: - ==========================================

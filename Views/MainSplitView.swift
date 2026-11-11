@@ -282,7 +282,7 @@ public struct MainSplitView: View {
                         }
                     }
                 }
-            } else if CommandLine.arguments.contains("-testCorrectionStudio") || CommandLine.arguments.contains("-testMultipleTabs") {
+            } else if CommandLine.arguments.contains("-testCorrectionStudio") || CommandLine.arguments.contains("-testMultipleTabs") || CommandLine.arguments.contains("-testTwoTabs") {
                 activeScreen = .correction
             } else if CommandLine.arguments.contains("-testPortal") {
                 activeScreen = .portal
@@ -422,6 +422,75 @@ public struct MainSplitView: View {
     // MARK: - Center Toolbar : Onglets d'Évaluations (Correction)
 
     private func correctionCenterTabsToolbar(isCompact: Bool, isPortrait: Bool) -> some View {
+        let shouldCollapse = (isPortrait || isCompact)
+            ? appState.openCorrectionScans.count >= 3
+            : appState.openCorrectionScans.count > 4
+
+        return Group {
+            if shouldCollapse {
+                compactEvaluationsMenu
+            } else {
+                HStack(spacing: 6) {
+                    ForEach(appState.openCorrectionScans) { scan in
+                        evaluationTabItem(scan: scan)
+                    }
+                }
+            }
+        }
+    }
+
+    private func evaluationTabItem(scan: StorageManager.ScanItem) -> some View {
+        let isTabActive = (activeScreen == .correction && appState.activeCorrectionScan?.id == scan.id)
+
+        return HStack(spacing: 5) {
+            Button {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                    activeScreen = .correction
+                    appState.activeCorrectionScan = scan
+                    if isSidebarOpen {
+                        isSidebarOpen = false
+                    }
+                }
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: scan.isCorrected ? "checkmark.seal.fill" : "doc.text.fill")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(isTabActive ? .white : (scan.isCorrected ? Color(hex: "10B981") : .secondary))
+
+                    Text(scan.cleanTitle)
+                        .font(.system(size: 12, weight: isTabActive ? .bold : .medium))
+                        .lineLimit(1)
+                        .frame(maxWidth: 130)
+                }
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                closeCorrectionTab(scan)
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundColor(isTabActive ? .white.opacity(0.85) : .secondary)
+                    .frame(width: 16, height: 16)
+                    .background(isTabActive ? Color.white.opacity(0.2) : Color.primary.opacity(0.08))
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .help("Fermer l'évaluation « \(scan.cleanTitle) »")
+        }
+        .padding(.leading, 10)
+        .padding(.trailing, 6)
+        .padding(.vertical, 5)
+        .background(
+            isTabActive
+                ? Color.accentColor
+                : Color.primary.opacity(0.06)
+        )
+        .foregroundColor(isTabActive ? .white : .primary)
+        .clipShape(Capsule())
+    }
+
+    private var compactEvaluationsMenu: some View {
         Menu {
             Section("Évaluations ouvertes (\(appState.openCorrectionScans.count))") {
                 ForEach(appState.openCorrectionScans) { scan in
@@ -459,6 +528,7 @@ public struct MainSplitView: View {
                     .lineLimit(1)
             }
         }
+        .buttonStyle(.bordered)
     }
 
     private func closeAllCorrectionTabs() {
@@ -498,40 +568,25 @@ public struct MainSplitView: View {
     }
 
     private var mainModePicker: some View {
-        Group {
-            if activeScreen == .correction || activeScreen == .distribution {
-                Picker("Mode", selection: Binding(
-                    get: { activeScreen },
-                    set: { newScreen in
-                        if newScreen == .distribution && !appState.isOnline {
-                            return
-                        }
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                            activeScreen = newScreen
-                            if newScreen == .correction {
-                                appState.activeCorrectionScan = nil
-                            }
-                        }
+        Picker("Mode", selection: Binding(
+            get: { activeScreen },
+            set: { newScreen in
+                if newScreen == .distribution && !appState.isOnline {
+                    return
+                }
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                    activeScreen = newScreen
+                    if newScreen == .correction {
+                        appState.activeCorrectionScan = nil
                     }
-                )) {
-                    Text(appState.t(.tabCorrection)).tag(AppScreen.correction)
-                    Text(appState.t(.tabDistribution)).tag(AppScreen.distribution)
                 }
-                .pickerStyle(.segmented)
-                .frame(minWidth: 190)
-            } else {
-                HStack(spacing: 8) {
-                    Image(systemName: activeScreen.icon)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(activeScreen.tintColor)
-
-                    Text(activeScreen.rawValue)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(.primary)
-                }
-                .padding(.horizontal, 4)
             }
+        )) {
+            Text(appState.t(.tabCorrection)).tag(AppScreen.correction)
+            Text(appState.t(.tabDistribution)).tag(AppScreen.distribution)
         }
+        .pickerStyle(.segmented)
+        .frame(minWidth: 190)
     }
 
     private var mosaicReturnButton: some View {
@@ -585,12 +640,22 @@ public struct MainSplitView: View {
         Menu {
             cloudMenuSections
         } label: {
-            HStack(spacing: 5) {
+            HStack(spacing: 6) {
+                #if os(macOS)
+                Circle()
+                    .fill(!appState.isOnline ? Color.orange : (appState.storageManager.activeProvider.isConnected ? Color.green : Color.orange))
+                    .frame(width: 7, height: 7)
+
+                Image(systemName: !appState.isOnline ? "bolt.slash.fill" : appState.storageManager.activeProvider.providerType.iconName)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(!appState.isOnline ? .orange : .accentColor)
+                #else
                 CloudBrandIconView(
                     type: appState.storageManager.activeProvider.providerType,
                     size: 15,
                     statusDotColor: !appState.isOnline ? .orange : (appState.storageManager.activeProvider.isConnected ? .green : .orange)
                 )
+                #endif
 
                 Text(!appState.isOnline ? "Hors-ligne" : appState.storageManager.activeProvider.providerType.displayName)
                     .font(.system(size: 13, weight: .medium))
