@@ -92,6 +92,8 @@ private struct FluoColorOption: Identifiable {
     let color: Color
     #if canImport(UIKit)
     let uiColor: UIColor
+    #elseif canImport(AppKit)
+    let nsColor: NSColor
     #endif
 }
 
@@ -193,6 +195,12 @@ public struct Step1CorrectionStudioView: View {
         FluoColorOption(id: "jaune", name: "Jaune fluo", color: Color(hex: "FACC15"), uiColor: UIColor(red: 250/255, green: 204/255, blue: 21/255, alpha: 0.60)),
         FluoColorOption(id: "vert", name: "Vert fluo", color: Color(hex: "4ADE80"), uiColor: UIColor(red: 74/255, green: 222/255, blue: 128/255, alpha: 0.60)),
         FluoColorOption(id: "rose", name: "Rose fluo", color: Color(hex: "FB7185"), uiColor: UIColor(red: 251/255, green: 113/255, blue: 133/255, alpha: 0.60))
+    ]
+    #elseif canImport(AppKit)
+    private let fluoColors: [FluoColorOption] = [
+        FluoColorOption(id: "jaune", name: "Jaune fluo", color: Color(hex: "FACC15"), nsColor: NSColor(red: 250/255, green: 204/255, blue: 21/255, alpha: 0.60)),
+        FluoColorOption(id: "vert", name: "Vert fluo", color: Color(hex: "4ADE80"), nsColor: NSColor(red: 74/255, green: 222/255, blue: 128/255, alpha: 0.60)),
+        FluoColorOption(id: "rose", name: "Rose fluo", color: Color(hex: "FB7185"), nsColor: NSColor(red: 251/255, green: 113/255, blue: 133/255, alpha: 0.60))
     ]
     #endif
 
@@ -415,25 +423,26 @@ public struct Step1CorrectionStudioView: View {
     // MARK: - 0. Page d'Accueil Mosaïque (Dashboard)
 
     private var correctionHomeDashboardView: some View {
-        VStack(spacing: 12) {
-            // 1. Bloc d'information horizontal fixe tout en haut
-            correctionTopInfoBanner
+        ScrollView {
+            VStack(spacing: 12) {
+                // 1. Bloc d'information horizontal fixe tout en haut
+                correctionTopInfoBanner
+                    .padding(.horizontal, 24)
+
+                // 2 & 3. Accordéon répartissant l'espace central
+                VStack(spacing: 10) {
+                    // Bloc Évaluations à corriger
+                    pendingEvaluationsAccordionBlock
+
+                    // Bloc Évaluations corrigées
+                    correctedEvaluationsAccordionBlock
+                }
                 .padding(.horizontal, 24)
-
-            // 2 & 3. Accordéon répartissant l'espace central
-            VStack(spacing: 10) {
-                // Bloc Évaluations à corriger
-                pendingEvaluationsAccordionBlock
-
-                // Bloc Évaluations corrigées
-                correctedEvaluationsAccordionBlock
+                .padding(.bottom, 24)
             }
-            .padding(.horizontal, 24)
-            .padding(.bottom, 16)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.top, 16)
         }
-        .padding(.top, 16)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.clear)
     }
 
     // MARK: - 1. Bloc d'information Horizontal Fixe Tout en Haut
@@ -716,7 +725,6 @@ public struct Step1CorrectionStudioView: View {
     private func activeGradingStudioView(scan: StorageManager.ScanItem, document: PDFDocument) -> some View {
         ZStack {
             // 1. Toile Interactive PDF + Stylet Apple Pencil + Zoom tactile
-            #if canImport(UIKit)
             InteractivePDFCanvasView(
                 document: document,
                 pageIndex: currentPageIndex,
@@ -769,14 +777,11 @@ public struct Step1CorrectionStudioView: View {
                     }
                 }
             )
-            .edgesIgnoringSafeArea(.all)
+            .ignoresSafeArea()
             .onChange(of: currentDrawing) { _, newDrawing in
                 guard currentPageIndex == 0, let url = pdfURL else { return }
                 schedulePage0ThumbnailUpdate(doc: document, url: url, drawing: newDrawing)
             }
-            #elseif canImport(AppKit)
-            Color.clear
-            #endif
 
             // 2. Dock Vertical d'Annotation Flottant (Liquid Glass, déplaçable Gauche ↔ Droite)
             verticalAnnotationDock
@@ -2985,6 +2990,130 @@ private extension UIColor {
             blue: CGFloat(b) / 255,
             alpha: CGFloat(a) / 255
         )
+    }
+}
+#elseif canImport(AppKit) && !canImport(UIKit)
+public struct InteractivePDFCanvasView: NSViewRepresentable {
+    public let document: PDFDocument?
+    public let pageIndex: Int
+    @Binding public var drawing: PKDrawing
+    public let tool: CorrectionToolType
+    public let activeColor: Color
+    public let pencilWidth: CGFloat
+    public let highlighterColor: Color
+    public let highlighterWidth: CGFloat
+    public let eraserWidth: CGFloat
+    public let stamps: [PlacedStampItem]
+    public let texts: [PlacedTextItem]
+    public let isPerformingUndoRedo: Bool
+    public let onStrokeFinished: (PKDrawing, PKDrawing) -> Void
+    public let onUpdateStamp: (PlacedStampItem, CGFloat, CGFloat) -> Void
+    public let onDeleteStamp: (UUID) -> Void
+    public let onUpdateText: (PlacedTextItem, CGFloat, CGFloat) -> Void
+    public let onDeleteText: (UUID) -> Void
+    public let onTapText: (PlacedTextItem) -> Void
+    public let onNextPage: () -> Void
+    public let onPreviousPage: () -> Void
+
+    public init(
+        document: PDFDocument?,
+        pageIndex: Int,
+        drawing: Binding<PKDrawing>,
+        tool: CorrectionToolType,
+        activeColor: Color,
+        pencilWidth: CGFloat,
+        highlighterColor: Color,
+        highlighterWidth: CGFloat,
+        eraserWidth: CGFloat,
+        stamps: [PlacedStampItem],
+        texts: [PlacedTextItem],
+        isPerformingUndoRedo: Bool,
+        onStrokeFinished: @escaping (PKDrawing, PKDrawing) -> Void,
+        onUpdateStamp: @escaping (PlacedStampItem, CGFloat, CGFloat) -> Void,
+        onDeleteStamp: @escaping (UUID) -> Void,
+        onUpdateText: @escaping (PlacedTextItem, CGFloat, CGFloat) -> Void,
+        onDeleteText: @escaping (UUID) -> Void,
+        onTapText: @escaping (PlacedTextItem) -> Void,
+        onNextPage: @escaping () -> Void,
+        onPreviousPage: @escaping () -> Void
+    ) {
+        self.document = document
+        self.pageIndex = pageIndex
+        self._drawing = drawing
+        self.tool = tool
+        self.activeColor = activeColor
+        self.pencilWidth = pencilWidth
+        self.highlighterColor = highlighterColor
+        self.highlighterWidth = highlighterWidth
+        self.eraserWidth = eraserWidth
+        self.stamps = stamps
+        self.texts = texts
+        self.isPerformingUndoRedo = isPerformingUndoRedo
+        self.onStrokeFinished = onStrokeFinished
+        self.onUpdateStamp = onUpdateStamp
+        self.onDeleteStamp = onDeleteStamp
+        self.onUpdateText = onUpdateText
+        self.onDeleteText = onDeleteText
+        self.onTapText = onTapText
+        self.onNextPage = onNextPage
+        self.onPreviousPage = onPreviousPage
+    }
+
+    public func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    public func makeNSView(context: Context) -> PDFView {
+        let pdfView = PDFView()
+        pdfView.autoScales = true
+        pdfView.displayMode = .singlePage
+        pdfView.displayDirection = .horizontal
+        pdfView.displaysPageBreaks = false
+        pdfView.document = document
+        if let doc = document, pageIndex >= 0, pageIndex < doc.pageCount, let targetPage = doc.page(at: pageIndex) {
+            pdfView.go(to: targetPage)
+        }
+        NotificationCenter.default.addObserver(
+            context.coordinator,
+            selector: #selector(Coordinator.pageChanged(_:)),
+            name: .PDFViewPageChanged,
+            object: pdfView
+        )
+        return pdfView
+    }
+
+    public func updateNSView(_ pdfView: PDFView, context: Context) {
+        context.coordinator.parent = self
+        if pdfView.document !== document {
+            pdfView.document = document
+        }
+        pdfView.autoScales = true
+        if let doc = document, pageIndex >= 0, pageIndex < doc.pageCount, let targetPage = doc.page(at: pageIndex) {
+            if pdfView.currentPage != targetPage {
+                pdfView.go(to: targetPage)
+            }
+        }
+    }
+
+    public final class Coordinator: NSObject {
+        var parent: InteractivePDFCanvasView
+        init(_ parent: InteractivePDFCanvasView) {
+            self.parent = parent
+        }
+
+        @objc func pageChanged(_ notification: Notification) {
+            guard let pdfView = notification.object as? PDFView,
+                  let current = pdfView.currentPage,
+                  let doc = pdfView.document else { return }
+            let idx = doc.index(for: current)
+            if idx != parent.pageIndex {
+                if idx > parent.pageIndex {
+                    parent.onNextPage()
+                } else if idx < parent.pageIndex {
+                    parent.onPreviousPage()
+                }
+            }
+        }
     }
 }
 #endif

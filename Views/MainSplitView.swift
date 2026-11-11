@@ -114,13 +114,21 @@ public struct MainSplitView: View {
                 .navigationTitle("")
                 #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
-                .toolbarBackground(.visible, for: .navigationBar)
                 #endif
                 .toolbar {
                     #if os(iOS)
                     ToolbarItem(placement: .topBarLeading) {
-                        topLeadingToolbar(isCompact: isCompact)
-                            .glassCapsule(strokeOpacity: 0.4)
+                        sidebarToggleButton
+                    }
+
+                    ToolbarItem(placement: .topBarLeading) {
+                        mainModePicker
+                    }
+
+                    if activeScreen == .correction && appState.activeCorrectionScan != nil {
+                        ToolbarItem(placement: .topBarLeading) {
+                            mosaicReturnButton
+                        }
                     }
 
                     if hasCenterToolbar {
@@ -132,17 +140,23 @@ public struct MainSplitView: View {
                     ToolbarItem(placement: .topBarTrailing) {
                         if activeScreen == .correction && appState.activeCorrectionScan != nil {
                             topTrailingHistoryToolbar
-                                .glassCapsule(strokeOpacity: 0.4)
                         } else {
-                            HStack(spacing: 0) {
-                                topTrailingCloudToolbar
-                            }
+                            topTrailingCloudToolbar
                         }
                     }
                     #else
                     ToolbarItem(placement: .navigation) {
-                        topLeadingToolbar(isCompact: isCompact)
-                            .glassCapsule(strokeOpacity: 0.4)
+                        sidebarToggleButton
+                    }
+
+                    ToolbarItem(placement: .navigation) {
+                        mainModePicker
+                    }
+
+                    if activeScreen == .correction && appState.activeCorrectionScan != nil {
+                        ToolbarItem(placement: .navigation) {
+                            mosaicReturnButton
+                        }
                     }
 
                     if hasCenterToolbar {
@@ -154,7 +168,6 @@ public struct MainSplitView: View {
                     ToolbarItem(placement: .primaryAction) {
                         if activeScreen == .correction && appState.activeCorrectionScan != nil {
                             topTrailingHistoryToolbar
-                                .glassCapsule(strokeOpacity: 0.4)
                         } else {
                             topTrailingCloudToolbar
                         }
@@ -275,6 +288,18 @@ public struct MainSplitView: View {
                 activeScreen = .portal
             }
         }
+        .onChange(of: activeScreen) { _, newScreen in
+            if newScreen == .distribution && !appState.isOnline {
+                activeScreen = .correction
+                return
+            }
+            if newScreen == .correction {
+                appState.activeCorrectionScan = nil
+            }
+            if isSidebarOpen {
+                isSidebarOpen = false
+            }
+        }
     }
 
     // MARK: - Outils Contextuels Centraux
@@ -317,467 +342,123 @@ public struct MainSplitView: View {
     // MARK: - Center Toolbar : Actions du Portail Élèves
 
     private func portalCenterActionToolbar(isCompact: Bool) -> some View {
-        PortalToolbarItemButton(
-            status: appState.portalSyncStatus,
-            isCompact: isCompact,
-            isEnabled: appState.isOnline && !appState.isPortalGenerating && !appState.students.isEmpty,
-            helpText: !appState.isOnline
-                ? "Disponible en ligne uniquement"
-                : (appState.students.isEmpty
-                   ? "Veuillez d'abord importer des élèves"
-                   : (appState.portalSyncStatus == .generatedReadyToUpload
-                      ? "Portail généré prêt à être mis en ligne sur votre hébergeur. Cliquez pour re-générer."
-                      : "Générer et publier le portail web chiffré"))
-        ) {
-            if appState.isOnline && !appState.isPortalGenerating {
+        Button {
+            if appState.isOnline && !appState.isPortalGenerating && !appState.students.isEmpty {
                 appState.triggerPortalGeneration += 1
             }
-        }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 4)
-        .glassCapsule(strokeOpacity: 0.4)
-    }
-
-    private struct PortalToolbarItemButton: View {
-        let status: PortalSyncStatus
-        let isCompact: Bool
-        let isEnabled: Bool
-        let helpText: String
-        let action: () -> Void
-
-        @State private var isHovered: Bool = false
-        @Environment(\.colorScheme) private var colorScheme
-
-        var body: some View {
-            Button(action: action) {
-                HStack(spacing: 6) {
-                    switch status {
-                    case .generating, .checking:
-                        ProgressView()
-                            .controlSize(.small)
-                        Text(isCompact ? "Génération..." : "Génération du portail...")
-                            .font(.system(size: 13, weight: .semibold))
-
-                    case .needsGeneration:
-                        Image(systemName: "bolt.badge.clock")
-                            .font(.system(size: 13, weight: .semibold))
-                        Text(isCompact ? "Générer" : "Générer le portail")
-                            .font(.system(size: 13, weight: .semibold))
-
-                    case .generatedReadyToUpload:
-                        Image(systemName: "arrow.up.circle")
-                            .font(.system(size: 13, weight: .semibold))
-                        Text(isCompact ? "Mettre en ligne" : "Mettre en ligne")
-                            .font(.system(size: 13, weight: .semibold))
-
-                    case .upToDateOnline:
-                        Image(systemName: "checkmark.circle")
-                            .font(.system(size: 13, weight: .semibold))
-                        Text(isCompact ? "À jour" : "Portail à jour")
-                            .font(.system(size: 13, weight: .semibold))
-
-                    case .noStudents:
-                        Image(systemName: "person.slash")
-                            .font(.system(size: 13, weight: .medium))
-                        Text("Aucun élève")
-                            .font(.system(size: 13, weight: .medium))
-                    }
-                }
-                .foregroundColor(isEnabled ? .primary : .secondary.opacity(0.35))
-                .padding(.horizontal, 11)
-                .padding(.vertical, 7)
-                .background(
-                    Group {
-                        if isHovered && isEnabled {
-                            Capsule()
-                                .fill(Color.primary.opacity(colorScheme == .dark ? 0.15 : 0.08))
-                                .overlay(
-                                    Capsule()
-                                        .stroke(Color.primary.opacity(0.12), lineWidth: 0.75)
-                                )
-                        } else {
-                            Color.clear
-                        }
-                    }
-                )
-                .clipShape(Capsule())
-            }
-            .buttonStyle(GlassHUDPressStyle())
-            .disabled(!isEnabled)
-            .onHover { hovering in
-                withAnimation(.easeInOut(duration: 0.16)) {
-                    isHovered = hovering
+        } label: {
+            HStack(spacing: 6) {
+                switch appState.portalSyncStatus {
+                case .generating, .checking:
+                    ProgressView()
+                        .controlSize(.small)
+                    Text(isCompact ? "Génération..." : "Génération du portail...")
+                case .needsGeneration:
+                    Image(systemName: "bolt.badge.clock")
+                    Text(isCompact ? "Générer" : "Générer le portail")
+                case .generatedReadyToUpload:
+                    Image(systemName: "arrow.up.circle")
+                    Text("Mettre en ligne")
+                case .upToDateOnline:
+                    Image(systemName: "checkmark.circle")
+                    Text(isCompact ? "À jour" : "Portail à jour")
+                case .noStudents:
+                    Image(systemName: "person.slash")
+                    Text("Aucun élève")
                 }
             }
-            .help(helpText)
         }
+        .buttonStyle(.bordered)
+        .controlSize(.regular)
+        .fixedSize()
+        .disabled(!appState.isOnline || appState.isPortalGenerating || appState.students.isEmpty)
+        .help(!appState.isOnline
+            ? "Disponible en ligne uniquement"
+            : (appState.students.isEmpty
+               ? "Veuillez d'abord importer des élèves"
+               : (appState.portalSyncStatus == .generatedReadyToUpload
+                  ? "Portail généré prêt à être mis en ligne sur votre hébergeur. Cliquez pour re-générer."
+                  : "Générer et publier le portail web chiffré")))
     }
+
+    // MARK: - Center Toolbar : Actions Gestion des Élèves
 
     private func studentsCenterActionToolbar(isCompact: Bool) -> some View {
         HStack(spacing: 8) {
-            // Bouton 1 : Ajouter un élève
-            StudentToolbarItemButton(
-                icon: "person.badge.plus",
-                title: isCompact ? "Ajouter" : "Ajouter un élève",
-                isEnabled: appState.isOnline,
-                helpText: appState.isOnline ? "Ajouter un élève" : "Disponible en ligne uniquement"
-            ) {
+            Button {
                 if appState.isOnline {
                     appState.showAddStudentSheet = true
                 }
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "person.badge.plus")
+                    Text(isCompact ? "Ajouter" : "Ajouter un élève")
+                        .font(.system(size: 13, weight: .medium))
+                }
             }
+            .buttonStyle(.bordered)
+            .controlSize(.regular)
+            .disabled(!appState.isOnline)
+            .help(appState.isOnline ? "Ajouter un élève" : "Disponible en ligne uniquement")
 
-            // Séparateur de verre fin (identique à la toolbar de gauche)
-            Rectangle()
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(0.12),
-                            Color.primary.opacity(0.16),
-                            Color.white.opacity(0.12)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .frame(width: 1, height: 18)
-
-            // Bouton 2 : Importer CSV
-            StudentToolbarItemButton(
-                icon: "arrow.down.doc",
-                title: isCompact ? "Importer" : "Importer CSV",
-                isEnabled: appState.isOnline,
-                helpText: appState.isOnline ? "Importer un fichier CSV" : "Disponible en ligne uniquement"
-            ) {
+            Button {
                 if appState.isOnline {
                     appState.showCSVImportSheet = true
                 }
-            }
-        }
-        .fixedSize(horizontal: true, vertical: false)
-        .padding(.horizontal, 6)
-        .padding(.vertical, 4)
-        .glassCapsule(strokeOpacity: 0.4)
-    }
-
-    private struct StudentToolbarItemButton: View {
-        let icon: String
-        let title: String
-        let isEnabled: Bool
-        let helpText: String
-        let action: () -> Void
-
-        @State private var isHovered: Bool = false
-        @Environment(\.colorScheme) private var colorScheme
-
-        var body: some View {
-            Button(action: action) {
-                HStack(spacing: 6) {
-                    Image(systemName: icon)
-                        .font(.system(size: 13, weight: .semibold))
-
-                    Text(title)
-                        .font(.system(size: 13, weight: .semibold))
-                }
-                .foregroundColor(isEnabled ? .primary : .secondary.opacity(0.35))
-                .padding(.horizontal, 11)
-                .padding(.vertical, 7)
-                .background(
-                    Group {
-                        if isHovered && isEnabled {
-                            Capsule()
-                                .fill(Color.primary.opacity(colorScheme == .dark ? 0.15 : 0.08))
-                                .overlay(
-                                    Capsule()
-                                        .stroke(Color.primary.opacity(0.12), lineWidth: 0.75)
-                                )
-                        } else {
-                            Color.clear
-                        }
-                    }
-                )
-                .clipShape(Capsule())
-            }
-            .buttonStyle(GlassHUDPressStyle())
-            .disabled(!isEnabled)
-            .onHover { hovering in
-                withAnimation(.easeInOut(duration: 0.16)) {
-                    isHovered = hovering
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "arrow.down.doc")
+                    Text(isCompact ? "Importer" : "Importer CSV")
+                        .font(.system(size: 13, weight: .medium))
                 }
             }
-            .help(helpText)
+            .buttonStyle(.bordered)
+            .controlSize(.regular)
+            .disabled(!appState.isOnline)
+            .help(appState.isOnline ? "Importer un fichier CSV" : "Disponible en ligne uniquement")
         }
     }
 
     // MARK: - Center Toolbar : Onglets d'Évaluations (Correction)
 
     private func correctionCenterTabsToolbar(isCompact: Bool, isPortrait: Bool) -> some View {
-        let shouldCollapse = (isPortrait && appState.openCorrectionScans.count >= 3)
-            || (isCompact && appState.openCorrectionScans.count >= 3)
-            || (appState.openCorrectionScans.count > 4)
-
-        return HStack(spacing: 4) {
-            if shouldCollapse {
-                compactEvaluationsMenuPill
-            } else {
+        Menu {
+            Section("Évaluations ouvertes (\(appState.openCorrectionScans.count))") {
                 ForEach(appState.openCorrectionScans) { scan in
-                    evaluationTabButton(for: scan)
-                }
-            }
-        }
-        .padding(3)
-        .glassCapsule(strokeOpacity: 0.4)
-    }
-
-    // MARK: - Toolbar 1 : Haut-Gauche (Sidebar Toggle + Navigation Correction / Distribution)
-
-    private func topLeadingToolbar(isCompact: Bool) -> some View {
-        HStack(spacing: 8) {
-            // Bouton Sidebar façon Aperçu (sans fond gris plat)
-            GlassHUDIconButton(
-                icon: isSidebarOpen ? "sidebar.left" : "sidebar.leading",
-                isEnabled: true,
-                isActive: isSidebarOpen,
-                helpText: "Afficher ou masquer la barre latérale",
-                size: 30
-            ) {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                    isSidebarOpen.toggle()
-                }
-            }
-
-            // Séparateur de verre fin
-            Rectangle()
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(0.12),
-                            Color.primary.opacity(0.16),
-                            Color.white.opacity(0.12)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .frame(width: 1, height: 18)
-
-            // Sélecteur Mode Principal (100% stable, épuré sans capsule grise)
-            HStack(spacing: 4) {
-                correctionMainButton
-                distributionMainButton
-            }
-            .fixedSize(horizontal: true, vertical: false)
-            .padding(2)
-        }
-        .fixedSize(horizontal: true, vertical: false)
-        .padding(.horizontal, 6)
-        .padding(.vertical, 4)
-    }
-
-    private var isCorrectionSelected: Bool {
-        activeScreen == .correction
-    }
-
-    private var correctionMainButton: some View {
-        Button {
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                activeScreen = .correction
-                appState.activeCorrectionScan = nil
-                if isSidebarOpen {
-                    isSidebarOpen = false
-                }
-            }
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "pencil.and.outline")
-                    .font(.system(size: 13, weight: .semibold))
-
-                Text(appState.t(.tabCorrection))
-                    .font(.system(size: 13, weight: isCorrectionSelected ? .bold : .medium))
-            }
-            .foregroundColor(isCorrectionSelected ? .white : .primary)
-            .padding(.horizontal, 11)
-            .padding(.vertical, 7)
-            .background(
-                Group {
-                    if isCorrectionSelected {
-                        Capsule()
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        Color(hex: "2563EB").opacity(0.80),
-                                        Color(hex: "1D4ED8").opacity(0.72)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .matchedGeometryEffect(id: "activeMainPill", in: toolbarNamespace)
-                    } else {
-                        Color.clear
-                    }
-                }
-            )
-            .clipShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .help(appState.activeCorrectionScan != nil ? "Retourner à la mosaïque des devoirs" : "Accueil de la correction")
-    }
-
-    @ViewBuilder
-    private func evaluationTabButton(for scan: StorageManager.ScanItem) -> some View {
-        let isTabActive = (activeScreen == .correction && appState.activeCorrectionScan?.id == scan.id)
-
-        HStack(spacing: 5) {
-            Button {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                    activeScreen = .correction
-                    appState.activeCorrectionScan = scan
-                    if isSidebarOpen {
-                        isSidebarOpen = false
-                    }
-                }
-            } label: {
-                HStack(spacing: 5) {
-                    Image(systemName: scan.isCorrected ? "checkmark.seal.fill" : "doc.text.fill")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(isTabActive ? (scan.isCorrected ? Color(hex: "10B981") : .white) : (scan.isCorrected ? Color(hex: "10B981") : .secondary))
-
-                    Text(scan.cleanTitle)
-                        .font(.system(size: 12, weight: isTabActive ? .bold : .medium))
-                        .lineLimit(1)
-                        .frame(maxWidth: 120)
-                }
-            }
-            .buttonStyle(.plain)
-
-            // Bouton Croix de fermeture
-            Button {
-                closeCorrectionTab(scan)
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 7.5, weight: .bold))
-                    .foregroundColor(isTabActive ? .white.opacity(0.9) : .secondary)
-                    .frame(width: 16, height: 16)
-                    .background(isTabActive ? Color.white.opacity(0.25) : Color.primary.opacity(0.08))
-                    .clipShape(Circle())
-            }
-            .buttonStyle(.plain)
-            .help("Fermer l'onglet \(scan.cleanTitle)")
-        }
-        .foregroundColor(isTabActive ? .white : .primary)
-        .padding(.leading, 10)
-        .padding(.trailing, 6)
-        .padding(.vertical, 5)
-        .background(
-            Group {
-                if isTabActive {
-                    Capsule()
-                        .fill(LinearGradient.electricBlue)
-                        .matchedGeometryEffect(id: "activeCenterTabPill", in: toolbarNamespace)
-                } else {
-                    Capsule()
-                        .fill(Color.primary.opacity(0.04))
-                }
-            }
-        )
-        .clipShape(Capsule())
-    }
-
-    private var compactEvaluationsMenuPill: some View {
-        let activeScan = (activeScreen == .correction) ? appState.activeCorrectionScan : nil
-        let isTabActive = (activeScan != nil)
-
-        return HStack(spacing: 4) {
-            Menu {
-                Section("Évaluations ouvertes (\(appState.openCorrectionScans.count))") {
-                    ForEach(appState.openCorrectionScans) { scan in
-                        Button {
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                                activeScreen = .correction
-                                appState.activeCorrectionScan = scan
-                                if isSidebarOpen {
-                                    isSidebarOpen = false
-                                }
+                    Button {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            activeScreen = .correction
+                            appState.activeCorrectionScan = scan
+                            if isSidebarOpen {
+                                isSidebarOpen = false
                             }
-                        } label: {
-                            HStack {
-                                Label(scan.cleanTitle, systemImage: scan.isCorrected ? "checkmark.seal.fill" : "doc.text.fill")
-                                if appState.activeCorrectionScan?.id == scan.id && activeScreen == .correction {
-                                    Image(systemName: "checkmark")
-                                }
+                        }
+                    } label: {
+                        HStack {
+                            Label(scan.cleanTitle, systemImage: scan.isCorrected ? "checkmark.seal.fill" : "doc.text.fill")
+                            if appState.activeCorrectionScan?.id == scan.id && activeScreen == .correction {
+                                Image(systemName: "checkmark")
                             }
                         }
                     }
                 }
-
-                Divider()
-
-                Button(role: .destructive) {
-                    closeAllCorrectionTabs()
-                } label: {
-                    Label("Fermer toutes les évaluations", systemImage: "xmark.circle")
-                }
-            } label: {
-                HStack(spacing: 5) {
-                    Image(systemName: (activeScan?.isCorrected == true) ? "checkmark.seal.fill" : (activeScan != nil ? "doc.text.fill" : "doc.on.doc.fill"))
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(isTabActive ? (activeScan?.isCorrected == true ? Color(hex: "10B981") : .white) : .primary)
-
-                    Text(activeScan?.cleanTitle ?? "\(appState.openCorrectionScans.count) évaluations")
-                        .font(.system(size: 12, weight: isTabActive ? .bold : .medium))
-                        .lineLimit(1)
-                        .frame(maxWidth: 105)
-
-                    Text("\(appState.openCorrectionScans.count)")
-                        .font(.system(size: 10, weight: .bold))
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 1.5)
-                        .background(isTabActive ? Color.white.opacity(0.25) : Color.primary.opacity(0.08))
-                        .foregroundColor(isTabActive ? .white : .secondary)
-                        .clipShape(Capsule())
-
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.system(size: 8.5, weight: .bold))
-                        .foregroundColor(isTabActive ? .white.opacity(0.8) : .secondary)
-                }
-                .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
 
-            // Bouton Croix de fermeture de l'évaluation active
-            if let current = activeScan {
-                Button {
-                    closeCorrectionTab(current)
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 7.5, weight: .bold))
-                        .foregroundColor(isTabActive ? .white.opacity(0.9) : .secondary)
-                        .frame(width: 16, height: 16)
-                        .background(isTabActive ? Color.white.opacity(0.25) : Color.primary.opacity(0.08))
-                        .clipShape(Circle())
-                }
-                .buttonStyle(.plain)
-                .help("Fermer l'évaluation active \(current.cleanTitle)")
+            Divider()
+
+            Button(role: .destructive) {
+                closeAllCorrectionTabs()
+            } label: {
+                Label("Fermer toutes les évaluations", systemImage: "xmark.circle")
+            }
+        } label: {
+            HStack(spacing: 5) {
+                let activeScan = (activeScreen == .correction) ? appState.activeCorrectionScan : nil
+                Image(systemName: (activeScan?.isCorrected == true) ? "checkmark.seal.fill" : (activeScan != nil ? "doc.text.fill" : "doc.on.doc.fill"))
+                Text(activeScan?.cleanTitle ?? "\(appState.openCorrectionScans.count) évaluations")
+                    .lineLimit(1)
             }
         }
-        .foregroundColor(isTabActive ? .white : .primary)
-        .padding(.leading, 10)
-        .padding(.trailing, activeScan != nil ? 6 : 8)
-        .padding(.vertical, 5)
-        .background(
-            Group {
-                if isTabActive {
-                    Capsule()
-                        .fill(LinearGradient.electricBlue)
-                        .matchedGeometryEffect(id: "activeCenterTabPill", in: toolbarNamespace)
-                } else {
-                    Capsule()
-                        .fill(Color.primary.opacity(0.04))
-                }
-            }
-        )
-        .clipShape(Capsule())
     }
 
     private func closeAllCorrectionTabs() {
@@ -803,186 +484,99 @@ public struct MainSplitView: View {
         }
     }
 
-    private var isDistributionSelected: Bool {
-        activeScreen == .distribution
-    }
+    // MARK: - Toolbar Haut-Gauche : Bouton Sidebar, Sélecteur de Mode et Retour Mosaïque
 
-    private var distributionMainButton: some View {
+    private var sidebarToggleButton: some View {
         Button {
-            guard appState.isOnline else { return }
             withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                activeScreen = .distribution
-                if isSidebarOpen {
-                    isSidebarOpen = false
-                }
+                isSidebarOpen.toggle()
             }
         } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "paperplane.fill")
-                    .font(.system(size: 13, weight: .semibold))
-
-                Text(appState.t(.tabDistribution))
-                    .font(.system(size: 13, weight: isDistributionSelected ? .bold : .medium))
-            }
-            .foregroundColor(!appState.isOnline ? .secondary.opacity(0.4) : (isDistributionSelected ? .white : .primary))
-            .padding(.horizontal, 11)
-            .padding(.vertical, 7)
-            .background(
-                Group {
-                    if isDistributionSelected {
-                        Capsule()
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        Color(hex: "059669").opacity(0.80),
-                                        Color(hex: "047857").opacity(0.72)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .matchedGeometryEffect(id: "activeMainPill", in: toolbarNamespace)
-                    } else {
-                        Color.clear
-                    }
-                }
-            )
-            .clipShape(Capsule())
+            Image(systemName: isSidebarOpen ? "sidebar.left" : "sidebar.leading")
         }
-        .buttonStyle(.plain)
-        .disabled(!appState.isOnline)
-        .help(!appState.isOnline ? "Distribution indisponible hors-ligne (envoi Cloud requis)" : "Distribution et envoi des devoirs")
+        .help("Afficher ou masquer la barre latérale")
     }
 
-    // MARK: - Stepper Flottant de Distribution (Option B)
+    private var mainModePicker: some View {
+        Group {
+            if activeScreen == .correction || activeScreen == .distribution {
+                Picker("Mode", selection: Binding(
+                    get: { activeScreen },
+                    set: { newScreen in
+                        if newScreen == .distribution && !appState.isOnline {
+                            return
+                        }
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            activeScreen = newScreen
+                            if newScreen == .correction {
+                                appState.activeCorrectionScan = nil
+                            }
+                        }
+                    }
+                )) {
+                    Text(appState.t(.tabCorrection)).tag(AppScreen.correction)
+                    Text(appState.t(.tabDistribution)).tag(AppScreen.distribution)
+                }
+                .pickerStyle(.segmented)
+                .frame(minWidth: 190)
+            } else {
+                HStack(spacing: 8) {
+                    Image(systemName: activeScreen.icon)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(activeScreen.tintColor)
+
+                    Text(activeScreen.rawValue)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.primary)
+                }
+                .padding(.horizontal, 4)
+            }
+        }
+    }
+
+    private var mosaicReturnButton: some View {
+        Button {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                appState.activeCorrectionScan = nil
+            }
+        } label: {
+            Label("Mosaïque", systemImage: "square.grid.2x2")
+        }
+        .help("Retourner à la mosaïque des devoirs")
+    }
+
+    // MARK: - Center Toolbar : Stepper Flottant de Distribution
 
     private func distributionStepperToolbar(isCompact: Bool) -> some View {
-        HStack(spacing: 4) {
-            distributionStepItem(step: 1, title: "Chargement", icon: "tray.and.arrow.down.fill")
-            distributionStepChevron
-            distributionStepItem(step: 2, title: "Identification", icon: "viewfinder")
-            distributionStepChevron
-            distributionStepItem(step: 3, title: "Envoi", icon: "paperplane.fill")
+        Picker("Étape", selection: $appState.distributionStep) {
+            Text("1. Chargement").tag(1)
+            Text("2. Identification").tag(2)
+            Text("3. Envoi").tag(3)
         }
-        .padding(3)
-        .glassCapsule(strokeOpacity: 0.4)
-    }
-
-    private var distributionStepChevron: some View {
-        Image(systemName: "chevron.right")
-            .font(.system(size: 8, weight: .bold))
-            .foregroundColor(.secondary.opacity(0.35))
-            .padding(.horizontal, 2)
-    }
-
-    @ViewBuilder
-    private func distributionStepItem(step: Int, title: String, icon: String) -> some View {
-        let isActive = (appState.distributionStep == step)
-        let isDone = (appState.distributionStep > step)
-        let canNavigateToStep = (step <= appState.distributionStep)
-
-        Button {
-            guard canNavigateToStep else { return }
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                appState.distributionStep = step
-            }
-        } label: {
-            HStack(spacing: 5) {
-                ZStack {
-                    if isDone {
-                        Circle()
-                            .fill(Color(hex: "10B981"))
-                            .frame(width: 17, height: 17)
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 8.5, weight: .bold))
-                            .foregroundColor(.white)
-                    } else if isActive {
-                        Circle()
-                            .fill(Color.white)
-                            .frame(width: 17, height: 17)
-                        Text("\(step)")
-                            .font(.system(size: 9.5, weight: .bold))
-                            .foregroundColor(Color(hex: "059669"))
-                    } else {
-                        Circle()
-                            .fill(Color.primary.opacity(0.08))
-                            .frame(width: 17, height: 17)
-                        Text("\(step)")
-                            .font(.system(size: 9.5, weight: .semibold))
-                            .foregroundColor(.secondary)
-                    }
-                }
-
-                Text(title)
-                    .font(.system(size: 11.5, weight: isActive ? .bold : .medium))
-                    .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
-                    .foregroundColor(isActive ? .white : (isDone ? .primary : .secondary.opacity(0.6)))
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 5)
-            .background(
-                Group {
-                    if isActive {
-                        Capsule()
-                            .fill(LinearGradient.emeraldGreen)
-                            .matchedGeometryEffect(id: "activeDistributionStepPill", in: toolbarNamespace)
-                            .shadow(color: Color.green.opacity(0.3), radius: 6, y: 2)
-                    } else if isDone {
-                        Capsule()
-                            .fill(Color.green.opacity(0.06))
-                    } else {
-                        Color.clear
-                    }
-                }
-            )
-            .clipShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .disabled(!canNavigateToStep)
+        .pickerStyle(.segmented)
+        .frame(minWidth: 260)
     }
 
     // MARK: - Toolbar 2 : Haut-Droite (Historique Undo/Redo Dédié à la Correction)
 
     private var topTrailingHistoryToolbar: some View {
-        HStack(spacing: 5) {
-            // Bouton Annuler façon Aperçu
-            GlassHUDIconButton(
-                icon: "arrow.uturn.backward",
-                isEnabled: appState.canUndoCorrection,
-                helpText: "Annuler la dernière action (tracé, surlignage, tampon, texte)",
-                size: 30
-            ) {
+        ControlGroup {
+            Button {
                 appState.undoCorrectionTrigger += 1
+            } label: {
+                Label("Annuler", systemImage: "arrow.uturn.backward")
             }
+            .disabled(!appState.canUndoCorrection)
+            .help("Annuler la dernière action (tracé, surlignage, tampon, texte)")
 
-            // Séparateur de verre fin
-            Rectangle()
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(0.12),
-                            Color.primary.opacity(0.16),
-                            Color.white.opacity(0.12)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .frame(width: 1, height: 16)
-
-            // Bouton Rétablir façon Aperçu
-            GlassHUDIconButton(
-                icon: "arrow.uturn.forward",
-                isEnabled: appState.canRedoCorrection,
-                helpText: "Rétablir la dernière action",
-                size: 30
-            ) {
+            Button {
                 appState.redoCorrectionTrigger += 1
+            } label: {
+                Label("Rétablir", systemImage: "arrow.uturn.forward")
             }
+            .disabled(!appState.canRedoCorrection)
+            .help("Rétablir la dernière action")
         }
-        .padding(.horizontal, 4)
-        .padding(.vertical, 3)
     }
 
     // MARK: - Toolbar 2 : Haut-Droite (Widget Cloud Déroulant façon Aperçu)
@@ -991,27 +585,17 @@ public struct MainSplitView: View {
         Menu {
             cloudMenuSections
         } label: {
-            HStack(spacing: 6) {
+            HStack(spacing: 5) {
                 CloudBrandIconView(
                     type: appState.storageManager.activeProvider.providerType,
-                    size: 16,
+                    size: 15,
                     statusDotColor: !appState.isOnline ? .orange : (appState.storageManager.activeProvider.isConnected ? .green : .orange)
                 )
 
                 Text(!appState.isOnline ? "Hors-ligne" : appState.storageManager.activeProvider.providerType.displayName)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.primary)
-
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 13, weight: .medium))
             }
-            .padding(.horizontal, 11)
-            .padding(.vertical, 7)
-            .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
-        .glassCapsule(strokeOpacity: 0.4)
     }
 
     @ViewBuilder
