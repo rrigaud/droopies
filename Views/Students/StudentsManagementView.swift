@@ -102,7 +102,7 @@ public struct StudentsManagementView: View {
 
             ZStack(alignment: .bottom) {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 18) {
+                    VStack(alignment: .leading, spacing: 14) {
                         // 0. En-tête de page Liquid Glass
                         studentsPageHeader
 
@@ -410,9 +410,6 @@ public struct StudentsManagementView: View {
                 }
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(Color.clear)
     }
 
     @ViewBuilder
@@ -488,8 +485,7 @@ public struct StudentsManagementView: View {
                     .frame(width: 70, alignment: .trailing)
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(Color.clear)
+            .padding(.vertical, 4)
 
             if filteredStudents.isEmpty {
                 emptyStudentsPlaceholder
@@ -548,9 +544,8 @@ public struct StudentsManagementView: View {
                 Text("")
                     .frame(width: 24)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 6)
-            .background(Color.clear)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 4)
 
             if filteredStudents.isEmpty {
                 emptyStudentsPlaceholder
@@ -560,8 +555,7 @@ public struct StudentsManagementView: View {
                         studentCompactAccordionCard(student: student)
                     }
                 }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
+                .padding(.top, 4)
             }
         }
     }
