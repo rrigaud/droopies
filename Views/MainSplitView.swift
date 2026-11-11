@@ -113,13 +113,25 @@ public struct MainSplitView: View {
                 }
                 .navigationTitle("")
                 .toolbar {
+                    #if os(macOS)
                     ToolbarItem(placement: .navigation) {
+                        sidebarToggleButton
+                    }
+
+                    ToolbarItem(placement: .navigation) {
+                        HStack(spacing: 0) {
+                            mainModeTabsControlGroup
+                        }
+                    }
+                    #else
+                    ToolbarItem(placement: .topBarLeading) {
                         sidebarToggleButton
                     }
 
                     ToolbarItem(placement: .navigation) {
                         mainModeTabsControlGroup
                     }
+                    #endif
 
                     if hasCenterToolbar {
                         ToolbarItem(placement: .principal) {
