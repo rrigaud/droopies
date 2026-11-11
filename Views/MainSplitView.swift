@@ -122,6 +122,7 @@ public struct MainSplitView: View {
                         HStack(spacing: 0) {
                             mainModeTabsControlGroup
                         }
+                        .padding(.leading, 8)
                     }
                     #else
                     ToolbarItem(placement: .topBarLeading) {
@@ -302,7 +303,7 @@ public struct MainSplitView: View {
             correctionCenterTabsToolbar(isCompact: isCompact, isPortrait: isPortrait)
 
         case .distribution:
-            distributionStepperToolbar(isCompact: isCompact)
+            distributionStepperToolbar(isCompact: isCompact || isPortrait)
 
         case .students:
             studentsCenterActionToolbar(isCompact: isCompact)
@@ -539,6 +540,9 @@ public struct MainSplitView: View {
             }
         } label: {
             Image(systemName: isSidebarOpen ? "sidebar.left" : "sidebar.leading")
+                .font(.system(size: 14, weight: .medium))
+                .frame(width: 32, height: 32)
+                .contentShape(Circle())
         }
         .help("Afficher ou masquer la barre latérale")
     }
@@ -556,8 +560,10 @@ public struct MainSplitView: View {
                 HStack(spacing: 5) {
                     Image(systemName: activeScreen == .correction ? "checkmark.circle.fill" : "pencil.and.outline")
                         .foregroundColor(activeScreen == .correction ? .blue : .secondary)
-                    Text(appState.t(.tabCorrection))
-                        .fontWeight(activeScreen == .correction ? .semibold : .regular)
+                    if activeScreen == .correction {
+                        Text(appState.t(.tabCorrection))
+                            .fontWeight(.semibold)
+                    }
                 }
             }
             .help("Atelier de correction au stylet")
@@ -572,8 +578,10 @@ public struct MainSplitView: View {
                 HStack(spacing: 5) {
                     Image(systemName: activeScreen == .distribution ? "checkmark.circle.fill" : "paperplane.fill")
                         .foregroundColor(activeScreen == .distribution ? Color(red: 0.05, green: 0.72, blue: 0.55) : .secondary)
-                    Text(appState.t(.tabDistribution))
-                        .fontWeight(activeScreen == .distribution ? .semibold : .regular)
+                    if activeScreen == .distribution {
+                        Text(appState.t(.tabDistribution))
+                            .fontWeight(.semibold)
+                    }
                 }
             }
             .disabled(!appState.isOnline)
@@ -585,12 +593,12 @@ public struct MainSplitView: View {
 
     private func distributionStepperToolbar(isCompact: Bool) -> some View {
         Picker("Étape", selection: $appState.distributionStep) {
-            Text("1. Chargement").tag(1)
-            Text("2. Identification").tag(2)
+            Text(isCompact ? "1. Fichier" : "1. Chargement").tag(1)
+            Text(isCompact ? "2. Élèves" : "2. Identification").tag(2)
             Text("3. Envoi").tag(3)
         }
         .pickerStyle(.segmented)
-        .frame(minWidth: 260)
+        .fixedSize()
     }
 
     // MARK: - Toolbar 2 : Haut-Droite (Historique Undo/Redo Dédié à la Correction)
