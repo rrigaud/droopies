@@ -67,9 +67,6 @@ public struct AppSettingsView: View {
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                // 0. En-tête de page Liquid Glass
-                settingsPageHeader
-
                 // 1. Général & Langue
                 generalLangCard
 
@@ -84,7 +81,7 @@ public struct AppSettingsView: View {
             }
             .padding(.horizontal, 24)
             #if os(iOS)
-            .padding(.top, -10)
+            .padding(.top, 8)
             #else
             .padding(.top, 12)
             #endif

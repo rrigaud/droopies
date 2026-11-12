@@ -316,13 +316,23 @@ public struct MainSplitView: View {
         case .mosaic:
             if let activeScan = appState.activeCorrectionScan {
                 correctionDocumentTitleMenu(activeScan: activeScan)
+            } else {
+                Text("Mosaïque des devoirs")
+                    .font(.headline)
             }
         case .distribution:
             if appState.isOnline {
                 distributionStepperToolbar(isCompact: false)
             }
-        default:
-            EmptyView()
+        case .students:
+            Text(appState.t(.studentsTitle))
+                .font(.headline)
+        case .portal:
+            Text(appState.t(.navPortal))
+                .font(.headline)
+        case .settings:
+            Text(appState.t(.settingsTitle))
+                .font(.headline)
         }
     }
 
@@ -441,23 +451,36 @@ public struct MainSplitView: View {
                 }
                 .disabled(!appState.isOnline)
                 .help(appState.isOnline ? "Distribuer cette évaluation aux élèves" : "Distribution disponible en ligne uniquement")
-            } else if !appState.openCorrectionScans.isEmpty {
-                Button {
-                    if let scanToResume = appState.activeCorrectionScan ?? appState.openCorrectionScans.last ?? appState.openCorrectionScans.first {
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                            appState.activeCorrectionScan = scanToResume
+            } else {
+                if !appState.openCorrectionScans.isEmpty {
+                    Button {
+                        if let scanToResume = appState.activeCorrectionScan ?? appState.openCorrectionScans.last ?? appState.openCorrectionScans.first {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                appState.activeCorrectionScan = scanToResume
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "pencil.and.outline")
+                            Text("Reprendre (\(appState.openCorrectionScans.count))")
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 11, weight: .bold))
                         }
                     }
+                    .buttonStyle(.borderedProminent)
+                    .help("Reprendre la correction des évaluations ouvertes")
+                }
+
+                Button {
+                    appState.showPDFImporter = true
                 } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "pencil.and.outline")
-                        Text("Reprendre (\(appState.openCorrectionScans.count))")
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 11, weight: .bold))
+                    HStack(spacing: 5) {
+                        Image(systemName: "plus")
+                        Text("Importer")
                     }
                 }
-                .buttonStyle(.borderedProminent)
-                .help("Reprendre la correction des évaluations ouvertes")
+                .buttonStyle(.bordered)
+                .help("Importer un paquet de copies (PDF)")
             }
 
         case .distribution:

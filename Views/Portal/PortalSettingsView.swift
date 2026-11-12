@@ -103,34 +103,27 @@ public struct PortalSettingsView: View {
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-
-                // 0. En-tête de page Liquid Glass
-                portalPageHeader
-
-                // 1. Bloc d'information et de réassurance tout en haut
-                portalIntroBanner
-
-                // 2. URL du Portail Web & États de synchronisation en ligne
+                // 1. URL du Portail Web & États de synchronisation en ligne
                 portalHeaderSection
 
                 if isGenerating {
                     generationProgressBanner
                 }
 
-                // 3. Bloc de Personnalisation du Portail (Thème, Icône, Titres & Auto-Save)
+                // 2. Bloc de Personnalisation du Portail (Thème, Icône, Titres & Auto-Save)
                 customizationBlockSection
 
-                // 4. Bannière de succès après génération (si présente)
+                // 3. Bannière de succès après génération (si présente)
                 if let result = lastGenerationResult {
                     generationSuccessBanner(result: result)
                 }
 
-                // 5. Aperçu du Portail Web pour les élèves (en dernier)
+                // 4. Aperçu du Portail Web pour les élèves (en dernier)
                 portalLivePreviewSection
             }
             .padding(.horizontal, 24)
             #if os(iOS)
-            .padding(.top, -10)
+            .padding(.top, 8)
             #else
             .padding(.top, 12)
             #endif

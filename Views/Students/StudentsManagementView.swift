@@ -103,9 +103,6 @@ public struct StudentsManagementView: View {
             ZStack(alignment: .bottom) {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
-                        // 0. En-tête de page Liquid Glass
-                        studentsPageHeader
-
                         // MARK: - Barre de Filtre par Classe, Recherche & Sélection
                         classesFilterBar(isCompact: isCompact)
 
@@ -118,7 +115,7 @@ public struct StudentsManagementView: View {
                     }
                     .padding(.horizontal, 24)
                     #if os(iOS)
-                    .padding(.top, -10)
+                    .padding(.top, 8)
                     #else
                     .padding(.top, 12)
                     #endif

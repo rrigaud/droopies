@@ -430,17 +430,13 @@ public struct Step1CorrectionStudioView: View {
     private var correctionHomeDashboardView: some View {
         ScrollView {
             VStack(spacing: 16) {
-                // 1. Bloc d'information horizontal fixe tout en haut
-                correctionTopInfoBanner
-                    .padding(.horizontal, 24)
-
-                // 2. Bloc unique "Évaluations" (À corriger en premier puis corrigées, ordre alphabétique)
+                // Bloc unique "Évaluations" (À corriger en premier puis corrigées, ordre alphabétique)
                 unifiedEvaluationsBlock
                     .padding(.horizontal, 24)
                     .padding(.bottom, 24)
             }
             #if os(iOS)
-            .padding(.top, -10)
+            .padding(.top, 8)
             #else
             .padding(.top, 12)
             #endif
