@@ -120,7 +120,9 @@ public struct MainSplitView: View {
                     ToolbarItem(placement: .navigation) {
                         HStack(spacing: 10) {
                             sidebarToggleButton
-                            mainModeTabsControlGroup
+                            if isCorrectionFlow {
+                                mainModeTabsSegmentedPicker
+                            }
                         }
                     }
                     #else
@@ -128,8 +130,10 @@ public struct MainSplitView: View {
                         sidebarToggleButton
                     }
 
-                    ToolbarItem(placement: .navigation) {
-                        mainModeTabsControlGroup
+                    if isCorrectionFlow {
+                        ToolbarItem(placement: .navigation) {
+                            mainModeTabsSegmentedPicker
+                        }
                     }
                     #endif
 
@@ -413,46 +417,33 @@ public struct MainSplitView: View {
         .help("Afficher ou masquer la barre latérale")
     }
 
-    private var mainModeTabsControlGroup: some View {
-        ControlGroup {
-            Button {
-                if activeScreen != .correction {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                        activeScreen = .correction
+    private var isCorrectionFlow: Bool {
+        activeScreen == .correction || activeScreen == .distribution
+    }
+
+    private var mainModeTabsSegmentedPicker: some View {
+        Picker("Mode", selection: Binding(
+            get: { activeScreen == .distribution ? AppScreen.distribution : AppScreen.correction },
+            set: { newScreen in
+                if newScreen == .distribution && !appState.isOnline {
+                    return
+                }
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                    activeScreen = newScreen
+                    if newScreen == .correction {
                         appState.activeCorrectionScan = nil
                     }
                 }
-            } label: {
-                HStack(spacing: 5) {
-                    Image(systemName: activeScreen == .correction ? "checkmark.circle.fill" : "pencil.and.outline")
-                        .foregroundColor(activeScreen == .correction ? .blue : .secondary)
-                    if activeScreen == .correction {
-                        Text(appState.t(.tabCorrection))
-                            .fontWeight(.semibold)
-                    }
-                }
             }
-            .help("Atelier de correction au stylet")
+        )) {
+            Text(appState.t(.tabCorrection))
+                .tag(AppScreen.correction)
 
-            Button {
-                if activeScreen != .distribution && appState.isOnline {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                        activeScreen = .distribution
-                    }
-                }
-            } label: {
-                HStack(spacing: 5) {
-                    Image(systemName: activeScreen == .distribution ? "checkmark.circle.fill" : "paperplane.fill")
-                        .foregroundColor(activeScreen == .distribution ? Color(red: 0.05, green: 0.72, blue: 0.55) : .secondary)
-                    if activeScreen == .distribution {
-                        Text(appState.t(.tabDistribution))
-                            .fontWeight(.semibold)
-                    }
-                }
-            }
-            .disabled(!appState.isOnline)
-            .help(appState.isOnline ? "Distribution des copies aux élèves" : "Distribution disponible en ligne uniquement")
+            Text(appState.t(.tabDistribution))
+                .tag(AppScreen.distribution)
         }
+        .pickerStyle(.segmented)
+        .fixedSize()
     }
 
     // MARK: - Center Toolbar : Stepper Flottant de Distribution
