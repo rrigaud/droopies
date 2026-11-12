@@ -473,7 +473,7 @@ public struct MainSplitView: View {
 
                 if !appState.openCorrectionScans.isEmpty {
                     Button {
-                        if let scanToResume = appState.activeCorrectionScan ?? appState.openCorrectionScans.last ?? appState.openCorrectionScans.first {
+                        if let scanToResume = appState.activeCorrectionScan ?? appState.lastActiveCorrectionScan ?? appState.openCorrectionScans.last ?? appState.openCorrectionScans.first {
                             withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                                 appState.activeCorrectionScan = scanToResume
                             }

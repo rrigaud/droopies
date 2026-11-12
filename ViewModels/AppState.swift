@@ -50,11 +50,18 @@ public final class AppState: @unchecked Sendable {
     // MARK: - Atelier de Correction Multi-Onglets (Sans Modale)
     public var openCorrectionScans: [StorageManager.ScanItem] = [] {
         didSet {
+            if openCorrectionScans.isEmpty {
+                lastActiveCorrectionScan = nil
+            }
             saveOpenCorrectionSession()
         }
     }
+    public var lastActiveCorrectionScan: StorageManager.ScanItem? = nil
     public var activeCorrectionScan: StorageManager.ScanItem? = nil {
         didSet {
+            if let active = activeCorrectionScan {
+                lastActiveCorrectionScan = active
+            }
             saveOpenCorrectionSession()
         }
     }
@@ -138,7 +145,7 @@ public final class AppState: @unchecked Sendable {
     private func saveOpenCorrectionSession() {
         let paths = openCorrectionScans.map { $0.path }
         UserDefaults.standard.set(paths, forKey: "droopies_open_correction_paths")
-        if let active = activeCorrectionScan {
+        if let active = activeCorrectionScan ?? lastActiveCorrectionScan {
             UserDefaults.standard.set(active.path, forKey: "droopies_active_correction_path")
         } else {
             UserDefaults.standard.removeObject(forKey: "droopies_active_correction_path")
@@ -160,10 +167,13 @@ public final class AppState: @unchecked Sendable {
         if !restored.isEmpty {
             self.openCorrectionScans = restored
             if let activeP = activePath, let matched = restored.first(where: { $0.path == activeP || $0.rawFileName == URL(fileURLWithPath: activeP).lastPathComponent }) {
-                self.activeCorrectionScan = matched
+                self.lastActiveCorrectionScan = matched
             } else {
-                self.activeCorrectionScan = restored.first
+                self.lastActiveCorrectionScan = restored.last ?? restored.first
             }
+            // Choix 1 : Au démarrage de l'app, toujours atterrir sur la Mosaïque d'accueil.
+            // La dernière évaluation reste disponible en un clic via le bouton "Reprendre" dans la toolbar.
+            self.activeCorrectionScan = nil
         }
     }
 
