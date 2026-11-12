@@ -318,7 +318,7 @@ public struct MainSplitView: View {
             if appState.activeCorrectionScan != nil {
                 return ""
             } else {
-                return "Évaluations"
+                return "Évaluations (\(appState.availableScans.count))"
             }
         case .distribution:
             return ""
@@ -460,21 +460,6 @@ public struct MainSplitView: View {
         case .mosaic:
             if appState.activeCorrectionScan != nil {
                 topTrailingHistoryToolbar
-
-                Button {
-                    if appState.isOnline {
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                            activeScreen = .distribution
-                        }
-                    }
-                } label: {
-                    HStack(spacing: 5) {
-                        Image(systemName: "paperplane.fill")
-                        Text("Distribuer")
-                    }
-                }
-                .disabled(!appState.isOnline)
-                .help(appState.isOnline ? "Distribuer cette évaluation aux élèves" : "Distribution disponible en ligne uniquement")
             } else {
                 Button {
                     appState.showPDFImporter = true

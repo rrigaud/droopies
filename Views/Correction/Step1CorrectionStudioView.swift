@@ -114,7 +114,7 @@ public struct Step1CorrectionStudioView: View {
     @Binding public var currentStep: Int
 
     // État Mosaïque Dashboard
-    @State private var availableScans: [StorageManager.ScanItem] = []
+    private var availableScans: [StorageManager.ScanItem] { appState.availableScans }
     @State private var showMarkedToast: String? = nil
     @State private var isLoadingScans: Bool = false
     @State private var importSuccessToast: String? = nil
@@ -247,15 +247,13 @@ public struct Step1CorrectionStudioView: View {
         self.appState = appState
         self._currentStep = currentStep
 
-        let cached = appState.storageManager.listLocalScansSync()
-        self._availableScans = State(initialValue: cached)
-
+        let cached = appState.availableScans.isEmpty ? appState.storageManager.listLocalScansSync() : appState.availableScans
         var statuses: [String: ScanSyncStatus] = [:]
         for item in cached {
             statuses[item.name] = appState.isOnline ? .verifying : .offline
         }
         self._scanSyncStatuses = State(initialValue: statuses)
-        self._isCheckingCloud = State(initialValue: appState.isOnline)
+        self._isCheckingCloud = State(initialValue: false)
     }
 
     private var totalPages: Int {
@@ -381,7 +379,7 @@ public struct Step1CorrectionStudioView: View {
         }
         .onChange(of: appState.isOnline) { _, _ in
             Task {
-                await refreshAvailableScans(autoSelectFirst: false)
+                await refreshAvailableScans(autoSelectFirst: false, forceCloud: true)
             }
         }
         .fileImporter(
@@ -425,153 +423,31 @@ public struct Step1CorrectionStudioView: View {
         }
     }
 
-    // MARK: - 0. Page d'Accueil Mosaïque (Dashboard)
+    // MARK: - 0. Page d'Accueil Mosaïque (Dashboard Épuré 100% HIG)
 
     private var correctionHomeDashboardView: some View {
         ScrollView {
-            VStack(spacing: 16) {
-                // Bloc unique "Évaluations" (À corriger en premier puis corrigées, ordre alphabétique)
-                unifiedEvaluationsBlock
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 24)
-            }
-            #if os(iOS)
-            .padding(.top, 8)
-            #else
-            .padding(.top, 12)
-            #endif
-        }
-        .background(Color.clear)
-    }
-
-    // MARK: - 1. Bloc d'information Horizontal Fixe Tout en Haut
-
-    private var correctionTopInfoBanner: some View {
-        HStack(spacing: 16) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [Color.blue.opacity(0.18), Color.indigo.opacity(0.12)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 52, height: 52)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .stroke(Color.blue.opacity(0.25), lineWidth: 1)
-                    )
-
-                Image(systemName: "pencil.and.scribble")
-                    .font(.system(size: 24, weight: .semibold))
-                    .foregroundStyle(LinearGradient.electricBlue)
-            }
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Correction des évaluations")
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundColor(.primary)
-
-                Text("Ouvrez un paquet de copies numérisées pour annoter au stylet avec Apple Pencil.\nVous pouvez corriger plusieurs paquets en parallèle à votre rythme.")
-                    .font(.system(size: 12.5))
-                    .foregroundColor(.secondary)
-                    .lineLimit(nil)
-            }
-
-            Spacer(minLength: 12)
-
-            Button {
-                appState.showPDFImporter = true
-            } label: {
-                HStack(spacing: 7) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 14, weight: .bold))
-                    Text("Importer")
-                        .font(.system(size: 14, weight: .bold))
-                }
-                .padding(.horizontal, 18)
-                .padding(.vertical, 10)
-                .background(LinearGradient.electricBlue)
-                .foregroundColor(.white)
-                .clipShape(Capsule())
-                .shadow(color: Color.blue.opacity(0.35), radius: 6, y: 2)
-            }
-            .buttonStyle(.plain)
-            .help("Importer un paquet de copies (PDF)")
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .glassCard(cornerRadius: 16, strokeOpacity: 0.28)
-    }
-
-    // MARK: - 2. Bloc Unique d'Évaluations
-
-    private var unifiedEvaluationsBlock: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Entête du bloc
-            HStack(spacing: 8) {
-                Image(systemName: "doc.text.fill")
-                    .foregroundColor(.blue)
-                    .font(.system(size: 15, weight: .bold))
-
-                Text("Évaluations")
-                    .font(.system(size: 14.5, weight: .bold, design: .rounded))
-                    .foregroundColor(.primary)
-
-                BadgeView("\(availableScans.count)", style: .info)
-
-                if !pendingScans.isEmpty && !correctedScans.isEmpty {
-                    Text("(\(pendingScans.count) à corriger, \(correctedScans.count) corrigée\(correctedScans.count > 1 ? "s" : ""))")
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                }
-
-                Spacer()
-
-                if isCheckingCloud {
-                    HStack(spacing: 5) {
-                        ProgressView()
-                            .controlSize(.mini)
-                        Text("Vérification Cloud...")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(.blue)
-                    }
-                    .padding(.trailing, 4)
-                }
-
-                if isLoadingScans && !isCheckingCloud {
-                    ProgressView()
-                        .controlSize(.mini)
-                        .padding(.trailing, 4)
-                }
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-
-            Divider()
-                .padding(.horizontal, 10)
-
             if sortedEvaluations.isEmpty {
-                VStack(spacing: 12) {
+                VStack(spacing: 14) {
                     Image(systemName: "doc.badge.plus")
-                        .font(.system(size: 36))
+                        .font(.system(size: 44))
                         .foregroundColor(.secondary)
                     Text("Aucune évaluation disponible")
-                        .font(.headline)
+                        .font(.title3.bold())
                         .foregroundColor(.primary)
                     Text("Importez un document PDF de copies ou synchronisez votre dossier Cloud.")
-                        .font(.caption)
+                        .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
-                .padding(32)
-                .frame(maxWidth: .infinity)
+                .padding(48)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                LazyVGrid(columns: responsiveGridColumns, spacing: 16) {
+                LazyVGrid(columns: responsiveGridColumns, spacing: 20) {
                     ForEach(sortedEvaluations) { scan in
                         EvaluationScanCard(
                             scan: scan,
                             isCorrected: scan.isCorrected,
+                            metadata: appState.evaluationsMetadata[scan.rawFileName],
                             fileURL: appState.storageManager.localURL(for: scan.path),
                             isProcessing: processingScanId == scan.name,
                             syncStatus: currentSyncStatus(for: scan),
@@ -585,15 +461,14 @@ public struct Step1CorrectionStudioView: View {
                         )
                     }
                 }
-                .padding(14)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 20)
             }
         }
-        .background(Color(white: 0.5, opacity: 0.03))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color.primary.opacity(0.10), lineWidth: 1.2)
-        )
+        .refreshable {
+            await refreshAvailableScans(autoSelectFirst: false, forceCloud: true)
+        }
+        .background(Color.clear)
     }
 
     // MARK: - ==========================================
@@ -621,6 +496,7 @@ public struct Step1CorrectionStudioView: View {
                     recordAction(.strokeDrawing(pageIndex: currentPageIndex, oldDrawing: oldDrawing, newDrawing: newDrawing))
                     currentDrawing = newDrawing
                     saveCurrentDrawing()
+                    appState.updateEvaluationProgress(for: scan.rawFileName, annotatedPage: currentPageIndex + 1, totalPages: totalPages)
                 },
                 onUpdateStamp: { updated, oldX, oldY in
                     if abs(oldX - updated.xRatio) > 0.001 || abs(oldY - updated.yRatio) > 0.001 {
@@ -1452,6 +1328,9 @@ public struct Step1CorrectionStudioView: View {
         list.append(newItem)
         if scanStamps[name] == nil { scanStamps[name] = [:] }
         scanStamps[name]?[currentPageIndex] = list
+        if let scan = appState.activeCorrectionScan {
+            appState.updateEvaluationProgress(for: scan.rawFileName, annotatedPage: currentPageIndex + 1, totalPages: totalPages)
+        }
     }
 
     private func updatePlacedStamp(_ item: PlacedStampItem) {
@@ -1489,6 +1368,9 @@ public struct Step1CorrectionStudioView: View {
         list.append(newItem)
         if scanTexts[name] == nil { scanTexts[name] = [:] }
         scanTexts[name]?[currentPageIndex] = list
+        if let scan = appState.activeCorrectionScan {
+            appState.updateEvaluationProgress(for: scan.rawFileName, annotatedPage: currentPageIndex + 1, totalPages: totalPages)
+        }
     }
 
     private func updatePlacedText(_ item: PlacedTextItem) {
@@ -1553,55 +1435,20 @@ public struct Step1CorrectionStudioView: View {
         }
     }
 
-    private func refreshAvailableScans(autoSelectFirst: Bool = false) async {
-        if let localList = try? await appState.storageManager.listLocalScans() {
-            await MainActor.run {
-                self.availableScans = localList
-                self.isLoadingScans = false
-
-                if !appState.isOnline {
-                    for scan in localList {
-                        self.scanSyncStatuses[scan.name] = .offline
-                    }
-                } else {
-                    for scan in localList {
-                        if self.scanSyncStatuses[scan.name] == nil || self.scanSyncStatuses[scan.name] == .offline {
-                            self.scanSyncStatuses[scan.name] = .verifying
-                        }
-                    }
-                }
-
-                if autoSelectFirst && appState.activeCorrectionScan == nil, let first = localList.first {
-                    openScanInStudio(first)
-                }
-            }
-        }
-
-        guard appState.isOnline else { return }
-
+    private func refreshAvailableScans(autoSelectFirst: Bool = false, forceCloud: Bool = false) async {
+        await appState.refreshScans(forceCloud: forceCloud)
         await MainActor.run {
-            self.isCheckingCloud = true
-        }
-
-        async let syncOperation: Void = OfflineSyncEngine.shared.performSync(storageManager: appState.storageManager, isOnline: true)
-        async let visualPacing: Void = Task.sleep(nanoseconds: 600_000_000)
-        _ = await (syncOperation, try? visualPacing)
-
-        if let freshList = try? await appState.storageManager.listLocalScans() {
-            await MainActor.run {
-                self.availableScans = freshList
-                self.isCheckingCloud = false
-                withAnimation(.easeInOut(duration: 0.35)) {
-                    for scan in freshList {
-                        if self.processingScanId != scan.name {
-                            self.scanSyncStatuses[scan.name] = .synced
-                        }
-                    }
+            self.isLoadingScans = false
+            self.isCheckingCloud = appState.isCheckingScansCloud
+            for scan in appState.availableScans {
+                if !appState.isOnline {
+                    self.scanSyncStatuses[scan.name] = .offline
+                } else if self.scanSyncStatuses[scan.name] == nil || self.scanSyncStatuses[scan.name] == .offline {
+                    self.scanSyncStatuses[scan.name] = .synced
                 }
             }
-        } else {
-            await MainActor.run {
-                self.isCheckingCloud = false
+            if autoSelectFirst && appState.activeCorrectionScan == nil, let first = appState.availableScans.first {
+                openScanInStudio(first)
             }
         }
     }
@@ -1615,9 +1462,19 @@ public struct Step1CorrectionStudioView: View {
         if let doc = try? PDFEngine.shared.loadDocument(from: url) {
             self.pdfURL = url
             self.pdfDocument = doc
-            self.currentPageIndex = 0
+
+            let targetPage: Int
             if let scan = appState.activeCorrectionScan {
-                self.currentDrawing = scanDrawings[scan.name]?[0] ?? PKDrawing()
+                let saved = appState.evaluationsMetadata[scan.rawFileName]?.lastViewedPage ?? 1
+                targetPage = max(0, min(doc.pageCount - 1, saved - 1))
+            } else {
+                targetPage = 0
+            }
+            self.currentPageIndex = targetPage
+
+            if let scan = appState.activeCorrectionScan {
+                self.currentDrawing = scanDrawings[scan.name]?[targetPage] ?? PKDrawing()
+                appState.updateEvaluationProgress(for: scan.rawFileName, viewedPage: targetPage + 1, totalPages: doc.pageCount)
             } else {
                 self.currentDrawing = PKDrawing()
             }
@@ -1630,6 +1487,7 @@ public struct Step1CorrectionStudioView: View {
         currentPageIndex = newIndex
         if let scan = appState.activeCorrectionScan {
             currentDrawing = scanDrawings[scan.name]?[newIndex] ?? PKDrawing()
+            appState.updateEvaluationProgress(for: scan.rawFileName, viewedPage: newIndex + 1, totalPages: totalPages)
         }
         triggerPageHUD()
     }
@@ -1640,6 +1498,10 @@ public struct Step1CorrectionStudioView: View {
             scanDrawings[scan.name] = [:]
         }
         scanDrawings[scan.name]?[currentPageIndex] = currentDrawing
+
+        if !currentDrawing.strokes.isEmpty {
+            appState.updateEvaluationProgress(for: scan.rawFileName, annotatedPage: currentPageIndex + 1, totalPages: totalPages)
+        }
 
         if currentPageIndex == 0, let doc = pdfDocument, let url = pdfURL {
             thumbnailUpdateTask?.cancel()
@@ -1793,12 +1655,17 @@ public struct Step1CorrectionStudioView: View {
 
             try? await appState.storageManager.markScan(scan: scan, asCorrected: targetState)
 
+            if targetState {
+                let totalP = appState.evaluationsMetadata[scan.rawFileName]?.totalPages ?? 0
+                appState.updateEvaluationProgress(for: scan.rawFileName, annotatedPage: max(1, totalP), totalPages: totalP)
+            }
+
             await MainActor.run {
                 self.scanSyncStatuses[targetName] = self.appState.isOnline ? .synced : .offline
                 self.scanSyncStatuses.removeValue(forKey: scanName)
             }
 
-            await refreshAvailableScans(autoSelectFirst: false)
+            await refreshAvailableScans(autoSelectFirst: false, forceCloud: false)
 
             await MainActor.run {
                 withAnimation(.easeInOut(duration: 0.2)) {
@@ -1840,7 +1707,7 @@ public struct Step1CorrectionStudioView: View {
                 }
             }
 
-            await refreshAvailableScans(autoSelectFirst: false)
+            await refreshAvailableScans(autoSelectFirst: false, forceCloud: true)
 
             if importedCount > 0 {
                 await MainActor.run {
@@ -1859,6 +1726,7 @@ public struct Step1CorrectionStudioView: View {
 private struct EvaluationScanCard: View {
     let scan: StorageManager.ScanItem
     let isCorrected: Bool
+    let metadata: EvaluationMetadata?
     let fileURL: URL
     let isProcessing: Bool
     let syncStatus: ScanSyncStatus
@@ -1904,7 +1772,10 @@ private struct EvaluationScanCard: View {
             .disabled(isBlocked)
             .help(isBlocked ? "Vérification en cours..." : "Cliquer pour ouvrir le document dans l'atelier")
 
-            // 3. Bouton d'Action direct OU Indicateur de Modification/Vérification
+            // 3. Jauge de progression Liquid Glass
+            evaluationProgressBar
+
+            // 4. Bouton d'Action direct OU Indicateur de Modification/Vérification
             if isProcessing || syncStatus == .uploading {
                 HStack(spacing: 6) {
                     ProgressView()
@@ -1992,6 +1863,55 @@ private struct EvaluationScanCard: View {
                     lineWidth: 1
                 )
         )
+    }
+
+    private var evaluationProgressBar: some View {
+        let percent = isCorrected ? 100 : (metadata?.progressPercent ?? 0)
+        let cachedPages = PDFThumbnailMemoryCache.shared.pageCount(for: fileURL) ?? 0
+        let total = (metadata?.totalPages ?? 0) > 0 ? (metadata?.totalPages ?? 0) : cachedPages
+        let current = isCorrected ? total : min(total, max(1, metadata?.lastViewedPage ?? 1))
+        let ratio: Double = isCorrected ? 1.0 : (metadata?.progressRatio ?? (total > 0 ? Double(percent) / 100.0 : 0.0))
+
+        return VStack(spacing: 5) {
+            HStack {
+                Text(isCorrected ? "100 % terminé" : (percent > 0 ? "\(percent) % corrigé" : "Non commencé"))
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundColor(isCorrected ? Color(hex: "10B981") : (percent > 0 ? .blue : .secondary))
+
+                Spacer()
+
+                if total > 0 {
+                    Text(isCorrected ? "\(total)/\(total) p." : "\(current)/\(total) p.")
+                        .font(.system(size: 10.5, weight: .medium, design: .rounded))
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.primary.opacity(0.08))
+
+                    if ratio > 0 {
+                        Capsule()
+                            .fill(
+                                LinearGradient(
+                                    colors: isCorrected
+                                        ? [Color(hex: "10B981"), Color(hex: "059669")]
+                                        : [Color.blue, Color(hex: "38BDF8")],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .frame(width: max(6, geo.size.width * CGFloat(min(1.0, ratio))))
+                            .shadow(color: (isCorrected ? Color(hex: "10B981") : Color.blue).opacity(0.35), radius: 3, y: 1)
+                    }
+                }
+            }
+            .frame(height: 5)
+        }
+        .padding(.horizontal, 4)
+        .padding(.vertical, 2)
     }
 }
 
@@ -2148,17 +2068,7 @@ private struct PDFScanThumbnailView: View {
     private func statusBadgeView(for status: ScanSyncStatus) -> some View {
         switch status {
         case .synced:
-            HStack(spacing: 3.5) {
-                Image(systemName: "checkmark.icloud.fill")
-                    .font(.system(size: 9, weight: .bold))
-                Text("À jour")
-                    .font(.system(size: 9, weight: .bold))
-            }
-            .foregroundColor(Color(hex: "10B981"))
-            .padding(.horizontal, 6)
-            .padding(.vertical, 3)
-            .background(Color.black.opacity(0.72))
-            .clipShape(Capsule())
+            EmptyView()
 
         case .offline:
             HStack(spacing: 3.5) {

@@ -48,8 +48,124 @@ public final class AppState: @unchecked Sendable {
     public var portalSyncStatus: PortalSyncStatus = .checking
 
     // MARK: - Atelier de Correction Multi-Onglets (Sans Modale)
-    public var openCorrectionScans: [StorageManager.ScanItem] = []
-    public var activeCorrectionScan: StorageManager.ScanItem? = nil
+    public var openCorrectionScans: [StorageManager.ScanItem] = [] {
+        didSet {
+            saveOpenCorrectionSession()
+        }
+    }
+    public var activeCorrectionScan: StorageManager.ScanItem? = nil {
+        didSet {
+            saveOpenCorrectionSession()
+        }
+    }
+
+    // MARK: - Paquets d'Évaluations Disponibles (Mosaïque)
+    public var availableScans: [StorageManager.ScanItem] = []
+    public var lastScansCloudCheck: Date? = nil
+    public var isCheckingScansCloud: Bool = false
+
+    // MARK: - Métadonnées de Progression et Reprise d'Évaluation (Configuration/evaluations.json)
+    public var evaluationsMetadata: [String: EvaluationMetadata] = [:]
+    private var metadataSaveTask: Task<Void, Never>? = nil
+
+    public func updateEvaluationProgress(for rawFileName: String, viewedPage: Int? = nil, annotatedPage: Int? = nil, totalPages: Int? = nil) {
+        var meta = evaluationsMetadata[rawFileName] ?? EvaluationMetadata()
+        if let total = totalPages, total > 0 {
+            meta.totalPages = total
+        }
+        if let viewed = viewedPage, viewed > 0 {
+            meta.lastViewedPage = viewed
+        }
+        if let annotated = annotatedPage, annotated > 0 {
+            meta.maxAnnotatedPage = max(meta.maxAnnotatedPage, annotated)
+        }
+        meta.lastModified = Date()
+        evaluationsMetadata[rawFileName] = meta
+
+        // Sauvegarde temporisée (debounce de 1.2s pour ne pas saturer les I/O)
+        metadataSaveTask?.cancel()
+        metadataSaveTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 1_200_000_000)
+            guard let self = self, !Task.isCancelled else { return }
+            let currentMeta = self.evaluationsMetadata
+            try? await self.storageManager.saveEvaluationsMetadata(currentMeta)
+        }
+    }
+
+    /// Nettoie les métadonnées orphelines dont le fichier n'existe plus
+    public func cleanOrphanMetadata(existingRawFileNames: Set<String>) {
+        guard !existingRawFileNames.isEmpty else { return }
+        let initialCount = evaluationsMetadata.count
+        evaluationsMetadata = evaluationsMetadata.filter { existingRawFileNames.contains($0.key) }
+        if evaluationsMetadata.count != initialCount {
+            Task {
+                try? await storageManager.saveEvaluationsMetadata(evaluationsMetadata)
+            }
+        }
+    }
+
+    @MainActor
+    public func refreshScans(forceCloud: Bool = false) async {
+        // 1. Lecture instantanée en cache local (0 ms de latence)
+        let localList = (try? await storageManager.listLocalScans()) ?? storageManager.listLocalScansSync()
+        self.availableScans = localList
+        self.cleanOrphanMetadata(existingRawFileNames: Set(localList.map { $0.rawFileName }))
+
+        // 2. Si hors-ligne ou si une vérification a eu lieu il y a moins de 2 minutes (sans forçage manuel)
+        let now = Date()
+        if !forceCloud, let lastCheck = lastScansCloudCheck, now.timeIntervalSince(lastCheck) < 120 {
+            return
+        }
+
+        guard isOnline, !(storageManager.activeProvider is LocalStorageProvider) else {
+            self.lastScansCloudCheck = now
+            return
+        }
+
+        self.isCheckingScansCloud = true
+        defer { self.isCheckingScansCloud = false }
+
+        let sm = self.storageManager
+        await OfflineSyncEngine.shared.performSync(storageManager: sm, isOnline: true)
+        self.lastScansCloudCheck = Date()
+
+        let freshList = (try? await storageManager.listLocalScans()) ?? localList
+        self.availableScans = freshList
+        self.cleanOrphanMetadata(existingRawFileNames: Set(freshList.map { $0.rawFileName }))
+    }
+
+    /// Sauvegarde les onglets ouverts en session
+    private func saveOpenCorrectionSession() {
+        let paths = openCorrectionScans.map { $0.path }
+        UserDefaults.standard.set(paths, forKey: "droopies_open_correction_paths")
+        if let active = activeCorrectionScan {
+            UserDefaults.standard.set(active.path, forKey: "droopies_active_correction_path")
+        } else {
+            UserDefaults.standard.removeObject(forKey: "droopies_active_correction_path")
+        }
+    }
+
+    /// Restaure la session d'évaluation si disponible
+    public func restoreOpenCorrectionSession(from availableScans: [StorageManager.ScanItem]) {
+        guard openCorrectionScans.isEmpty else { return }
+        let savedPaths = UserDefaults.standard.stringArray(forKey: "droopies_open_correction_paths") ?? []
+        let activePath = UserDefaults.standard.string(forKey: "droopies_active_correction_path")
+
+        var restored: [StorageManager.ScanItem] = []
+        for path in savedPaths {
+            if let scan = availableScans.first(where: { $0.path == path || $0.rawFileName == URL(fileURLWithPath: path).lastPathComponent }) {
+                restored.append(scan)
+            }
+        }
+        if !restored.isEmpty {
+            self.openCorrectionScans = restored
+            if let activeP = activePath, let matched = restored.first(where: { $0.path == activeP || $0.rawFileName == URL(fileURLWithPath: activeP).lastPathComponent }) {
+                self.activeCorrectionScan = matched
+            } else {
+                self.activeCorrectionScan = restored.first
+            }
+        }
+    }
 
     // MARK: - Flux de Distribution (3 étapes)
     public var distributionStep: Int = 1
@@ -81,6 +197,11 @@ public final class AppState: @unchecked Sendable {
                 ?? UserDefaults.standard.string(forKey: "droopies_selected_folder")
                 ?? ""
         }
+
+        self.evaluationsMetadata = storageManager.loadLocalEvaluationsMetadataSync()
+        let localScans = storageManager.listLocalScansSync()
+        self.availableScans = localScans
+        self.restoreOpenCorrectionSession(from: localScans)
 
         // Écoute réactive des transitions réseau (Hors-Ligne <-> En Ligne)
         NetworkMonitor.shared.onStatusChange = { [weak self] online in
@@ -129,6 +250,13 @@ public final class AppState: @unchecked Sendable {
             onProgress?(0.15, "Lecture de la base élèves (eleves.json)...")
             let studs = try await storageManager.loadStudents()
             self.students = studs
+
+            let meta = await storageManager.loadEvaluationsMetadata()
+            if !meta.isEmpty {
+                self.evaluationsMetadata = meta
+            }
+
+            await refreshScans(forceCloud: false)
 
             if selectedClassId == nil, let first = classes.first {
                 self.selectedClassId = first.id

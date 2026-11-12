@@ -238,6 +238,67 @@ public final class StorageManager: @unchecked Sendable {
         }
     }
 
+    // MARK: - Gestion de `Configuration/evaluations.json` (Métadonnées & Progression)
+
+    /// Charge de manière synchrone et instantanée les métadonnées depuis le cache local (0 ms de latence)
+    public func loadLocalEvaluationsMetadataSync() -> [String: EvaluationMetadata] {
+        let relativePath = "Configuration/evaluations.json"
+        let fileURL = localURL(for: relativePath)
+        guard let data = try? Data(contentsOf: fileURL) else {
+            return [:]
+        }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return (try? decoder.decode([String: EvaluationMetadata].self, from: data)) ?? [:]
+    }
+
+    /// Charge les métadonnées depuis le Cloud si en ligne (avec mise en cache local), ou depuis le cache local si hors-ligne
+    public func loadEvaluationsMetadata() async -> [String: EvaluationMetadata] {
+        try? await localCacheProvider.createDirectory(at: "Configuration")
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+
+        // 1. Tenter depuis le Cloud si en ligne
+        if NetworkMonitor.shared.isOnline, !(activeProvider is LocalStorageProvider), activeProvider.isConnected {
+            try? await activeProvider.createDirectory(at: "Configuration")
+            if let cloudData = try? await activeProvider.readData(at: "Configuration/evaluations.json") {
+                try? await localCacheProvider.writeData(cloudData, to: "Configuration/evaluations.json")
+                if let dict = try? decoder.decode([String: EvaluationMetadata].self, from: cloudData) {
+                    return dict
+                }
+            }
+        }
+
+        // 2. Si hors-ligne ou fallback, lire depuis le cache local
+        if let localData = try? await localCacheProvider.readData(at: "Configuration/evaluations.json") {
+            if let dict = try? decoder.decode([String: EvaluationMetadata].self, from: localData) {
+                return dict
+            }
+        }
+
+        return [:]
+    }
+
+    /// Sauvegarde les métadonnées dans `Configuration/evaluations.json` localement et sur le Cloud
+    public func saveEvaluationsMetadata(_ metadata: [String: EvaluationMetadata]) async throws {
+        try? await localCacheProvider.createDirectory(at: "Configuration")
+
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.dateEncodingStrategy = .iso8601
+        let data = try encoder.encode(metadata)
+
+        // Sauvegarde impérative dans le cache local
+        try await localCacheProvider.writeData(data, to: "Configuration/evaluations.json")
+
+        // Sauvegarde vers le Cloud si en ligne
+        if NetworkMonitor.shared.isOnline, !(activeProvider is LocalStorageProvider) {
+            try? await activeProvider.createDirectory(at: "Configuration")
+            try? await activeProvider.writeData(data, to: "Configuration/evaluations.json")
+        }
+    }
+
     // MARK: - Gestion de l'icône personnalisée du portail (`Configuration/Icone Portail.png`)
 
     /// Charge les données de l'icône personnalisée du portail si disponible
