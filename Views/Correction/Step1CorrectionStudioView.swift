@@ -240,7 +240,7 @@ public struct Step1CorrectionStudioView: View {
         if let engineStatus = OfflineSyncEngine.shared.fileSyncStatuses[scan.name] {
             return engineStatus
         }
-        return appState.isOnline ? .verifying : .offline
+        return appState.isOnline ? .synced : .offline
     }
 
     public init(appState: AppState, currentStep: Binding<Int>) {
@@ -250,7 +250,7 @@ public struct Step1CorrectionStudioView: View {
         let cached = appState.availableScans.isEmpty ? appState.storageManager.listLocalScansSync() : appState.availableScans
         var statuses: [String: ScanSyncStatus] = [:]
         for item in cached {
-            statuses[item.name] = appState.isOnline ? .verifying : .offline
+            statuses[item.name] = appState.isOnline ? .synced : .offline
         }
         self._scanSyncStatuses = State(initialValue: statuses)
         self._isCheckingCloud = State(initialValue: false)
@@ -1441,11 +1441,7 @@ public struct Step1CorrectionStudioView: View {
             self.isLoadingScans = false
             self.isCheckingCloud = appState.isCheckingScansCloud
             for scan in appState.availableScans {
-                if !appState.isOnline {
-                    self.scanSyncStatuses[scan.name] = .offline
-                } else if self.scanSyncStatuses[scan.name] == nil || self.scanSyncStatuses[scan.name] == .offline {
-                    self.scanSyncStatuses[scan.name] = .synced
-                }
+                self.scanSyncStatuses[scan.name] = appState.isOnline ? .synced : .offline
             }
             if autoSelectFirst && appState.activeCorrectionScan == nil, let first = appState.availableScans.first {
                 openScanInStudio(first)
@@ -1735,7 +1731,7 @@ private struct EvaluationScanCard: View {
     let onToggleStatus: () -> Void
 
     private var isBlocked: Bool {
-        isProcessing || syncStatus == .verifying || syncStatus == .downloading || syncStatus == .uploading
+        isProcessing || syncStatus == .uploading
     }
 
     var body: some View {
@@ -1770,7 +1766,7 @@ private struct EvaluationScanCard: View {
             }
             .buttonStyle(.plain)
             .disabled(isBlocked)
-            .help(isBlocked ? "Vérification en cours..." : "Cliquer pour ouvrir le document dans l'atelier")
+            .help("Cliquer pour ouvrir le document dans l'atelier")
 
             // 3. Jauge de progression Liquid Glass
             evaluationProgressBar
@@ -1791,23 +1787,6 @@ private struct EvaluationScanCard: View {
                 .overlay(
                     Capsule()
                         .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
-                )
-            } else if syncStatus == .verifying || syncStatus == .downloading {
-                HStack(spacing: 6) {
-                    ProgressView()
-                        .controlSize(.mini)
-                        .tint(.secondary)
-                    Text(syncStatus == .verifying ? "Vérification..." : "Téléchargement...")
-                        .font(.system(size: 10.5, weight: .semibold))
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 6)
-                .background(Color.primary.opacity(0.04))
-                .clipShape(Capsule())
-                .overlay(
-                    Capsule()
-                        .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
                 )
             } else {
                 Button {
@@ -2013,7 +1992,7 @@ private struct PDFScanThumbnailView: View {
             )
             .shadow(color: Color.black.opacity(0.14), radius: 6, x: 0, y: 3)
 
-            if syncStatus == .verifying || syncStatus == .downloading || syncStatus == .uploading {
+            if syncStatus == .uploading || syncStatus == .downloading {
                 ZStack {
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
                         .fill(.ultraThinMaterial)
@@ -2038,12 +2017,9 @@ private struct PDFScanThumbnailView: View {
                 .transition(.opacity)
             }
 
-            HStack(alignment: .center) {
-                statusBadgeView(for: syncStatus)
-
-                Spacer(minLength: 4)
-
-                if pageCount > 0 {
+            if pageCount > 0 {
+                HStack {
+                    Spacer()
                     HStack(spacing: 3) {
                         Image(systemName: "doc.on.doc")
                             .font(.system(size: 8))
@@ -2056,78 +2032,16 @@ private struct PDFScanThumbnailView: View {
                     .foregroundColor(.white)
                     .clipShape(Capsule())
                 }
+                .padding(6)
             }
-            .padding(6)
         }
         .task(id: "\(url.path)_\(updateToken.uuidString)") {
             loadThumbnail()
         }
     }
 
-    @ViewBuilder
-    private func statusBadgeView(for status: ScanSyncStatus) -> some View {
-        switch status {
-        case .synced:
-            EmptyView()
-
-        case .offline:
-            HStack(spacing: 3.5) {
-                Image(systemName: "internaldrive.fill")
-                    .font(.system(size: 9, weight: .bold))
-                Text("Local")
-                    .font(.system(size: 9, weight: .bold))
-            }
-            .foregroundColor(Color(hex: "F59E0B"))
-            .padding(.horizontal, 6)
-            .padding(.vertical, 3)
-            .background(Color.black.opacity(0.72))
-            .clipShape(Capsule())
-
-        case .verifying:
-            HStack(spacing: 3.5) {
-                Image(systemName: "arrow.triangle.2.circlepath")
-                    .font(.system(size: 9, weight: .bold))
-                Text("Vérif...")
-                    .font(.system(size: 9, weight: .bold))
-            }
-            .foregroundColor(.cyan)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 3)
-            .background(Color.black.opacity(0.72))
-            .clipShape(Capsule())
-
-        case .downloading:
-            HStack(spacing: 3.5) {
-                Image(systemName: "arrow.down.circle.fill")
-                    .font(.system(size: 9, weight: .bold))
-                Text("Reçu...")
-                    .font(.system(size: 9, weight: .bold))
-            }
-            .foregroundColor(Color(hex: "A855F7"))
-            .padding(.horizontal, 6)
-            .padding(.vertical, 3)
-            .background(Color.black.opacity(0.72))
-            .clipShape(Capsule())
-
-        case .uploading:
-            HStack(spacing: 3.5) {
-                Image(systemName: "arrow.up.circle.fill")
-                    .font(.system(size: 9, weight: .bold))
-                Text("Envoi...")
-                    .font(.system(size: 9, weight: .bold))
-            }
-            .foregroundColor(Color(hex: "3B82F6"))
-            .padding(.horizontal, 6)
-            .padding(.vertical, 3)
-            .background(Color.black.opacity(0.72))
-            .clipShape(Capsule())
-        }
-    }
-
     private func overlayLabel(for status: ScanSyncStatus) -> String {
         switch status {
-        case .verifying:
-            return "Vérification Cloud..."
         case .downloading:
             return "Téléchargement..."
         case .uploading:
