@@ -43,11 +43,14 @@ public enum AppScreen: String, Hashable, CaseIterable {
 public struct MainSplitView: View {
     @Bindable public var appState: AppState
 
-    // Écran actif (Correction par défaut, coeur de l'usage iPad)
-    @State private var activeScreen: AppScreen = .correction
-
     // État d'ouverture de la sidebar flottante
     @State private var isSidebarOpen: Bool = false
+
+    // Modales de second niveau (100% natives)
+    @State private var showStudentsSheet: Bool = false
+    @State private var showPortalSheet: Bool = false
+    @State private var showSettingsSheet: Bool = false
+    @State private var showDistributionSheet: Bool = false
 
     // Boîtes de dialogue Cloud
     @State private var showFolderPicker: Bool = false
@@ -66,30 +69,14 @@ public struct MainSplitView: View {
 
     public var body: some View {
         GeometryReader { geometry in
-            let isCompact = geometry.size.width < 760
-            let isPortrait = geometry.size.height > geometry.size.width
-
             NavigationStack {
                 ZStack(alignment: .topLeading) {
                     // MARK: - 1. Fond Ambiant Liquid Glass & Contenu Plein Écran
                     LiquidGlassBackground()
 
-                    // Contenu principal occupant 100% de la fenêtre (architecture native Apple)
-                    Group {
-                        switch activeScreen {
-                        case .correction:
-                            Step1CorrectionStudioView(appState: appState, currentStep: .constant(1))
-                        case .distribution:
-                            CorrectionWorkflowView(appState: appState)
-                        case .students:
-                            StudentsManagementView(appState: appState)
-                        case .portal:
-                            PortalSettingsView(appState: appState)
-                        case .settings:
-                            AppSettingsView(appState: appState)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    // Contenu principal : Toujours l'Atelier / Mosaïque des Devoirs
+                    Step1CorrectionStudioView(appState: appState, currentStep: .constant(1))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                     // MARK: - 2. Fond Estompé (Dimmer) pour fermer la sidebar en cliquant ailleurs
                     if isSidebarOpen {
@@ -118,39 +105,58 @@ public struct MainSplitView: View {
                 .toolbar {
                     #if os(macOS)
                     ToolbarItem(placement: .navigation) {
-                        HStack(spacing: 10) {
-                            sidebarToggleButton
-                            if isCorrectionFlow {
-                                mainModeTabsSegmentedPicker
-                            }
-                        }
+                        leadingToolbarItem
                     }
                     #else
                     ToolbarItem(placement: .topBarLeading) {
-                        sidebarToggleButton
-                    }
-
-                    if isCorrectionFlow {
-                        ToolbarItem(placement: .navigation) {
-                            mainModeTabsSegmentedPicker
-                        }
+                        leadingToolbarItem
                     }
                     #endif
 
-                    if hasCenterToolbar {
+                    if let activeScan = appState.activeCorrectionScan {
                         ToolbarItem(placement: .principal) {
-                            topCenterToolbar(isCompact: isCompact, isPortrait: isPortrait)
+                            correctionDocumentTitleMenu(activeScan: activeScan)
                         }
                     }
 
                     ToolbarItemGroup(placement: .primaryAction) {
-                        topTrailingToolbar
+                        trailingToolbarItem
                     }
                 }
                 #if os(macOS)
                 .toolbarBackground(.hidden, for: .windowToolbar)
                 #endif
             }
+        }
+        // MARK: - Modale Distribution Plein Écran
+        #if os(iOS)
+        .fullScreenCover(isPresented: $showDistributionSheet) {
+            distributionModalView
+        }
+        .fullScreenCover(isPresented: $showStudentsSheet) {
+            studentsModalView
+        }
+        #else
+        .sheet(isPresented: $showDistributionSheet) {
+            distributionModalView
+                .frame(minWidth: 1000, minHeight: 700)
+        }
+        .sheet(isPresented: $showStudentsSheet) {
+            studentsModalView
+                .frame(minWidth: 950, minHeight: 700)
+        }
+        #endif
+        .sheet(isPresented: $showPortalSheet) {
+            portalModalView
+                #if os(macOS)
+                .frame(minWidth: 850, minHeight: 650)
+                #endif
+        }
+        .sheet(isPresented: $showSettingsSheet) {
+            settingsModalView
+                #if os(macOS)
+                .frame(minWidth: 750, minHeight: 600)
+                #endif
         }
         .sheet(isPresented: $showFolderPicker) {
             CloudFolderPickerSheet(
@@ -207,10 +213,19 @@ public struct MainSplitView: View {
                     ])
                 }
             }
+            if CommandLine.arguments.contains("-testResumeButton") {
+                let scans = appState.storageManager.listLocalScansSync()
+                for scan in scans.prefix(2) {
+                    if !appState.openCorrectionScans.contains(where: { $0.id == scan.id }) {
+                        appState.openCorrectionScans.append(scan)
+                    }
+                }
+                appState.activeCorrectionScan = nil
+            }
             if CommandLine.arguments.contains("-testStudents") {
-                activeScreen = .students
+                showStudentsSheet = true
             } else if CommandLine.arguments.contains("-testDistributionStep2") {
-                activeScreen = .distribution
+                showDistributionSheet = true
                 appState.distributionStep = 2
                 if appState.currentEvaluation == nil {
                     let defaultClass = appState.classes.first?.name ?? "3e1"
@@ -249,10 +264,10 @@ public struct MainSplitView: View {
                     appState.selectedClassId = defaultClassId
                 }
             } else if CommandLine.arguments.contains("-testDistributionStep3") {
-                activeScreen = .distribution
+                showDistributionSheet = true
                 appState.distributionStep = 3
             } else if CommandLine.arguments.contains("-testDistribution") {
-                activeScreen = .distribution
+                showDistributionSheet = true
                 if CommandLine.arguments.contains("-testMultipleTabs") && appState.openCorrectionScans.isEmpty {
                     let scans = appState.storageManager.listLocalScansSync()
                     for scan in scans.prefix(3) {
@@ -261,56 +276,49 @@ public struct MainSplitView: View {
                         }
                     }
                 }
-            } else if CommandLine.arguments.contains("-testCorrectionStudio") || CommandLine.arguments.contains("-testMultipleTabs") || CommandLine.arguments.contains("-testTwoTabs") {
-                activeScreen = .correction
             } else if CommandLine.arguments.contains("-testPortal") {
-                activeScreen = .portal
-            }
-        }
-        .onChange(of: activeScreen) { _, newScreen in
-            if newScreen == .distribution && !appState.isOnline {
-                activeScreen = .correction
-                return
-            }
-            if newScreen == .correction {
-                appState.activeCorrectionScan = nil
-            }
-            if isSidebarOpen {
-                isSidebarOpen = false
+                showPortalSheet = true
             }
         }
     }
 
-    // MARK: - Outils Contextuels Centraux
-
-    private var hasCenterToolbar: Bool {
-        switch activeScreen {
-        case .correction:
-            return appState.activeCorrectionScan != nil
-        case .distribution:
-            return appState.isOnline
-        default:
-            return false
-        }
-    }
+    // MARK: - Toolbar Haut-Gauche (Dynamique : Bouton Sidebar sur Mosaïque, Bouton Retour dans l'Atelier)
 
     @ViewBuilder
-    private func topCenterToolbar(isCompact: Bool, isPortrait: Bool) -> some View {
-        switch activeScreen {
-        case .correction:
-            if let activeScan = appState.activeCorrectionScan {
-                correctionDocumentTitleMenu(activeScan: activeScan)
+    private var leadingToolbarItem: some View {
+        if appState.activeCorrectionScan != nil {
+            Button {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                    appState.activeCorrectionScan = nil
+                }
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 14, weight: .semibold))
+                    Text("Mosaïque")
+                }
             }
-
-        case .distribution:
-            distributionStepperToolbar(isCompact: isCompact || isPortrait)
-
-        default:
-            EmptyView()
+            .help("Retourner à la mosaïque des devoirs (la session de correction reste ouverte)")
+        } else {
+            sidebarToggleButton
         }
     }
 
-    // MARK: - Center Toolbar : Menu Titre Document d'Évaluation (Approche 1 Aperçu / Pages)
+    private var sidebarToggleButton: some View {
+        Button {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                isSidebarOpen.toggle()
+            }
+        } label: {
+            Image(systemName: isSidebarOpen ? "sidebar.left" : "sidebar.leading")
+                .font(.system(size: 14, weight: .medium))
+                .frame(width: 32, height: 32)
+                .contentShape(Circle())
+        }
+        .help("Afficher ou masquer la barre latérale")
+    }
+
+    // MARK: - Toolbar Centre : Menu Titre Document d'Évaluation (Approche 1 Aperçu / Pages)
 
     private func correctionDocumentTitleMenu(activeScan: StorageManager.ScanItem) -> some View {
         Menu {
@@ -318,7 +326,6 @@ public struct MainSplitView: View {
                 ForEach(appState.openCorrectionScans) { scan in
                     Button {
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                            activeScreen = .correction
                             appState.activeCorrectionScan = scan
                             if isSidebarOpen {
                                 isSidebarOpen = false
@@ -401,64 +408,48 @@ public struct MainSplitView: View {
         }
     }
 
-    // MARK: - Toolbar Haut-Gauche : Bouton Sidebar, Sélecteur de Mode et Retour Mosaïque
+    // MARK: - Toolbar Haut-Droite (Dynamique : Reprendre sur Mosaïque, Undo/Redo & Distribuer dans l'Atelier)
 
-    private var sidebarToggleButton: some View {
-        Button {
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                isSidebarOpen.toggle()
-            }
-        } label: {
-            Image(systemName: isSidebarOpen ? "sidebar.left" : "sidebar.leading")
-                .font(.system(size: 14, weight: .medium))
-                .frame(width: 32, height: 32)
-                .contentShape(Circle())
-        }
-        .help("Afficher ou masquer la barre latérale")
-    }
+    @ViewBuilder
+    private var trailingToolbarItem: some View {
+        if appState.activeCorrectionScan != nil {
+            topTrailingHistoryToolbar
 
-    private var isCorrectionFlow: Bool {
-        activeScreen == .correction || activeScreen == .distribution
-    }
-
-    private var mainModeTabsSegmentedPicker: some View {
-        Picker("Mode", selection: Binding(
-            get: { activeScreen == .distribution ? AppScreen.distribution : AppScreen.correction },
-            set: { newScreen in
-                if newScreen == .distribution && !appState.isOnline {
-                    return
+            Button {
+                if appState.isOnline {
+                    showDistributionSheet = true
                 }
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                    activeScreen = newScreen
-                    if newScreen == .correction {
-                        appState.activeCorrectionScan = nil
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "paperplane.fill")
+                    Text("Distribuer")
+                }
+            }
+            .disabled(!appState.isOnline)
+            .help(appState.isOnline ? "Distribuer cette évaluation aux élèves" : "Distribution disponible en ligne uniquement")
+        } else {
+            if !appState.openCorrectionScans.isEmpty {
+                Button {
+                    if let scanToResume = appState.activeCorrectionScan ?? appState.openCorrectionScans.last ?? appState.openCorrectionScans.first {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            appState.activeCorrectionScan = scanToResume
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "pencil.and.outline")
+                        Text("Reprendre (\(appState.openCorrectionScans.count))")
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 11, weight: .bold))
                     }
                 }
+                .buttonStyle(.borderedProminent)
+                .help("Reprendre la correction des évaluations ouvertes")
             }
-        )) {
-            Text(appState.t(.tabCorrection))
-                .tag(AppScreen.correction)
-
-            Text(appState.t(.tabDistribution))
-                .tag(AppScreen.distribution)
         }
-        .pickerStyle(.segmented)
-        .fixedSize()
     }
 
-    // MARK: - Center Toolbar : Stepper Flottant de Distribution
-
-    private func distributionStepperToolbar(isCompact: Bool) -> some View {
-        Picker("Étape", selection: $appState.distributionStep) {
-            Text(isCompact ? "1. Fichier" : "1. Chargement").tag(1)
-            Text(isCompact ? "2. Élèves" : "2. Identification").tag(2)
-            Text("3. Envoi").tag(3)
-        }
-        .pickerStyle(.segmented)
-        .fixedSize()
-    }
-
-    // MARK: - Toolbar 2 : Haut-Droite (Historique Undo/Redo Dédié à la Correction)
+    // MARK: - Toolbar : Historique Undo/Redo Dédié à la Correction
 
     private var topTrailingHistoryToolbar: some View {
         ControlGroup {
@@ -480,25 +471,123 @@ public struct MainSplitView: View {
         }
     }
 
-    // MARK: - Toolbar 2 : Haut-Droite (Actions Contextuelles Primaires 100% Natives)
+    // MARK: - Center Toolbar : Stepper Flottant de Distribution
 
-    @ViewBuilder
-    private var topTrailingToolbar: some View {
-        switch activeScreen {
-        case .correction:
-            if appState.activeCorrectionScan != nil {
-                topTrailingHistoryToolbar
-            }
-        case .students:
-            studentsActionToolbar
-        case .portal:
-            portalActionToolbar
-        default:
-            EmptyView()
+    private func distributionStepperToolbar(isCompact: Bool) -> some View {
+        Picker("Étape", selection: $appState.distributionStep) {
+            Text(isCompact ? "1. Fichier" : "1. Chargement").tag(1)
+            Text(isCompact ? "2. Élèves" : "2. Identification").tag(2)
+            Text("3. Envoi").tag(3)
+        }
+        .pickerStyle(.segmented)
+        .fixedSize()
+    }
+
+    // MARK: - Modales Secondaires 100% Natives
+
+    private var distributionModalView: some View {
+        NavigationStack {
+            CorrectionWorkflowView(appState: appState)
+                .navigationTitle("Distribution des copies")
+                #if os(iOS)
+                .navigationBarTitleDisplayMode(.inline)
+                #endif
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button {
+                            showDistributionSheet = false
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "xmark")
+                                Text("Fermer")
+                            }
+                        }
+                    }
+
+                    if appState.isOnline {
+                        ToolbarItem(placement: .principal) {
+                            distributionStepperToolbar(isCompact: false)
+                        }
+                    }
+                }
         }
     }
 
-    // MARK: - Actions Gestion des Élèves (Haut-Droite)
+    private var studentsModalView: some View {
+        NavigationStack {
+            StudentsManagementView(appState: appState)
+                .navigationTitle("Gestion des Élèves")
+                #if os(iOS)
+                .navigationBarTitleDisplayMode(.inline)
+                #endif
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button {
+                            showStudentsSheet = false
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "xmark")
+                                Text("Fermer")
+                            }
+                        }
+                    }
+
+                    ToolbarItemGroup(placement: .primaryAction) {
+                        studentsActionToolbar
+                    }
+                }
+        }
+    }
+
+    private var portalModalView: some View {
+        NavigationStack {
+            PortalSettingsView(appState: appState)
+                .navigationTitle("Portail Élèves")
+                #if os(iOS)
+                .navigationBarTitleDisplayMode(.inline)
+                #endif
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button {
+                            showPortalSheet = false
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "xmark")
+                                Text("Fermer")
+                            }
+                        }
+                    }
+
+                    ToolbarItemGroup(placement: .primaryAction) {
+                        portalActionToolbar
+                    }
+                }
+        }
+    }
+
+    private var settingsModalView: some View {
+        NavigationStack {
+            AppSettingsView(appState: appState)
+                .navigationTitle("Réglages & Cloud")
+                #if os(iOS)
+                .navigationBarTitleDisplayMode(.inline)
+                #endif
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button {
+                            showSettingsSheet = false
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "xmark")
+                                Text("Fermer")
+                            }
+                        }
+                    }
+                }
+        }
+    }
+
+    // MARK: - Actions Gestion des Élèves (Modale)
 
     private var studentsActionToolbar: some View {
         ControlGroup {
@@ -530,7 +619,7 @@ public struct MainSplitView: View {
         }
     }
 
-    // MARK: - Actions Portail Élèves (Haut-Droite)
+    // MARK: - Actions Portail Élèves (Modale)
 
     private var portalActionToolbar: some View {
         Button {
@@ -615,8 +704,43 @@ public struct MainSplitView: View {
                         .foregroundColor(.secondary.opacity(0.8))
                         .padding(.horizontal, 8)
 
-                    sidebarNavigationRow(screen: .correction, title: appState.t(.tabCorrection))
-                    sidebarNavigationRow(screen: .distribution, title: appState.t(.tabDistribution))
+                    sidebarActionRow(
+                        icon: "square.grid.2x2.fill",
+                        tintColor: Color(red: 0.15, green: 0.45, blue: 1.0),
+                        title: "Mosaïque des devoirs",
+                        isSelected: appState.activeCorrectionScan == nil
+                    ) {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            appState.activeCorrectionScan = nil
+                            isSidebarOpen = false
+                        }
+                    }
+
+                    if let activeScan = appState.activeCorrectionScan {
+                        sidebarActionRow(
+                            icon: "pencil.and.outline",
+                            tintColor: Color(red: 0.15, green: 0.45, blue: 1.0),
+                            title: "Correction en cours",
+                            badgeText: activeScan.cleanTitle,
+                            isSelected: true
+                        ) {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                isSidebarOpen = false
+                            }
+                        }
+                    }
+
+                    sidebarActionRow(
+                        icon: "paperplane.fill",
+                        tintColor: Color(red: 0.05, green: 0.72, blue: 0.55),
+                        title: appState.t(.tabDistribution),
+                        isAvailable: appState.isOnline
+                    ) {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            isSidebarOpen = false
+                            showDistributionSheet = true
+                        }
+                    }
                 }
 
                 // Section Administration Scolaire
@@ -626,12 +750,28 @@ public struct MainSplitView: View {
                         .foregroundColor(.secondary.opacity(0.8))
                         .padding(.horizontal, 8)
 
-                    sidebarNavigationRow(
-                        screen: .students,
+                    sidebarActionRow(
+                        icon: "person.2.fill",
+                        tintColor: Color(red: 0.55, green: 0.35, blue: 0.95),
                         title: appState.t(.navStudents),
                         badgeText: "\(appState.students.count)"
-                    )
-                    sidebarNavigationRow(screen: .portal, title: appState.t(.navPortal))
+                    ) {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            isSidebarOpen = false
+                            showStudentsSheet = true
+                        }
+                    }
+
+                    sidebarActionRow(
+                        icon: "globe",
+                        tintColor: Color(red: 0.05, green: 0.75, blue: 0.45),
+                        title: appState.t(.navPortal)
+                    ) {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            isSidebarOpen = false
+                            showPortalSheet = true
+                        }
+                    }
                 }
 
                 // Section Configuration
@@ -641,7 +781,16 @@ public struct MainSplitView: View {
                         .foregroundColor(.secondary.opacity(0.8))
                         .padding(.horizontal, 8)
 
-                    sidebarNavigationRow(screen: .settings, title: appState.t(.navSettings))
+                    sidebarActionRow(
+                        icon: "gearshape.fill",
+                        tintColor: Color(white: 0.45),
+                        title: appState.t(.navSettings)
+                    ) {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            isSidebarOpen = false
+                            showSettingsSheet = true
+                        }
+                    }
                 }
             }
 
@@ -672,46 +821,41 @@ public struct MainSplitView: View {
     }
 
     @ViewBuilder
-    private func sidebarNavigationRow(
-        screen: AppScreen,
+    private func sidebarActionRow(
+        icon: String,
+        tintColor: Color,
         title: String,
-        badgeText: String? = nil
+        badgeText: String? = nil,
+        isSelected: Bool = false,
+        isAvailable: Bool = true,
+        action: @escaping () -> Void
     ) -> some View {
-        let isSelected = activeScreen == screen
-        let isScreenAvailable = (screen == .correction || screen == .settings || appState.isOnline)
-
         Button {
-            guard isScreenAvailable else { return }
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                activeScreen = screen
-                if screen == .correction {
-                    appState.activeCorrectionScan = nil
-                }
-                isSidebarOpen = false
-            }
+            guard isAvailable else { return }
+            action()
         } label: {
             HStack(spacing: 10) {
-                Image(systemName: screen.icon)
+                Image(systemName: icon)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.white)
                     .frame(width: 28, height: 28)
                     .background(
                         LinearGradient(
-                            colors: [screen.tintColor, screen.tintColor.opacity(0.8)],
+                            colors: [tintColor, tintColor.opacity(0.8)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
                     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    .shadow(color: screen.tintColor.opacity(isSelected ? 0.4 : 0.15), radius: 3, y: 1)
+                    .shadow(color: tintColor.opacity(isSelected ? 0.4 : 0.15), radius: 3, y: 1)
 
                 Text(title)
                     .font(.system(size: 13, weight: isSelected ? .bold : .medium))
-                    .foregroundColor(isSelected ? .primary : (isScreenAvailable ? .secondary : .secondary.opacity(0.4)))
+                    .foregroundColor(isSelected ? .primary : (isAvailable ? .secondary : .secondary.opacity(0.4)))
 
                 Spacer()
 
-                if !isScreenAvailable {
+                if !isAvailable {
                     Text("Hors-ligne")
                         .font(.system(size: 9.5, weight: .semibold))
                         .padding(.horizontal, 6)
@@ -728,7 +872,7 @@ public struct MainSplitView: View {
                         .clipShape(Capsule())
                 }
             }
-            .opacity(isScreenAvailable ? 1.0 : 0.55)
+            .opacity(isAvailable ? 1.0 : 0.55)
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
             .background(
@@ -743,7 +887,7 @@ public struct MainSplitView: View {
             )
         }
         .buttonStyle(.plain)
-        .disabled(!isScreenAvailable)
+        .disabled(!isAvailable)
     }
 
     // MARK: - Bloc d'information et d'actions Cloud (Sidebar)
