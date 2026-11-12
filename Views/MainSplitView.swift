@@ -13,7 +13,7 @@
 import SwiftUI
 
 public enum AppScreen: String, Hashable, CaseIterable {
-    case mosaic = "Mosaïque"
+    case mosaic = "Évaluations"
     case distribution = "Distribution"
     case students = "Gestion des Élèves"
     case portal = "Portail Élèves"
@@ -21,7 +21,7 @@ public enum AppScreen: String, Hashable, CaseIterable {
 
     public var icon: String {
         switch self {
-        case .mosaic: return "square.grid.2x2.fill"
+        case .mosaic: return "doc.text.fill"
         case .distribution: return "paperplane.fill"
         case .students: return "person.2.fill"
         case .portal: return "globe"
@@ -108,7 +108,7 @@ public struct MainSplitView: View {
                             .zIndex(20)
                     }
                 }
-                .navigationTitle("")
+                .navigationTitle(currentNavigationTitle)
                 #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
                 #endif
@@ -123,8 +123,10 @@ public struct MainSplitView: View {
                     }
                     #endif
 
-                    ToolbarItem(placement: .principal) {
-                        principalToolbarItem
+                    if hasPrincipalToolbarItem {
+                        ToolbarItem(placement: .principal) {
+                            principalToolbarItem
+                        }
                     }
 
                     ToolbarItemGroup(placement: .primaryAction) {
@@ -288,7 +290,7 @@ public struct MainSplitView: View {
                     .frame(width: 32, height: 32)
                     .contentShape(Circle())
             }
-            .help("Retour à la mosaïque des devoirs")
+            .help("Retour aux évaluations")
         } else {
             sidebarToggleButton
         }
@@ -308,7 +310,39 @@ public struct MainSplitView: View {
         .help("Afficher ou masquer la barre latérale")
     }
 
-    // MARK: - Toolbar Centre : Document ou Stepper
+    // MARK: - Titre de Navigation Natif (100% HIG Apple, centré sans bulle)
+
+    private var currentNavigationTitle: String {
+        switch activeScreen {
+        case .mosaic:
+            if appState.activeCorrectionScan != nil {
+                return ""
+            } else {
+                return "Évaluations"
+            }
+        case .distribution:
+            return ""
+        case .students:
+            return appState.t(.studentsTitle)
+        case .portal:
+            return appState.t(.navPortal)
+        case .settings:
+            return appState.t(.settingsTitle)
+        }
+    }
+
+    private var hasPrincipalToolbarItem: Bool {
+        switch activeScreen {
+        case .mosaic:
+            return appState.activeCorrectionScan != nil
+        case .distribution:
+            return appState.isOnline
+        default:
+            return false
+        }
+    }
+
+    // MARK: - Toolbar Centre : Document ou Stepper (Uniquement contrôles interactifs)
 
     @ViewBuilder
     private var principalToolbarItem: some View {
@@ -316,23 +350,13 @@ public struct MainSplitView: View {
         case .mosaic:
             if let activeScan = appState.activeCorrectionScan {
                 correctionDocumentTitleMenu(activeScan: activeScan)
-            } else {
-                Text("Mosaïque des devoirs")
-                    .font(.headline)
             }
         case .distribution:
             if appState.isOnline {
                 distributionStepperToolbar(isCompact: false)
             }
-        case .students:
-            Text(appState.t(.studentsTitle))
-                .font(.headline)
-        case .portal:
-            Text(appState.t(.navPortal))
-                .font(.headline)
-        case .settings:
-            Text(appState.t(.settingsTitle))
-                .font(.headline)
+        default:
+            EmptyView()
         }
     }
 
@@ -388,7 +412,7 @@ public struct MainSplitView: View {
                     }
                 }
             } label: {
-                Label("Retour à la mosaïque", systemImage: "square.grid.2x2")
+                Label("Retour aux évaluations", systemImage: "doc.text")
             }
         } label: {
             HStack(spacing: 6) {
@@ -452,6 +476,16 @@ public struct MainSplitView: View {
                 .disabled(!appState.isOnline)
                 .help(appState.isOnline ? "Distribuer cette évaluation aux élèves" : "Distribution disponible en ligne uniquement")
             } else {
+                Button {
+                    appState.showPDFImporter = true
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "plus")
+                        Text("Importer")
+                    }
+                }
+                .help("Importer un paquet de copies (PDF)")
+
                 if !appState.openCorrectionScans.isEmpty {
                     Button {
                         if let scanToResume = appState.activeCorrectionScan ?? appState.openCorrectionScans.last ?? appState.openCorrectionScans.first {
@@ -470,17 +504,6 @@ public struct MainSplitView: View {
                     .buttonStyle(.borderedProminent)
                     .help("Reprendre la correction des évaluations ouvertes")
                 }
-
-                Button {
-                    appState.showPDFImporter = true
-                } label: {
-                    HStack(spacing: 5) {
-                        Image(systemName: "plus")
-                        Text("Importer")
-                    }
-                }
-                .buttonStyle(.bordered)
-                .help("Importer un paquet de copies (PDF)")
             }
 
         case .distribution:
@@ -649,9 +672,9 @@ public struct MainSplitView: View {
                         .padding(.horizontal, 8)
 
                     sidebarActionRow(
-                        icon: "square.grid.2x2.fill",
+                        icon: "doc.text.fill",
                         tintColor: Color(red: 0.15, green: 0.45, blue: 1.0),
-                        title: "Mosaïque des devoirs",
+                        title: "Évaluations",
                         isSelected: activeScreen == .mosaic && appState.activeCorrectionScan == nil
                     ) {
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
