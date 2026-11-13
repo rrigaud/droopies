@@ -375,14 +375,10 @@ public struct Step1CorrectionStudioView: View {
             }
         }
 
-        // Tri : D'abord les non corrigées puis les corrigées, triées par ordre alphabétique
-        let pending = list
-            .filter { scan in !(scan.isCorrected || appState.evaluationsMetadata[scan.rawFileName]?.isEffectivelyCompleted == true) }
-            .sorted { $0.cleanTitle.localizedCaseInsensitiveCompare($1.cleanTitle) == .orderedAscending }
-        let corrected = list
-            .filter { scan in scan.isCorrected || appState.evaluationsMetadata[scan.rawFileName]?.isEffectivelyCompleted == true }
-            .sorted { $0.cleanTitle.localizedCaseInsensitiveCompare($1.cleanTitle) == .orderedAscending }
-        return pending + corrected
+        // Tri alphabétique naturel (style Finder, ex. DS 2 avant DS 10)
+        return list.sorted {
+            $0.cleanTitle.localizedStandardCompare($1.cleanTitle) == .orderedAscending
+        }
     }
 
     private var responsiveGridColumns: [GridItem] {
