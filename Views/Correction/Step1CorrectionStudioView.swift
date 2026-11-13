@@ -723,7 +723,8 @@ public struct Step1CorrectionStudioView: View {
                 }
             }
             .pickerStyle(.segmented)
-            .frame(width: isCompact ? 280 : 340)
+            .labelsHidden()
+            .frame(width: isCompact ? 280 : 320)
         }
     }
 
