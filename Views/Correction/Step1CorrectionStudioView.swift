@@ -1739,6 +1739,7 @@ public struct Step1CorrectionStudioView: View {
     private func refreshAvailableScans(autoSelectFirst: Bool = false, forceCloud: Bool = false) async {
         await appState.refreshScans(forceCloud: forceCloud)
         await MainActor.run {
+            self.thumbnailCacheVersion = UUID()
             self.isLoadingScans = false
             self.isCheckingCloud = appState.isCheckingScansCloud
             for scan in appState.availableScans {

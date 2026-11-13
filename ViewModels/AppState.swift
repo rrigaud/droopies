@@ -9,6 +9,7 @@
 
 import Foundation
 import Observation
+import PDFKit
 
 public enum PortalSyncStatus: Equatable {
     case checking
@@ -154,6 +155,9 @@ public final class AppState: @unchecked Sendable {
         self.availableScans = localList
         self.cleanOrphanMetadata(existingRawFileNames: Set(localList.map { $0.rawFileName }))
 
+        // Analyse asynchrone des annotations externes (PDF Expert, Aperçu, etc.)
+        self.detectExternalPDFAnnotations()
+
         // 2. Si hors-ligne ou si une vérification a eu lieu il y a moins de 2 minutes (sans forçage manuel)
         let now = Date()
         if !forceCloud, let lastCheck = lastScansCloudCheck, now.timeIntervalSince(lastCheck) < 120 {
@@ -175,6 +179,100 @@ public final class AppState: @unchecked Sendable {
         let freshList = (try? await storageManager.listLocalScans()) ?? localList
         self.availableScans = freshList
         self.cleanOrphanMetadata(existingRawFileNames: Set(freshList.map { $0.rawFileName }))
+
+        // Ré-analyse après synchronisation cloud si de nouveaux fichiers ont été téléchargés
+        self.detectExternalPDFAnnotations()
+    }
+
+    // MARK: - Détection Automatique des Annotations Externes (PDF Expert, Aperçu, etc.)
+
+    private var annotationDetectionTask: Task<Void, Never>? = nil
+
+    /// Analyse en tâche de fond les fichiers PDF locaux pour détecter les annotations externes (ex: PDF Expert)
+    /// et synchroniser la progression / achèvement automatiquement, sans bloquer l'interface.
+    public func detectExternalPDFAnnotations() {
+        annotationDetectionTask?.cancel()
+        let scans = self.availableScans
+        let currentMetadata = self.evaluationsMetadata
+        let sm = self.storageManager
+
+        annotationDetectionTask = Task.detached(priority: .utility) { [weak self] in
+            guard let self = self else { return }
+            var updatedMetadata: [String: EvaluationMetadata] = [:]
+
+            for scan in scans {
+                guard !Task.isCancelled else { return }
+                let fileURL = sm.localURL(for: scan.path)
+                guard FileManager.default.fileExists(atPath: fileURL.path) else { continue }
+
+                // Vérifier la date de modification du fichier PDF sur le disque
+                guard let attrs = try? FileManager.default.attributesOfItem(atPath: fileURL.path),
+                      let fileModDate = attrs[.modificationDate] as? Date else { continue }
+
+                var meta = currentMetadata[scan.rawFileName] ?? EvaluationMetadata()
+
+                // Si le fichier n'a pas été modifié depuis notre dernière analyse/sauvegarde
+                // et que totalPages est déjà renseigné, on saute pour 0 ms de surcoût
+                if meta.totalPages > 0 && fileModDate <= meta.lastModified {
+                    continue
+                }
+
+                // Charger le document PDF de manière asynchrone
+                guard let doc = PDFDocument(url: fileURL) else { continue }
+                let totalP = doc.pageCount
+                guard totalP > 0 else { continue }
+
+                meta.totalPages = totalP
+
+                // Détection express des annotations utilisateur (de la fin vers le début)
+                var detectedMaxAnnotated = meta.maxAnnotatedPage
+                for pIdx in stride(from: totalP - 1, through: 0, by: -1) {
+                    guard !Task.isCancelled else { return }
+                    if let page = doc.page(at: pIdx) {
+                        let hasUserAnnotations = page.annotations.contains { ann in
+                            guard let type = ann.type else { return false }
+                            // Ignorer les annotations structurelles (liens web, champs de formulaire, popups)
+                            return type != "Link" && type != "Widget" && type != "Popup"
+                        }
+                        if hasUserAnnotations {
+                            let pageNum = pIdx + 1
+                            detectedMaxAnnotated = max(detectedMaxAnnotated, pageNum)
+                            break // Page annotée la plus haute trouvée !
+                        }
+                    }
+                }
+
+                if detectedMaxAnnotated != meta.maxAnnotatedPage {
+                    meta.maxAnnotatedPage = detectedMaxAnnotated
+                }
+
+                if meta.isEffectivelyCompleted && meta.isCompleted != true {
+                    meta.isCompleted = true
+                }
+
+                meta.lastModified = fileModDate
+                updatedMetadata[scan.rawFileName] = meta
+            }
+
+            guard !Task.isCancelled, !updatedMetadata.isEmpty else { return }
+            let finalUpdates = updatedMetadata
+
+            await MainActor.run {
+                for (key, newMeta) in finalUpdates {
+                    if let existing = self.evaluationsMetadata[key] {
+                        if newMeta.maxAnnotatedPage >= existing.maxAnnotatedPage {
+                            self.evaluationsMetadata[key] = newMeta
+                        }
+                    } else {
+                        self.evaluationsMetadata[key] = newMeta
+                    }
+                }
+            }
+
+            // Sauvegarde asynchrone des métadonnées
+            let metaToSave = await MainActor.run { self.evaluationsMetadata }
+            try? await sm.saveEvaluationsMetadata(metaToSave)
+        }
     }
 
     /// Sauvegarde les onglets ouverts en session
