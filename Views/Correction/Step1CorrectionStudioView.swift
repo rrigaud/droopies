@@ -34,6 +34,15 @@ public enum CorrectionToolType: String, CaseIterable, Equatable {
     case eraser = "Effaceur"
 }
 
+public enum EvaluationStatusFilter: String, CaseIterable, Identifiable {
+    case all = "Toutes"
+    case pending = "À corriger"
+    case inProgress = "En cours"
+    case completed = "Corrigées"
+
+    public var id: String { rawValue }
+}
+
 public struct StampDefinition: Identifiable, Equatable {
     public let id: String
     public let title: String
@@ -115,6 +124,9 @@ public struct Step1CorrectionStudioView: View {
 
     // État Mosaïque Dashboard
     private var availableScans: [StorageManager.ScanItem] { appState.availableScans }
+    @State private var searchQuery: String = ""
+    @State private var selectedClassFilter: String = "Toutes"
+    @State private var selectedStatusFilter: EvaluationStatusFilter = .all
     @State private var showMarkedToast: String? = nil
     @State private var isLoadingScans: Bool = false
     @State private var importSuccessToast: String? = nil
@@ -260,19 +272,106 @@ public struct Step1CorrectionStudioView: View {
         pdfDocument?.pageCount ?? 0
     }
 
-    private var pendingScans: [StorageManager.ScanItem] {
-        availableScans.filter { !$0.isCorrected }
+    // MARK: - Détection de Classe & Filtrage Mosaïque
+
+    private func detectClass(from fileName: String) -> String? {
+        let baseName = fileName.replacingOccurrences(of: ".pdf", with: "", options: [.caseInsensitive])
+        let sortedClasses = appState.classes.sorted { $0.name.count > $1.name.count }
+
+        for cls in sortedClasses {
+            let rawName = cls.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !rawName.isEmpty else { continue }
+
+            var variations: [String] = [
+                rawName,
+                rawName.replacingOccurrences(of: " ", with: "_"),
+                rawName.replacingOccurrences(of: " ", with: "-"),
+                rawName.replacingOccurrences(of: " ", with: "")
+            ]
+
+            if let regexNumLet = try? NSRegularExpression(pattern: "^(\\d+e)(\\d+|[A-Za-z])$", options: .caseInsensitive) {
+                let range = NSRange(location: 0, length: rawName.utf16.count)
+                if let match = regexNumLet.firstMatch(in: rawName, options: [], range: range) {
+                    if let r1 = Range(match.range(at: 1), in: rawName),
+                       let r2 = Range(match.range(at: 2), in: rawName) {
+                        let part1 = String(rawName[r1])
+                        let part2 = String(rawName[r2])
+                        variations.append("\(part1) \(part2)")
+                        variations.append("\(part1)_\(part2)")
+                        variations.append("\(part1)-\(part2)")
+                    }
+                }
+            }
+
+            for variation in Set(variations) {
+                let escaped = NSRegularExpression.escapedPattern(for: variation)
+                let pattern = "(?i)(?:^|[\\s_\\-\\.\\[\\]()#])" + escaped + "(?:$|[\\s_\\-\\.\\[\\]()#])"
+                if let regex = try? NSRegularExpression(pattern: pattern) {
+                    let range = NSRange(location: 0, length: baseName.utf16.count)
+                    if regex.firstMatch(in: baseName, options: [], range: range) != nil {
+                        return cls.name
+                    }
+                }
+            }
+        }
+
+        return nil
     }
 
-    private var correctedScans: [StorageManager.ScanItem] {
-        availableScans.filter { $0.isCorrected }
+    private func countForClass(_ className: String) -> Int {
+        availableScans.filter { detectClass(from: $0.rawFileName) == className }.count
     }
 
-    private var sortedEvaluations: [StorageManager.ScanItem] {
-        let pending = availableScans
+    private var filteredEvaluations: [StorageManager.ScanItem] {
+        var list = availableScans
+
+        // 1. Filtre par recherche textuelle
+        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if !query.isEmpty {
+            list = list.filter {
+                $0.cleanTitle.lowercased().contains(query) ||
+                $0.name.lowercased().contains(query)
+            }
+        }
+
+        // 2. Filtre par classe
+        if selectedClassFilter != "Toutes" {
+            list = list.filter { scan in
+                detectClass(from: scan.rawFileName) == selectedClassFilter
+            }
+        }
+
+        // 3. Filtre par statut
+        switch selectedStatusFilter {
+        case .all:
+            break
+        case .pending:
+            list = list.filter { scan in
+                let meta = appState.evaluationsMetadata[scan.rawFileName]
+                let percent = meta?.progressPercent ?? 0
+                let hasAnnotation = (meta?.maxAnnotatedPage ?? 0) > 0
+                return !scan.isCorrected && percent == 0 && !hasAnnotation
+            }
+        case .inProgress:
+            list = list.filter { scan in
+                let meta = appState.evaluationsMetadata[scan.rawFileName]
+                let percent = meta?.progressPercent ?? 0
+                let hasAnnotation = (meta?.maxAnnotatedPage ?? 0) > 0
+                return !scan.isCorrected && (percent > 0 || hasAnnotation)
+            }
+        case .completed:
+            list = list.filter { scan in
+                let meta = appState.evaluationsMetadata[scan.rawFileName]
+                let percent = meta?.progressPercent ?? 0
+                return scan.isCorrected || percent >= 100
+            }
+        }
+
+        // Tri : D'abord les non corrigées puis les corrigées, triées par ordre alphabétique
+        let pending = list
             .filter { !$0.isCorrected }
             .sorted { $0.cleanTitle.localizedCaseInsensitiveCompare($1.cleanTitle) == .orderedAscending }
-        let corrected = availableScans
+        let corrected = list
             .filter { $0.isCorrected }
             .sorted { $0.cleanTitle.localizedCaseInsensitiveCompare($1.cleanTitle) == .orderedAscending }
         return pending + corrected
@@ -423,52 +522,236 @@ public struct Step1CorrectionStudioView: View {
         }
     }
 
-    // MARK: - 0. Page d'Accueil Mosaïque (Dashboard Épuré 100% HIG)
+    // MARK: - 0. Page d'Accueil Mosaïque (Dashboard Épuré 100% HIG avec Barre de Filtre)
 
     private var correctionHomeDashboardView: some View {
-        ScrollView {
-            if sortedEvaluations.isEmpty {
-                VStack(spacing: 14) {
-                    Image(systemName: "doc.badge.plus")
-                        .font(.system(size: 44))
-                        .foregroundColor(.secondary)
-                    Text("Aucune évaluation disponible")
-                        .font(.title3.bold())
-                        .foregroundColor(.primary)
-                    Text("Importez un document PDF de copies ou synchronisez votre dossier Cloud.")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                .padding(48)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                LazyVGrid(columns: responsiveGridColumns, spacing: 20) {
-                    ForEach(sortedEvaluations) { scan in
-                        EvaluationScanCard(
-                            scan: scan,
-                            isCorrected: scan.isCorrected,
-                            metadata: appState.evaluationsMetadata[scan.rawFileName],
-                            fileURL: appState.storageManager.localURL(for: scan.path),
-                            isProcessing: processingScanId == scan.name,
-                            syncStatus: currentSyncStatus(for: scan),
-                            updateToken: thumbnailCacheVersion,
-                            onOpen: {
-                                openScanInStudio(scan)
-                            },
-                            onToggleStatus: {
-                                scanPendingConfirmation = scan
+        GeometryReader { geometry in
+            let isCompact = geometry.size.width < 960
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    // MARK: - Barre de Filtre Unifiée : Recherche, Classes & Statut
+                    evaluationsFilterBar(isCompact: isCompact)
+                        .padding(.horizontal, 24)
+                        #if os(iOS)
+                        .padding(.top, 8)
+                        #else
+                        .padding(.top, 12)
+                        #endif
+
+                    if availableScans.isEmpty {
+                        VStack(spacing: 14) {
+                            Image(systemName: "doc.badge.plus")
+                                .font(.system(size: 44))
+                                .foregroundColor(.secondary)
+                            Text("Aucune évaluation disponible")
+                                .font(.title3.bold())
+                                .foregroundColor(.primary)
+                            Text("Importez un document PDF de copies ou synchronisez votre dossier Cloud.")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(48)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else if filteredEvaluations.isEmpty {
+                        VStack(spacing: 12) {
+                            Image(systemName: "line.3.horizontal.decrease.circle")
+                                .font(.system(size: 40))
+                                .foregroundColor(.secondary.opacity(0.4))
+                            Text("Aucune évaluation trouvée")
+                                .font(.headline)
+                                .foregroundColor(.primary)
+                            Text("Aucun devoir ne correspond à votre recherche ou aux filtres sélectionnés.")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+
+                            Button("Réinitialiser les filtres") {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                    searchQuery = ""
+                                    selectedClassFilter = "Toutes"
+                                    selectedStatusFilter = .all
+                                }
                             }
-                        )
+                            .buttonStyle(.bordered)
+                            .clipShape(Capsule())
+                            .padding(.top, 4)
+                        }
+                        .padding(48)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        LazyVGrid(columns: responsiveGridColumns, spacing: 20) {
+                            ForEach(filteredEvaluations) { scan in
+                                EvaluationScanCard(
+                                    scan: scan,
+                                    isCorrected: scan.isCorrected,
+                                    metadata: appState.evaluationsMetadata[scan.rawFileName],
+                                    fileURL: appState.storageManager.localURL(for: scan.path),
+                                    isProcessing: processingScanId == scan.name,
+                                    syncStatus: currentSyncStatus(for: scan),
+                                    updateToken: thumbnailCacheVersion,
+                                    onOpen: {
+                                        openScanInStudio(scan)
+                                    },
+                                    onToggleStatus: {
+                                        scanPendingConfirmation = scan
+                                    }
+                                )
+                            }
+                        }
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 24)
                     }
                 }
-                .padding(.horizontal, 24)
-                .padding(.vertical, 20)
             }
+            .refreshable {
+                await refreshAvailableScans(autoSelectFirst: false, forceCloud: true)
+            }
+            .background(Color.clear)
         }
-        .refreshable {
-            await refreshAvailableScans(autoSelectFirst: false, forceCloud: true)
+    }
+
+    // MARK: - Barre Unifiée : Recherche, Filtre Classes & Statut (Style A : Segmented)
+
+    private func evaluationsFilterBar(isCompact: Bool) -> some View {
+        HStack(spacing: 10) {
+            // MARK: - 1. Champ de Recherche à gauche
+            HStack(spacing: 6) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundColor(.secondary)
+                    .font(.system(size: 13))
+                TextField(isCompact ? "Rechercher..." : "Rechercher une évaluation...", text: $searchQuery)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 13))
+                if !searchQuery.isEmpty {
+                    Button {
+                        searchQuery = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.secondary)
+                            .font(.system(size: 12))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 9)
+            .padding(.vertical, 6)
+            .background(Color.primary.opacity(0.06))
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .frame(width: isCompact ? 160 : 220)
+
+            Divider()
+                .frame(height: 18)
+                .opacity(0.4)
+
+            // MARK: - 2. Sélecteur de classes (Capsules en paysage, Menu compact en portrait)
+            if isCompact && appState.classes.count > 3 {
+                Menu {
+                    Button {
+                        selectedClassFilter = "Toutes"
+                    } label: {
+                        HStack {
+                            Text("Toutes les classes (\(availableScans.count))")
+                            if selectedClassFilter == "Toutes" {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+
+                    Divider()
+
+                    ForEach(appState.classes) { group in
+                        let count = countForClass(group.name)
+                        Button {
+                            selectedClassFilter = group.name
+                        } label: {
+                            HStack {
+                                Text("\(group.name) (\(count))")
+                                if selectedClassFilter == group.name {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "line.3.horizontal.decrease.circle")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(.blue)
+
+                        let currentCount = selectedClassFilter == "Toutes" ? availableScans.count : countForClass(selectedClassFilter)
+                        Text(selectedClassFilter == "Toutes" ? "Toutes les classes" : "Classe : \(selectedClassFilter)")
+                            .font(.system(size: 12.5, weight: .semibold))
+                            .foregroundColor(.primary)
+
+                        Text("\(currentCount)")
+                            .font(.system(size: 11, weight: .bold))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.blue.opacity(0.15))
+                            .foregroundColor(.blue)
+                            .clipShape(Capsule())
+
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.primary.opacity(0.06))
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        classFilterChip(title: "Toutes", count: availableScans.count)
+
+                        ForEach(appState.classes) { group in
+                            classFilterChip(title: group.name, count: countForClass(group.name))
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+
+            Spacer(minLength: 4)
+
+            // MARK: - 3. Filtre de Statut (Style A : Picker Segmenté HIG)
+            Picker("Statut", selection: $selectedStatusFilter) {
+                ForEach(EvaluationStatusFilter.allCases) { status in
+                    Text(status.rawValue).tag(status)
+                }
+            }
+            .pickerStyle(.segmented)
+            .frame(width: isCompact ? 280 : 340)
         }
-        .background(Color.clear)
+    }
+
+    @ViewBuilder
+    private func classFilterChip(title: String, count: Int) -> some View {
+        let isSelected = selectedClassFilter == title
+        Button {
+            withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                selectedClassFilter = title
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Text(title)
+                    .fontWeight(isSelected ? .bold : .medium)
+                Text("\(count)")
+                    .font(.caption2)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(isSelected ? Color.white.opacity(0.3) : Color.secondary.opacity(0.15))
+                    .clipShape(Capsule())
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(isSelected ? Color.blue : Color.primary.opacity(0.06))
+            .foregroundColor(isSelected ? .white : .primary)
+            .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - ==========================================
