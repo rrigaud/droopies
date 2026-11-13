@@ -70,6 +70,7 @@ public final class AppState: @unchecked Sendable {
     public var availableScans: [StorageManager.ScanItem] = []
     public var lastScansCloudCheck: Date? = nil
     public var isCheckingScansCloud: Bool = false
+    public var targetScanForDistribution: StorageManager.ScanItem? = nil
 
     // MARK: - Métadonnées de Progression et Reprise d'Évaluation (Configuration/evaluations.json)
     public var evaluationsMetadata: [String: EvaluationMetadata] = [:]
@@ -94,6 +95,41 @@ public final class AppState: @unchecked Sendable {
         metadataSaveTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 1_200_000_000)
             guard let self = self, !Task.isCancelled else { return }
+            let currentMeta = self.evaluationsMetadata
+            try? await self.storageManager.saveEvaluationsMetadata(currentMeta)
+        }
+    }
+
+    /// Réinitialise complètement la progression d'une évaluation (retour à la page 1, 0% corrigé)
+    public func resetEvaluationProgress(for rawFileName: String) {
+        var meta = evaluationsMetadata[rawFileName] ?? EvaluationMetadata()
+        meta.lastViewedPage = 1
+        meta.maxAnnotatedPage = 0
+        meta.isCompleted = false
+        meta.lastModified = Date()
+        evaluationsMetadata[rawFileName] = meta
+
+        metadataSaveTask?.cancel()
+        metadataSaveTask = Task { [weak self] in
+            guard let self = self else { return }
+            let currentMeta = self.evaluationsMetadata
+            try? await self.storageManager.saveEvaluationsMetadata(currentMeta)
+        }
+    }
+
+    /// Marque une évaluation comme terminée / prête pour la distribution directement dans les métadonnées
+    public func markEvaluationCompleted(for rawFileName: String, completed: Bool) {
+        var meta = evaluationsMetadata[rawFileName] ?? EvaluationMetadata()
+        meta.isCompleted = completed
+        if completed && meta.totalPages > 0 {
+            meta.maxAnnotatedPage = max(meta.maxAnnotatedPage, meta.totalPages)
+        }
+        meta.lastModified = Date()
+        evaluationsMetadata[rawFileName] = meta
+
+        metadataSaveTask?.cancel()
+        metadataSaveTask = Task { [weak self] in
+            guard let self = self else { return }
             let currentMeta = self.evaluationsMetadata
             try? await self.storageManager.saveEvaluationsMetadata(currentMeta)
         }

@@ -182,28 +182,47 @@ public struct EvaluationMetadata: Codable, Hashable, Sendable {
     public var totalPages: Int
     public var lastViewedPage: Int // 1-based (pour reprise exacte à la réouverture)
     public var maxAnnotatedPage: Int // 1-based (pour calcul de la jauge de progression)
+    public var isCompleted: Bool? // Stocké directement dans les métadonnées (sans renommer le fichier sur le Cloud)
     public var lastModified: Date
 
     public init(
         totalPages: Int = 0,
         lastViewedPage: Int = 1,
         maxAnnotatedPage: Int = 0,
+        isCompleted: Bool? = nil,
         lastModified: Date = Date()
     ) {
         self.totalPages = max(0, totalPages)
         self.lastViewedPage = max(1, lastViewedPage)
         self.maxAnnotatedPage = max(0, maxAnnotatedPage)
+        self.isCompleted = isCompleted
         self.lastModified = lastModified
+    }
+
+    /// Indique si l'évaluation est considérée comme entièrement terminée / corrigée
+    public var isEffectivelyCompleted: Bool {
+        if isCompleted == true { return true }
+        // Règle recto-verso : si le devoir a au moins 2 pages et qu'on a annoté jusqu'à l'avant-dernière page
+        // (le verso étant souvent une page blanche non annotée), l'évaluation est bien à 100 %
+        if totalPages > 1 && maxAnnotatedPage >= totalPages - 1 {
+            return true
+        }
+        if totalPages > 0 && maxAnnotatedPage >= totalPages {
+            return true
+        }
+        return false
     }
 
     /// Ratio de progression normalisé de 0.0 à 1.0
     public var progressRatio: Double {
+        if isEffectivelyCompleted { return 1.0 }
         guard totalPages > 0 else { return 0.0 }
         return min(1.0, max(0.0, Double(maxAnnotatedPage) / Double(totalPages)))
     }
 
     /// Pourcentage arrondi de 0 à 100
     public var progressPercent: Int {
-        Int((progressRatio * 100).rounded())
+        if isEffectivelyCompleted { return 100 }
+        return Int((progressRatio * 100).rounded())
     }
 }

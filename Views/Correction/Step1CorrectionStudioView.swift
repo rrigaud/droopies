@@ -121,6 +121,7 @@ private struct EraserWidthStop {
 public struct Step1CorrectionStudioView: View {
     @Bindable public var appState: AppState
     @Binding public var currentStep: Int
+    public var onDistributeScan: ((StorageManager.ScanItem) -> Void)? = nil
 
     // État Mosaïque Dashboard
     private var availableScans: [StorageManager.ScanItem] { appState.availableScans }
@@ -130,7 +131,8 @@ public struct Step1CorrectionStudioView: View {
     @State private var showMarkedToast: String? = nil
     @State private var isLoadingScans: Bool = false
     @State private var importSuccessToast: String? = nil
-    @State private var scanPendingConfirmation: StorageManager.ScanItem? = nil
+    @State private var scanPendingReset: StorageManager.ScanItem? = nil
+    @State private var scanPendingDistribution: StorageManager.ScanItem? = nil
     @State private var processingScanId: String? = nil
     @State private var scanSyncStatuses: [String: ScanSyncStatus] = [:]
     @State private var isCheckingCloud: Bool = false
@@ -255,9 +257,14 @@ public struct Step1CorrectionStudioView: View {
         return appState.isOnline ? .synced : .offline
     }
 
-    public init(appState: AppState, currentStep: Binding<Int>) {
+    public init(
+        appState: AppState,
+        currentStep: Binding<Int>,
+        onDistributeScan: ((StorageManager.ScanItem) -> Void)? = nil
+    ) {
         self.appState = appState
         self._currentStep = currentStep
+        self.onDistributeScan = onDistributeScan
 
         let cached = appState.availableScans.isEmpty ? appState.storageManager.listLocalScansSync() : appState.availableScans
         var statuses: [String: ScanSyncStatus] = [:]
@@ -348,31 +355,32 @@ public struct Step1CorrectionStudioView: View {
         case .pending:
             list = list.filter { scan in
                 let meta = appState.evaluationsMetadata[scan.rawFileName]
+                let isEffectivelyDone = scan.isCorrected || meta?.isEffectivelyCompleted == true
                 let percent = meta?.progressPercent ?? 0
                 let hasAnnotation = (meta?.maxAnnotatedPage ?? 0) > 0
-                return !scan.isCorrected && percent == 0 && !hasAnnotation
+                return !isEffectivelyDone && percent == 0 && !hasAnnotation
             }
         case .inProgress:
             list = list.filter { scan in
                 let meta = appState.evaluationsMetadata[scan.rawFileName]
+                let isEffectivelyDone = scan.isCorrected || meta?.isEffectivelyCompleted == true
                 let percent = meta?.progressPercent ?? 0
                 let hasAnnotation = (meta?.maxAnnotatedPage ?? 0) > 0
-                return !scan.isCorrected && (percent > 0 || hasAnnotation)
+                return !isEffectivelyDone && (percent > 0 || hasAnnotation)
             }
         case .completed:
             list = list.filter { scan in
                 let meta = appState.evaluationsMetadata[scan.rawFileName]
-                let percent = meta?.progressPercent ?? 0
-                return scan.isCorrected || percent >= 100
+                return scan.isCorrected || meta?.isEffectivelyCompleted == true
             }
         }
 
         // Tri : D'abord les non corrigées puis les corrigées, triées par ordre alphabétique
         let pending = list
-            .filter { !$0.isCorrected }
+            .filter { scan in !(scan.isCorrected || appState.evaluationsMetadata[scan.rawFileName]?.isEffectivelyCompleted == true) }
             .sorted { $0.cleanTitle.localizedCaseInsensitiveCompare($1.cleanTitle) == .orderedAscending }
         let corrected = list
-            .filter { $0.isCorrected }
+            .filter { scan in scan.isCorrected || appState.evaluationsMetadata[scan.rawFileName]?.isEffectivelyCompleted == true }
             .sorted { $0.cleanTitle.localizedCaseInsensitiveCompare($1.cleanTitle) == .orderedAscending }
         return pending + corrected
     }
@@ -494,31 +502,42 @@ public struct Step1CorrectionStudioView: View {
             }
         }
         .alert(
-            scanPendingConfirmation?.isCorrected == true
-                ? "Remettre cette évaluation à corriger ?"
-                : "Marquer cette évaluation comme \"Corrigée\" ?",
+            "Réinitialiser la progression ?",
             isPresented: Binding(
-                get: { scanPendingConfirmation != nil },
-                set: { if !$0 { scanPendingConfirmation = nil } }
+                get: { scanPendingReset != nil },
+                set: { if !$0 { scanPendingReset = nil } }
             ),
-            presenting: scanPendingConfirmation
+            presenting: scanPendingReset
         ) { scan in
-            Button(
-                scan.isCorrected ? "Remettre à corriger" : "Marquer comme corrigée"
-            ) {
-                let scanToToggle = scan
-                scanPendingConfirmation = nil
-                toggleCorrectedStatus(for: scanToToggle)
+            Button("Réinitialiser", role: .destructive) {
+                let target = scan
+                scanPendingReset = nil
+                appState.resetEvaluationProgress(for: target.rawFileName)
             }
             Button("Annuler", role: .cancel) {
-                scanPendingConfirmation = nil
+                scanPendingReset = nil
             }
         } message: { scan in
-            if scan.isCorrected {
-                Text("Le paquet « \(scan.cleanTitle) » sera replacé dans la section des devoirs à corriger et mis à jour sur Dropbox.")
-            } else {
-                Text("Le paquet « \(scan.cleanTitle) » sera classé dans les évaluations corrigées et synchronisé avec Dropbox.")
+            Text("Voulez-vous remettre à zéro la progression de correction pour « \(scan.cleanTitle) » ?")
+        }
+        .alert(
+            "Distribuer cette évaluation ?",
+            isPresented: Binding(
+                get: { scanPendingDistribution != nil },
+                set: { if !$0 { scanPendingDistribution = nil } }
+            ),
+            presenting: scanPendingDistribution
+        ) { scan in
+            Button("Distribuer") {
+                let target = scan
+                scanPendingDistribution = nil
+                onDistributeScan?(target)
             }
+            Button("Annuler", role: .cancel) {
+                scanPendingDistribution = nil
+            }
+        } message: { scan in
+            Text("Voulez-vous passer à la distribution des copies pour « \(scan.cleanTitle) » ?")
         }
     }
 
@@ -583,7 +602,6 @@ public struct Step1CorrectionStudioView: View {
                             ForEach(filteredEvaluations) { scan in
                                 EvaluationScanCard(
                                     scan: scan,
-                                    isCorrected: scan.isCorrected,
                                     metadata: appState.evaluationsMetadata[scan.rawFileName],
                                     fileURL: appState.storageManager.localURL(for: scan.path),
                                     isProcessing: processingScanId == scan.name,
@@ -592,8 +610,11 @@ public struct Step1CorrectionStudioView: View {
                                     onOpen: {
                                         openScanInStudio(scan)
                                     },
-                                    onToggleStatus: {
-                                        scanPendingConfirmation = scan
+                                    onReset: {
+                                        scanPendingReset = scan
+                                    },
+                                    onDistribute: {
+                                        scanPendingDistribution = scan
                                     }
                                 )
                             }
@@ -2005,14 +2026,18 @@ public struct Step1CorrectionStudioView: View {
 
 private struct EvaluationScanCard: View {
     let scan: StorageManager.ScanItem
-    let isCorrected: Bool
     let metadata: EvaluationMetadata?
     let fileURL: URL
     let isProcessing: Bool
     let syncStatus: ScanSyncStatus
     let updateToken: UUID
     let onOpen: () -> Void
-    let onToggleStatus: () -> Void
+    let onReset: () -> Void
+    let onDistribute: () -> Void
+
+    private var isComplete: Bool {
+        scan.isCorrected || metadata?.isEffectivelyCompleted == true
+    }
 
     private var isBlocked: Bool {
         isProcessing || syncStatus == .uploading
@@ -2022,9 +2047,9 @@ private struct EvaluationScanCard: View {
         VStack(alignment: .leading, spacing: 8) {
             // 1. Nom du fichier PDF au-dessus du thumbnail (sans .pdf)
             HStack(spacing: 5) {
-                Image(systemName: isCorrected ? "checkmark.circle.fill" : "doc.text.fill")
+                Image(systemName: isComplete ? "checkmark.circle.fill" : "doc.text.fill")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(isCorrected ? Color(hex: "10B981") : Color.blue)
+                    .foregroundColor(isComplete ? Color(hex: "10B981") : Color.blue)
 
                 Text(scan.cleanTitle)
                     .font(.system(size: 12, weight: .bold, design: .rounded))
@@ -2052,10 +2077,7 @@ private struct EvaluationScanCard: View {
             .disabled(isBlocked)
             .help("Cliquer pour ouvrir le document dans l'atelier")
 
-            // 3. Jauge de progression Liquid Glass
-            evaluationProgressBar
-
-            // 4. Bouton d'Action direct OU Indicateur de Modification/Vérification
+            // 3. Ligne d'action unifiée : [ ↺ ] [ ===== % ===== ] [ ✈️ ]
             if isProcessing || syncStatus == .uploading {
                 HStack(spacing: 6) {
                     ProgressView()
@@ -2064,7 +2086,7 @@ private struct EvaluationScanCard: View {
                         .font(.system(size: 10.5, weight: .semibold))
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 6)
+                .frame(height: 32)
                 .background(Color.primary.opacity(0.06))
                 .foregroundColor(.secondary)
                 .clipShape(Capsule())
@@ -2073,46 +2095,12 @@ private struct EvaluationScanCard: View {
                         .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
                 )
             } else {
-                Button {
-                    onToggleStatus()
-                } label: {
-                    HStack(spacing: 5) {
-                        Image(systemName: isCorrected ? "arrow.uturn.backward.circle.fill" : "checkmark.circle.fill")
-                            .font(.system(size: 11, weight: .bold))
-
-                        Text(isCorrected ? "Remettre à corriger" : "Marquer comme \"Corrigé\"")
-                            .font(.system(size: 11, weight: .semibold))
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
-                    .background(
-                        isCorrected
-                            ? Color.blue.opacity(0.10)
-                            : Color(hex: "10B981").opacity(0.12)
-                    )
-                    .foregroundColor(
-                        isCorrected
-                            ? Color.blue
-                            : Color(hex: "10B981")
-                    )
-                    .clipShape(Capsule())
-                    .overlay(
-                        Capsule()
-                            .strokeBorder(
-                                isCorrected
-                                    ? Color.blue.opacity(0.3)
-                                    : Color(hex: "10B981").opacity(0.35),
-                                lineWidth: 1
-                            )
-                    )
-                }
-                .buttonStyle(.plain)
-                .help(isCorrected ? "Remettre cette évaluation dans les devoirs à corriger" : "Marquer cette évaluation comme entièrement corrigée")
+                unifiedActionRow
             }
         }
         .padding(10)
         .background(
-            isCorrected
+            isComplete
                 ? Color(hex: "10B981").opacity(0.04)
                 : Color(white: 0.5, opacity: 0.05)
         )
@@ -2120,7 +2108,7 @@ private struct EvaluationScanCard: View {
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .stroke(
-                    isCorrected
+                    isComplete
                         ? Color(hex: "10B981").opacity(0.35)
                         : Color.primary.opacity(0.08),
                     lineWidth: 1
@@ -2128,53 +2116,103 @@ private struct EvaluationScanCard: View {
         )
     }
 
-    private var evaluationProgressBar: some View {
-        let percent = isCorrected ? 100 : (metadata?.progressPercent ?? 0)
-        let cachedPages = PDFThumbnailMemoryCache.shared.pageCount(for: fileURL) ?? 0
-        let total = (metadata?.totalPages ?? 0) > 0 ? (metadata?.totalPages ?? 0) : cachedPages
-        let current = isCorrected ? total : min(total, max(1, metadata?.lastViewedPage ?? 1))
-        let ratio: Double = isCorrected ? 1.0 : (metadata?.progressRatio ?? (total > 0 ? Double(percent) / 100.0 : 0.0))
+    private var unifiedActionRow: some View {
+        let percent = isComplete ? 100 : (metadata?.progressPercent ?? 0)
+        let ratio: Double = isComplete ? 1.0 : (metadata?.progressRatio ?? (Double(percent) / 100.0))
 
-        return VStack(spacing: 5) {
-            HStack {
-                Text(isCorrected ? "100 % terminé" : (percent > 0 ? "\(percent) % corrigé" : "Non commencé"))
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .foregroundColor(isCorrected ? Color(hex: "10B981") : (percent > 0 ? .blue : .secondary))
-
-                Spacer()
-
-                if total > 0 {
-                    Text(isCorrected ? "\(total)/\(total) p." : "\(current)/\(total) p.")
-                        .font(.system(size: 10.5, weight: .medium, design: .rounded))
-                        .foregroundColor(.secondary)
+        return HStack(spacing: 6) {
+            // Bouton Réinitialiser la progression (Capsule bleue dépolie)
+            Button {
+                onReset()
+            } label: {
+                ZStack {
+                    Capsule()
+                        .fill(Color.blue.opacity(0.12))
+                    Image(systemName: "arrow.counterclockwise")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(.blue)
                 }
+                .frame(width: 34, height: 32)
+                .overlay(
+                    Capsule()
+                        .strokeBorder(Color.blue.opacity(0.30), lineWidth: 1)
+                )
             }
+            .buttonStyle(.plain)
+            .help("Remettre la progression de cette évaluation à zéro")
 
+            // Jauge de progression centrale Liquid Glass (hauteur 32)
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule()
-                        .fill(Color.primary.opacity(0.08))
+                        .fill(Color.primary.opacity(0.06))
 
                     if ratio > 0 {
                         Capsule()
                             .fill(
                                 LinearGradient(
-                                    colors: isCorrected
+                                    colors: isComplete
                                         ? [Color(hex: "10B981"), Color(hex: "059669")]
                                         : [Color.blue, Color(hex: "38BDF8")],
                                     startPoint: .leading,
                                     endPoint: .trailing
                                 )
                             )
-                            .frame(width: max(6, geo.size.width * CGFloat(min(1.0, ratio))))
-                            .shadow(color: (isCorrected ? Color(hex: "10B981") : Color.blue).opacity(0.35), radius: 3, y: 1)
+                            .frame(width: max(14, geo.size.width * CGFloat(min(1.0, ratio))))
+                    }
+
+                    // Label centré : uniquement le pourcentage ou "Non commencé", pas de parenthèses de pages
+                    HStack {
+                        Spacer(minLength: 0)
+                        if percent == 0 {
+                            Text("Non commencé")
+                                .font(.system(size: 10.5, weight: .semibold, design: .rounded))
+                                .foregroundColor(.secondary)
+                        } else if isComplete {
+                            Text("100 %")
+                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
+                        } else {
+                            Text("\(percent) %")
+                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                .foregroundColor(ratio >= 0.5 ? .white : .primary)
+                        }
+                        Spacer(minLength: 0)
                     }
                 }
             }
-            .frame(height: 5)
+            .frame(height: 32)
+            .clipShape(Capsule())
+            .overlay(
+                Capsule()
+                    .strokeBorder(
+                        isComplete
+                            ? Color(hex: "10B981").opacity(0.35)
+                            : Color.primary.opacity(0.10),
+                        lineWidth: 1
+                    )
+            )
+
+            // Bouton Distribuer (Capsule verte dépolie)
+            Button {
+                onDistribute()
+            } label: {
+                ZStack {
+                    Capsule()
+                        .fill(Color(hex: "10B981").opacity(0.14))
+                    Image(systemName: "paperplane.fill")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(Color(hex: "10B981"))
+                }
+                .frame(width: 34, height: 32)
+                .overlay(
+                    Capsule()
+                        .strokeBorder(Color(hex: "10B981").opacity(0.35), lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+            .help("Distribuer les copies de cette évaluation")
         }
-        .padding(.horizontal, 4)
-        .padding(.vertical, 2)
     }
 }
 

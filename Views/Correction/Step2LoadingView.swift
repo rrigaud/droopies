@@ -68,7 +68,9 @@ public struct Step2LoadingView: View {
     }
 
     private var correctedScans: [StorageManager.ScanItem] {
-        availableScans.filter { $0.isCorrected }
+        availableScans.filter { scan in
+            scan.isCorrected || appState.evaluationsMetadata[scan.rawFileName]?.isEffectivelyCompleted == true
+        }
     }
 
     /// Validation stricte : toutes les informations nécessaires doivent être complétées
@@ -638,8 +640,11 @@ public struct Step2LoadingView: View {
         isLoadingPDF = true
         if let scans = try? await appState.storageManager.listScans() {
             self.availableScans = scans
-            let corrected = scans.filter { $0.isCorrected }
-            if let firstCorrected = corrected.first {
+            let corrected = self.correctedScans
+            if let target = appState.targetScanForDistribution, let matched = scans.first(where: { $0.path == target.path || $0.rawFileName == target.rawFileName }) {
+                selectScan(matched)
+                appState.targetScanForDistribution = nil
+            } else if let firstCorrected = corrected.first {
                 selectScan(firstCorrected)
             } else if let first = scans.first {
                 selectScan(first)

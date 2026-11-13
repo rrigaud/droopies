@@ -75,7 +75,17 @@ public struct MainSplitView: View {
                     Group {
                         switch activeScreen {
                         case .mosaic:
-                            Step1CorrectionStudioView(appState: appState, currentStep: .constant(1))
+                            Step1CorrectionStudioView(
+                                appState: appState,
+                                currentStep: .constant(1),
+                                onDistributeScan: { scan in
+                                    appState.targetScanForDistribution = scan
+                                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                        activeScreen = .distribution
+                                        appState.distributionStep = 1
+                                    }
+                                }
+                            )
                         case .distribution:
                             CorrectionWorkflowView(appState: appState)
                         case .students:
