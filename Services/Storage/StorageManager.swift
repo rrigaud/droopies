@@ -652,7 +652,6 @@ public final class StorageManager: @unchecked Sendable {
 
     /// Liste les évaluations déjà distribuées archivées dans `Evaluations/Backup`
     public func listExistingBackups() async throws -> [ExistingBackup] {
-        try await ensureSourceFolderStructure()
         let items = try await activeProvider.listContents(at: "Evaluations/Backup")
         return items
             .filter { !$0.isDirectory && $0.name.lowercased().hasSuffix(".pdf") }

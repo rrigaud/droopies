@@ -32,6 +32,7 @@ public struct Step2LoadingView: View {
     @State private var availableScans: [StorageManager.ScanItem] = []
     @State private var selectedScan: StorageManager.ScanItem? = nil
     @State private var existingBackups: [StorageManager.ExistingBackup] = []
+    @State private var isLoadingBackups: Bool = true
     @State private var selectedBackup: StorageManager.ExistingBackup? = nil
 
     // Popover de sélection d'archive Backup (pour "Compléter une distribution")
@@ -638,7 +639,31 @@ public struct Step2LoadingView: View {
 
     private var backupPickerPopoverContent: some View {
         Group {
-            if existingBackups.isEmpty {
+            if existingBackups.isEmpty && isLoadingBackups {
+                VStack(spacing: 14) {
+                    ProgressView()
+                        .controlSize(.regular)
+                        .tint(.orange)
+
+                    VStack(spacing: 6) {
+                        Text("Chargement des archives `/Backup`...")
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .foregroundColor(.primary)
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        Text("Récupération de la liste des évaluations archivées")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.vertical, 22)
+                .frame(width: 350)
+                .frame(minHeight: 195, alignment: .center)
+            } else if existingBackups.isEmpty {
                 VStack(spacing: 14) {
                     Image(systemName: "archivebox")
                         .font(.system(size: 32, weight: .medium))
@@ -1054,44 +1079,62 @@ public struct Step2LoadingView: View {
     }
 
     private func loadInitialScansAndBackups() async {
-        isPreparingPage = true
-        isLoadingPDF = true
+        // 1. Chargement instantané depuis le cache local (sans bloquer sur une synchro Cloud)
+        let localScans = appState.availableScans.isEmpty
+            ? appState.storageManager.listLocalScansSync()
+            : appState.availableScans
+        self.availableScans = localScans
 
-        async let scansTask = appState.storageManager.listScans()
-        async let backupsTask = appState.storageManager.listExistingBackups()
-
-        let scans = try? await scansTask
-        let backups = try? await backupsTask
-
-        if let backups = backups {
-            self.existingBackups = backups
-            if mode == .catchUpAbsents, let first = backups.first {
-                self.selectedBackup = first
-                applyBackupMetadata(first)
-            }
-        }
-
-        if let scans = scans {
-            self.availableScans = scans
-            let corrected = self.correctedScans
-            if let target = appState.targetScanForDistribution, let matched = scans.first(where: { $0.path == target.path || $0.rawFileName == target.rawFileName }) {
-                selectScan(matched)
+        if let scanToLoad = pickPreferredScan(from: localScans) {
+            selectScan(scanToLoad)
+            if appState.targetScanForDistribution != nil {
                 appState.targetScanForDistribution = nil
-                await pdfLoadingTask?.value
-            } else if let firstCorrected = corrected.first {
-                selectScan(firstCorrected)
-                await pdfLoadingTask?.value
-            } else if let first = scans.first {
-                selectScan(first)
-                await pdfLoadingTask?.value
-            } else {
-                isLoadingPDF = false
             }
+            await pdfLoadingTask?.value
         } else {
             isLoadingPDF = false
         }
 
+        // L'interface principale et la prévisualisation locale sont prêtes immédiatement
         isPreparingPage = false
+
+        // 2. Tâches réseau non bloquantes en arrière-plan (archives /Backup + éventuels nouveaux scans Cloud)
+        isLoadingBackups = true
+        async let backupsFetch: [StorageManager.ExistingBackup]? = try? await appState.storageManager.listExistingBackups()
+        async let cloudScansRefresh: Void = appState.refreshScans()
+
+        if let backups = await backupsFetch {
+            self.existingBackups = backups
+            if mode == .catchUpAbsents, selectedBackup == nil, let first = backups.first {
+                self.selectedBackup = first
+                applyBackupMetadata(first)
+            }
+        }
+        isLoadingBackups = false
+
+        _ = await cloudScansRefresh
+        let syncedScans = appState.availableScans
+        if !syncedScans.isEmpty {
+            self.availableScans = syncedScans
+            // Si aucun scan local n'était encore disponible à l'ouverture, charger le premier reçu du Cloud
+            if selectedScan == nil, pdfURL == nil, let scanToLoad = pickPreferredScan(from: syncedScans) {
+                selectScan(scanToLoad)
+                if appState.targetScanForDistribution != nil {
+                    appState.targetScanForDistribution = nil
+                }
+            }
+        }
+    }
+
+    private func pickPreferredScan(from scans: [StorageManager.ScanItem]) -> StorageManager.ScanItem? {
+        if let target = appState.targetScanForDistribution,
+           let matched = scans.first(where: { $0.path == target.path || $0.rawFileName == target.rawFileName }) {
+            return matched
+        }
+        let corrected = scans.filter {
+            $0.isCorrected || appState.evaluationsMetadata[$0.rawFileName]?.isEffectivelyCompleted == true
+        }
+        return corrected.first ?? scans.first
     }
 
     private func selectScan(_ scan: StorageManager.ScanItem) {
