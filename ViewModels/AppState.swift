@@ -313,6 +313,8 @@ public final class AppState: @unchecked Sendable {
 
     // MARK: - Flux de Distribution (3 étapes)
     public var distributionStep: Int = 1
+    public var canProceedDistributionStep1: Bool = false
+    public var proceedDistributionStep1Trigger: Int = 0
 
     // État d'historique Undo / Redo unifié pour la barre supérieure
     public var canUndoCorrection: Bool = false

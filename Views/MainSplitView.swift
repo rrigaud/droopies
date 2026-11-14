@@ -502,7 +502,22 @@ public struct MainSplitView: View {
             }
 
         case .distribution:
-            EmptyView()
+            if appState.isOnline && appState.distributionStep == 1 {
+                Button {
+                    appState.proceedDistributionStep1Trigger += 1
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "scissors")
+                        Text("Identifier")
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 11, weight: .bold))
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Color(hex: "10B981"))
+                .disabled(!appState.canProceedDistributionStep1)
+                .help(appState.canProceedDistributionStep1 ? "Découper les copies et passer à l'identification" : "Complétez les informations requises pour continuer")
+            }
 
         case .students:
             studentsActionToolbar

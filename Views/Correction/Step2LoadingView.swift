@@ -4,11 +4,11 @@
 //
 //  Étape 1 du workflow de Distribution :
 //  Chargement des copies & Préparation de l'évaluation (Découpage, métadonnées et prévisualisation continue).
-//  Architecture compacte à 4 blocs optimisée pour visionOS / iPadOS 18 :
-//  1. Fonctionnement de la distribution (explication claire)
-//  2. Sélection de l'évaluation corrigée (Picker natif) + Pages par copie (selectbutton 1..4 avec '+' puis 'pages / copie')
-//  3. Informations sur l'évaluation (Date YYYY-MM-DD avec fermeture auto, Classe via Picker natif, Nom)
-//  4. Prévisualisation plein écran à 100% de la largeur avec défilement continu
+//  Architecture épurée :
+//  - Le bouton "Identifier" est logé en haut à droite de la barre d'outils native.
+//  - Affichage direct du paquet sélectionné (plus de menu déroulant imposé) + sélecteur pages/copie.
+//  - Choix du mode via 2 chips ("Nouvelle distribution" / "Compléter une distribution" avec popover filtrable).
+//  - Prévisualisation plein écran en bas sur tout l'espace restant.
 //
 
 import SwiftUI
@@ -27,13 +27,17 @@ public struct Step2LoadingView: View {
     }
 
     @State private var mode: LoadingMode = CommandLine.arguments.contains("-testCatchUp") ? .catchUpAbsents : .newEvaluation
-    @Namespace private var modeTabNamespace
     @Namespace private var pagesNamespace
 
     @State private var availableScans: [StorageManager.ScanItem] = []
     @State private var selectedScan: StorageManager.ScanItem? = nil
     @State private var existingBackups: [StorageManager.ExistingBackup] = []
     @State private var selectedBackup: StorageManager.ExistingBackup? = nil
+
+    // Popover de sélection d'archive Backup (pour "Compléter une distribution")
+    @State private var showBackupPickerPopover: Bool = false
+    @State private var backupSearchQuery: String = ""
+    @State private var selectedBackupClassFilter: String = "Toutes"
 
     @State private var pdfURL: URL? = nil
     @State private var loadedPDFDoc: PDFDocument? = nil
@@ -52,6 +56,14 @@ public struct Step2LoadingView: View {
     @State private var availablePageStops: [Int] = [1, 2, 3, 4]
     @State private var showCustomPagesPopover: Bool = false
     @State private var customPagesInput: String = ""
+
+    private static let backupDisplayDateFormatter: DateFormatter = {
+        let df = DateFormatter()
+        df.locale = Locale(identifier: "fr_FR")
+        df.dateStyle = .medium
+        df.timeStyle = .none
+        return df
+    }()
 
     public init(appState: AppState, currentStep: Binding<Int>) {
         self.appState = appState
@@ -73,10 +85,63 @@ public struct Step2LoadingView: View {
         }
     }
 
+    private var displayedScanTitle: String {
+        if let scan = selectedScan {
+            return scan.cleanTitle
+        }
+        if let url = pdfURL {
+            return url.deletingPathExtension().lastPathComponent
+        }
+        return "Aucune évaluation sélectionnée"
+    }
+
+    private var isSelectedScanCompleted: Bool {
+        guard let scan = selectedScan else { return false }
+        return scan.isCorrected || appState.evaluationsMetadata[scan.rawFileName]?.isEffectivelyCompleted == true
+    }
+
+    /// Liste unique et triée des classes disponibles dans les archives /Backup et dans la base élèves
+    private var availableBackupClasses: [String] {
+        var names = Set(appState.classes.map { $0.name })
+        for backup in existingBackups where !backup.className.isEmpty {
+            names.insert(backup.className)
+        }
+        return names.sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+    }
+
+    private func backupCountForClass(_ className: String) -> Int {
+        existingBackups.filter {
+            $0.className.caseInsensitiveCompare(className) == .orderedSame ||
+            Student.sanitizeFolderName($0.className).caseInsensitiveCompare(Student.sanitizeFolderName(className)) == .orderedSame
+        }.count
+    }
+
+    private var filteredBackups: [StorageManager.ExistingBackup] {
+        var list = existingBackups
+
+        if selectedBackupClassFilter != "Toutes" {
+            list = list.filter { backup in
+                backup.className.caseInsensitiveCompare(selectedBackupClassFilter) == .orderedSame ||
+                Student.sanitizeFolderName(backup.className).caseInsensitiveCompare(Student.sanitizeFolderName(selectedBackupClassFilter)) == .orderedSame
+            }
+        }
+
+        let query = backupSearchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if !query.isEmpty {
+            list = list.filter { backup in
+                backup.evaluationTitle.lowercased().contains(query) ||
+                backup.className.lowercased().contains(query) ||
+                backup.fileName.lowercased().contains(query)
+            }
+        }
+
+        return list
+    }
+
     /// Validation stricte : toutes les informations nécessaires doivent être complétées
     private var isReadyToProceed: Bool {
         guard loadedPDFDoc != nil else { return false }
-        guard selectedScan != nil else { return false }
+        guard pdfURL != nil else { return false }
         guard selectedClassId != nil else { return false }
         guard !evalTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
         if mode == .catchUpAbsents {
@@ -86,48 +151,32 @@ public struct Step2LoadingView: View {
     }
 
     public var body: some View {
-        VStack(spacing: 0) {
-            // MARK: - Barre d'outils supérieure flottante
-            HStack(spacing: 16) {
-                // Onglets Glissants Liquid Glass
-                modeTabsControl
+        VStack(spacing: 10) {
+            // Bloc 1 : Rappel compact du fonctionnement
+            distributionInfoCard
 
-                Spacer()
+            // Bloc 2 : Préparation de l'évaluation (Document, Mode en chips, Découpage, Métadonnées ou Archive)
+            evaluationToDistributeCard
 
-                Button {
-                    proceedToIdentification()
-                } label: {
-                    Label("Découper puis identifier (2) ➔", systemImage: "scissors")
-                }
-                .buttonStyle(VibrantGradientButtonStyle(gradient: .emeraldGreen, isCompact: true))
-                // Temporairement débloqué sans condition pour permettre de travailler directement sur l'interface du Step 2
-                // .disabled(!isReadyToProceed)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(.ultraThinMaterial)
-
-            Divider()
-
-            // MARK: - Les Blocs
-            VStack(spacing: 10) {
-                // Bloc 1 : Fonctionnement de la distribution
-                distributionInfoCard
-
-                // Bloc Mode Rattrapage (uniquement en mode rattrapage)
-                if mode == .catchUpAbsents {
-                    catchUpBackupBlock
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                }
-
-                // Bloc 2 : Évaluation à distribuer (regroupe sélection du PDF, découpage et métadonnées)
-                evaluationToDistributeCard
-
-                // Bloc 4 : Prévisualisation PDF (prend tout l'espace restant, 100% largeur)
-                pdfPreviewSection
-            }
-            .padding(14)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // Bloc 3 : Prévisualisation PDF plein écran (prend tout l'espace restant en bas)
+            pdfPreviewSection
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 14)
+        .padding(.top, 6)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onAppear {
+            appState.canProceedDistributionStep1 = isReadyToProceed
+        }
+        .onDisappear {
+            appState.canProceedDistributionStep1 = false
+        }
+        .onChange(of: isReadyToProceed) { _, ready in
+            appState.canProceedDistributionStep1 = ready
+        }
+        .onChange(of: appState.proceedDistributionStep1Trigger) { _, _ in
+            guard isReadyToProceed else { return }
+            proceedToIdentification()
         }
         .task {
             await loadInitialScansAndBackups()
@@ -138,59 +187,19 @@ public struct Step2LoadingView: View {
             allowsMultipleSelection: false
         ) { result in
             if case .success(let urls) = result, let url = urls.first {
+                self.selectedScan = nil
                 let filename = url.lastPathComponent
                 if let detectedClassId = detectClass(from: filename) {
                     self.selectedClassId = detectedClassId
                 } else {
                     self.selectedClassId = nil
                 }
-                self.evalTitle = url.deletingPathExtension().lastPathComponent
+                if mode == .newEvaluation {
+                    self.evalTitle = url.deletingPathExtension().lastPathComponent
+                }
                 loadPDF(from: url)
             }
         }
-    }
-
-    // MARK: - En-tête : Onglets Glissants Liquid Glass
-
-    private var modeTabsControl: some View {
-        HStack(spacing: 6) {
-            ForEach(LoadingMode.allCases) { m in
-                let isSelected = mode == m
-                Button {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                        mode = m
-                        handleModeChange(m)
-                    }
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: m == .newEvaluation ? "doc.badge.plus" : "archivebox.fill")
-                            .font(.system(size: 12))
-                        Text(m.rawValue)
-                            .font(.system(size: 13, weight: isSelected ? .bold : .medium))
-                    }
-                    .foregroundColor(isSelected ? .white : .primary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(
-                        Group {
-                            if isSelected {
-                                Capsule()
-                                    .fill(LinearGradient.electricBlue)
-                                    .matchedGeometryEffect(id: "modeTabPill", in: modeTabNamespace)
-                                    .shadow(color: Color.blue.opacity(0.35), radius: 6, y: 2)
-                            } else {
-                                Color.clear
-                            }
-                        }
-                    )
-                    .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(4)
-        .background(Color.primary.opacity(0.06))
-        .clipShape(Capsule())
     }
 
     // MARK: - Bloc 1 : Fonctionnement de la distribution
@@ -199,20 +208,14 @@ public struct Step2LoadingView: View {
         HStack(alignment: .center, spacing: 10) {
             Image(systemName: "info.circle.fill")
                 .foregroundColor(.blue)
-                .font(.system(size: 15))
+                .font(.system(size: 14))
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Fonctionnement de la distribution")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(.primary)
+            Text("L'évaluation sera archivée dans `/Backup`, découpée en copies individuelles, puis associée à chaque élève avant l'envoi dans leur espace sécurisé.")
+                .font(.system(size: 11.5))
+                .foregroundColor(.secondary)
+                .lineLimit(2)
 
-                Text("Lorsque vous aurez sélectionné et identifié votre évaluation, elle sera archivée dans le dossier /Backup et découpée en copies individuelles, qu'il faudra alors identifier à chaque élève de la classe pour pouvoir leur distribuer dans leur espace sécurisé en ligne.")
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-                    .lineLimit(2)
-            }
-
-            Spacer()
+            Spacer(minLength: 0)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
@@ -224,220 +227,571 @@ public struct Step2LoadingView: View {
         )
     }
 
-    // MARK: - Bloc Compléter une distribution (Sélection de l'évaluation archivée)
-
-    private var catchUpBackupBlock: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            HStack(spacing: 8) {
-                Image(systemName: "archivebox.fill")
-                    .foregroundColor(.orange)
-                    .font(.system(size: 13, weight: .semibold))
-
-                Text("Compléter une distribution en sélectionnant l'évaluation archivée :")
-                    .font(.system(size: 12.5, weight: .bold))
-                    .foregroundColor(.primary)
-                    .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
-
-                Spacer()
-
-                // Picker collé à droite
-                Picker("Évaluation archivée", selection: $selectedBackup) {
-                    Text("Sélectionner...").tag(nil as StorageManager.ExistingBackup?)
-                    ForEach(existingBackups) { backup in
-                        Text("\(backup.className) • \(backup.evaluationTitle)").tag(backup as StorageManager.ExistingBackup?)
-                    }
-                }
-                .pickerStyle(.menu)
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
-                .onChange(of: selectedBackup) { _, newBackup in
-                    if let b = newBackup {
-                        applyBackupMetadata(b)
-                    }
-                }
-            }
-
-            // Ligne d'information au-dessous
-            HStack(spacing: 6) {
-                Text("Les informations de cette évaluation archivée seront pré-chargées sur la page, et la nouvelle évaluation sera fusionnée à cette dernière.")
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-
-                Spacer()
-
-                if let backup = selectedBackup {
-                    HStack(spacing: 4) {
-                        Image(systemName: "folder")
-                            .font(.system(size: 10))
-                            .foregroundColor(.secondary)
-                        Text("/Backup/\(backup.className)/\(backup.fileName)")
-                            .font(.system(size: 10.5, design: .monospaced))
-                            .foregroundColor(.secondary)
-                    }
-                }
-            }
-            .padding(.leading, 21)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.orange.opacity(0.08))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Color.orange.opacity(0.35), lineWidth: 1)
-        )
-    }
-
-    // MARK: - Bloc 2 : Évaluation à distribuer (Regroupe sélection du PDF, découpage et métadonnées)
+    // MARK: - Bloc 2 : Carte de Préparation (Paquet, Chips Mode, Découpage, Infos)
 
     private var evaluationToDistributeCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // En-tête : Titre du bloc
-            HStack(spacing: 7) {
-                Image(systemName: "doc.text.fill")
-                    .foregroundColor(.blue)
-                    .font(.system(size: 13, weight: .semibold))
+        VStack(alignment: .leading, spacing: 10) {
+            // Ligne 1 : Nom du PDF sélectionné (+ option Changer discret) & Sélecteur Pages / Copie
+            HStack(spacing: 12) {
+                HStack(spacing: 8) {
+                    Image(systemName: isSelectedScanCompleted ? "checkmark.circle.fill" : "doc.text.fill")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(isSelectedScanCompleted ? Color(hex: "10B981") : .blue)
 
-                Text("Évaluation à distribuer")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(.primary)
+                    Text(displayedScanTitle)
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundColor(pdfURL == nil ? .secondary : .primary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
 
-                Spacer()
-            }
-
-            // Ligne 1 : Sélection de l'évaluation corrigée + Pages par copie
-            HStack(spacing: 14) {
-                HStack(spacing: 6) {
-                    Image(systemName: "folder")
-                        .foregroundColor(.blue)
-                        .font(.system(size: 13))
-
-                    Text("Évaluation :")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.secondary)
-                        .fixedSize(horizontal: true, vertical: false)
-
-                    Picker("Évaluation", selection: $selectedScan) {
-                        if correctedScans.isEmpty {
-                            Text("Aucune évaluation corrigée").tag(nil as StorageManager.ScanItem?)
-                        } else {
-                            ForEach(correctedScans) { scan in
-                                Text(scan.cleanTitle).tag(scan as StorageManager.ScanItem?)
-                            }
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
-                    .onChange(of: selectedScan) { _, newScan in
-                        if let scan = newScan {
-                            selectScan(scan)
-                        }
-                    }
-
-                    Button {
-                        isExternalPickerPresented = true
-                    } label: {
-                        Image(systemName: "folder.badge.plus")
-                            .font(.system(size: 12))
+                    if totalPages > 0 {
+                        Text("\(totalPages) p.")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 2)
+                            .background(Color.primary.opacity(0.07))
                             .foregroundColor(.secondary)
+                            .clipShape(Capsule())
+                    }
+
+                    // Menu discret pour changer de paquet ou importer un PDF externe
+                    Menu {
+                        if !availableScans.isEmpty {
+                            let completed = correctedScans
+                            let others = availableScans.filter { scan in !completed.contains(where: { $0.id == scan.id }) }
+
+                            if !completed.isEmpty {
+                                Section("Évaluations corrigées (100 %)") {
+                                    ForEach(completed) { scan in
+                                        Button {
+                                            selectScan(scan)
+                                        } label: {
+                                            HStack {
+                                                Text(scan.cleanTitle)
+                                                if selectedScan?.id == scan.id {
+                                                    Image(systemName: "checkmark")
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            if !others.isEmpty {
+                                Section("Autres évaluations") {
+                                    ForEach(others) { scan in
+                                        Button {
+                                            selectScan(scan)
+                                        } label: {
+                                            HStack {
+                                                Text(scan.cleanTitle)
+                                                if selectedScan?.id == scan.id {
+                                                    Image(systemName: "checkmark")
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            Divider()
+                        }
+
+                        Button {
+                            isExternalPickerPresented = true
+                        } label: {
+                            Label("Importer un PDF depuis le disque...", systemImage: "folder.badge.plus")
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                                .font(.system(size: 10.5, weight: .semibold))
+                            Text(pdfURL == nil ? "Choisir un PDF" : "Changer")
+                                .font(.system(size: 11, weight: .semibold))
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.primary.opacity(0.06))
+                        .foregroundColor(.secondary)
+                        .clipShape(Capsule())
                     }
                     .buttonStyle(.plain)
-                    .help("Importer un autre PDF depuis le disque...")
+                    .help("Choisir une autre évaluation ou importer un fichier PDF")
                 }
 
-                Spacer()
+                Spacer(minLength: 8)
 
-                // À droite : selectbutton glissant 1..4 avec '+' PUIS 'pages / copie'
+                // À droite : Sélecteur glissant 1..4 avec '+' PUIS 'pages / copie' (toujours visible)
                 HStack(spacing: 8) {
                     pagesPerCopySlidingSelector
 
                     Text("pages / copie")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.secondary)
+                        .fixedSize(horizontal: true, vertical: false)
                 }
             }
 
             Divider()
 
-            // Ligne 2 : Informations sur l'évaluation (Date, Classe, Nom)
-            HStack(spacing: 16) {
-                // 1. Date (DatePicker natif Apple .compact)
-                HStack(spacing: 6) {
-                    Image(systemName: "calendar")
-                        .foregroundColor(.purple)
-                        .font(.system(size: 13))
+            // Ligne 2 : Type de distribution (2 Chips style StudentEditSheet)
+            HStack(spacing: 10) {
+                Text("Type :")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
 
-                    Text("Date :")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.secondary)
-
-                    DatePicker("", selection: $evalDate, displayedComponents: .date)
-                        .labelsHidden()
-                        .datePickerStyle(.compact)
-                }
-                .fixedSize(horizontal: true, vertical: false)
-
-                Divider().frame(height: 18)
-
-                // 2. Classe (Picker natif Apple .pickerStyle(.menu))
-                HStack(spacing: 6) {
-                    Image(systemName: "person.2.fill")
-                        .foregroundColor(.blue)
-                        .font(.system(size: 13))
-
-                    Text("Classe :")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.secondary)
-
-                    Picker("Classe", selection: $selectedClassId) {
-                        Text("— Choisir une classe —").tag(nil as String?)
-                        ForEach(appState.classes) { cls in
-                            Text("\(cls.name) (\(cls.studentCount) élèves)").tag(cls.id as String?)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
-                    .onChange(of: selectedClassId) { _, _ in
-                        if let doc = loadedPDFDoc {
-                            autoSelectPagesPerCopy(for: doc)
-                        }
+                // Chip 1 : Nouvelle distribution
+                distributionModeChip(
+                    title: "Nouvelle distribution",
+                    icon: "doc.badge.plus",
+                    isSelected: mode == .newEvaluation,
+                    tint: .blue
+                ) {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                        mode = .newEvaluation
+                        handleModeChange(.newEvaluation)
                     }
                 }
-                .fixedSize(horizontal: true, vertical: false)
 
-                Divider().frame(height: 18)
-
-                // 3. Nom de l'évaluation
-                HStack(spacing: 6) {
-                    Image(systemName: "pencil")
-                        .foregroundColor(.orange)
-                        .font(.system(size: 13))
-
-                    Text("Nom :")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.secondary)
-                        .fixedSize(horizontal: true, vertical: false)
-
-                    TextField("Nom de l'évaluation...", text: $evalTitle)
-                        .font(.system(size: 12.5))
-                        .textFieldStyle(.roundedBorder)
+                // Chip 2 : Compléter une distribution (avec Popover filtrable des Backups)
+                distributionModeChip(
+                    title: mode == .catchUpAbsents && selectedBackup != nil
+                        ? "Compléter : \(selectedBackup!.evaluationTitle)"
+                        : "Compléter une distribution",
+                    icon: "archivebox.fill",
+                    isSelected: mode == .catchUpAbsents,
+                    tint: .orange,
+                    showChevron: true
+                ) {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                        mode = .catchUpAbsents
+                        handleModeChange(.catchUpAbsents)
+                    }
+                    prepareAndOpenBackupPopover()
                 }
+                .popover(isPresented: $showBackupPickerPopover, arrowEdge: .bottom) {
+                    backupPickerPopoverContent
+                }
+
+                Spacer()
+            }
+
+            Divider()
+
+            // Ligne 3 : Contextuelle selon le mode choisi
+            if mode == .newEvaluation {
+                newDistributionMetadataRow
+            } else {
+                catchUpSummaryRow
             }
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, 8)
+        .padding(.vertical, 10)
         .background(Color.primary.opacity(0.035))
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .stroke(Color.primary.opacity(0.08), lineWidth: 1)
         )
+    }
+
+    @ViewBuilder
+    private func distributionModeChip(
+        title: String,
+        icon: String,
+        isSelected: Bool,
+        tint: Color,
+        showChevron: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: isSelected ? "checkmark" : icon)
+                    .font(.system(size: 11, weight: .bold))
+
+                Text(title)
+                    .font(.system(size: 12.5, weight: isSelected ? .bold : .medium, design: .rounded))
+                    .lineLimit(1)
+
+                if showChevron {
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 9.5, weight: .bold))
+                        .opacity(0.85)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6.5)
+            .background(isSelected ? AnyShapeStyle(tint) : AnyShapeStyle(Color.primary.opacity(0.06)))
+            .foregroundColor(isSelected ? .white : .primary)
+            .clipShape(Capsule())
+            .overlay(
+                Capsule()
+                    .strokeBorder(isSelected ? tint.opacity(0.4) : Color.primary.opacity(0.12), lineWidth: 1)
+            )
+            .shadow(color: isSelected ? tint.opacity(0.28) : .clear, radius: 4, x: 0, y: 2)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var newDistributionMetadataRow: some View {
+        HStack(spacing: 16) {
+            // 1. Date (DatePicker natif Apple .compact)
+            HStack(spacing: 6) {
+                Image(systemName: "calendar")
+                    .foregroundColor(.purple)
+                    .font(.system(size: 13))
+
+                Text("Date :")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+
+                DatePicker("", selection: $evalDate, displayedComponents: .date)
+                    .labelsHidden()
+                    .datePickerStyle(.compact)
+            }
+            .fixedSize(horizontal: true, vertical: false)
+
+            Divider().frame(height: 18)
+
+            // 2. Classe (Picker natif Apple .pickerStyle(.menu))
+            HStack(spacing: 6) {
+                Image(systemName: "person.2.fill")
+                    .foregroundColor(selectedClassId == nil ? .orange : .blue)
+                    .font(.system(size: 13))
+
+                Text("Classe :")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+
+                Picker("Classe", selection: $selectedClassId) {
+                    Text("— Choisir une classe —").tag(nil as String?)
+                    ForEach(appState.classes) { cls in
+                        Text("\(cls.name) (\(cls.studentCount) élèves)").tag(cls.id as String?)
+                    }
+                }
+                .pickerStyle(.menu)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .onChange(of: selectedClassId) { _, _ in
+                    if let doc = loadedPDFDoc {
+                        autoSelectPagesPerCopy(for: doc)
+                    }
+                }
+            }
+            .fixedSize(horizontal: true, vertical: false)
+
+            Divider().frame(height: 18)
+
+            // 3. Nom de l'évaluation
+            HStack(spacing: 6) {
+                Image(systemName: "pencil")
+                    .foregroundColor(.orange)
+                    .font(.system(size: 13))
+
+                Text("Nom :")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: true, vertical: false)
+
+                TextField("Nom de l'évaluation...", text: $evalTitle)
+                    .font(.system(size: 12.5))
+                    .textFieldStyle(.roundedBorder)
+            }
+        }
+    }
+
+    private var catchUpSummaryRow: some View {
+        HStack(spacing: 10) {
+            if let backup = selectedBackup {
+                Image(systemName: "archivebox.fill")
+                    .foregroundColor(.orange)
+                    .font(.system(size: 13))
+
+                Text("Archive cible :")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.secondary)
+
+                if let d = backup.date {
+                    HStack(spacing: 4) {
+                        Image(systemName: "calendar")
+                            .font(.system(size: 10.5))
+                        Text(Self.backupDisplayDateFormatter.string(from: d))
+                            .font(.system(size: 11.5, weight: .medium))
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color.purple.opacity(0.10))
+                    .foregroundColor(.purple)
+                    .clipShape(Capsule())
+                }
+
+                HStack(spacing: 4) {
+                    Image(systemName: "person.2.fill")
+                        .font(.system(size: 10.5))
+                    Text(backup.className)
+                        .font(.system(size: 11.5, weight: .bold))
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(Color.blue.opacity(0.12))
+                .foregroundColor(.blue)
+                .clipShape(Capsule())
+
+                Text(backup.evaluationTitle)
+                    .font(.system(size: 12.5, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+
+                Spacer(minLength: 8)
+
+                Button {
+                    prepareAndOpenBackupPopover()
+                } label: {
+                    Text("Changer d'archive")
+                        .font(.system(size: 11.5, weight: .semibold))
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .clipShape(Capsule())
+            } else {
+                Image(systemName: "exclamationmark.circle.fill")
+                    .foregroundColor(.orange)
+                    .font(.system(size: 14))
+
+                Text("Aucune archive sélectionnée. Choisissez l'évaluation archivée dans `/Backup` à compléter.")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+
+                Spacer(minLength: 8)
+
+                Button {
+                    prepareAndOpenBackupPopover()
+                } label: {
+                    Label("Choisir une archive...", systemImage: "archivebox")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.orange)
+                .controlSize(.small)
+                .clipShape(Capsule())
+            }
+        }
+        .frame(minHeight: 28)
+    }
+
+    // MARK: - Popover de Sélection d'Archive Backup
+
+    private var backupPickerPopoverContent: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // En-tête
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Compléter une distribution")
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                    Text("Sélectionnez l'archive `/Backup` cible pour fusionner ces copies")
+                        .font(.system(size: 11.5))
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+
+                Text("\(filteredBackups.count)")
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color.orange.opacity(0.14))
+                    .foregroundColor(.orange)
+                    .clipShape(Capsule())
+            }
+
+            // Barre de filtre : Recherche à gauche + Menu Classe à droite
+            HStack(spacing: 8) {
+                HStack(spacing: 6) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(.secondary)
+                        .font(.system(size: 12))
+                    TextField("Rechercher une archive...", text: $backupSearchQuery)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 12.5))
+                    if !backupSearchQuery.isEmpty {
+                        Button {
+                            backupSearchQuery = ""
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.secondary)
+                                .font(.system(size: 12))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 9)
+                .padding(.vertical, 6)
+                .background(Color.primary.opacity(0.06))
+                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+
+                Menu {
+                    Button {
+                        selectedBackupClassFilter = "Toutes"
+                    } label: {
+                        HStack {
+                            Text("Toutes les classes (\(existingBackups.count))")
+                            if selectedBackupClassFilter == "Toutes" {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+
+                    Divider()
+
+                    ForEach(availableBackupClasses, id: \.self) { clsName in
+                        Button {
+                            selectedBackupClassFilter = clsName
+                        } label: {
+                            HStack {
+                                Text("\(clsName) (\(backupCountForClass(clsName)))")
+                                if selectedBackupClassFilter == clsName {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "line.3.horizontal.decrease.circle")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.blue)
+
+                        Text(selectedBackupClassFilter == "Toutes" ? "Toutes les classes" : selectedBackupClassFilter)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.primary)
+                            .lineLimit(1)
+
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.primary.opacity(0.06))
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+
+            Divider()
+
+            // Liste des Backups filtrés
+            if existingBackups.isEmpty {
+                VStack(spacing: 8) {
+                    Spacer()
+                    Image(systemName: "archivebox")
+                        .font(.system(size: 28))
+                        .foregroundColor(.secondary.opacity(0.5))
+                    Text("Aucune évaluation archivée dans `/Backup`")
+                        .font(.system(size: 13, weight: .semibold))
+                    Text("Distribuez d'abord une évaluation complète pour créer une archive.")
+                        .font(.system(size: 11.5))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity)
+            } else if filteredBackups.isEmpty {
+                VStack(spacing: 10) {
+                    Spacer()
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 26))
+                        .foregroundColor(.secondary.opacity(0.45))
+                    Text("Aucune archive trouvée")
+                        .font(.system(size: 13, weight: .semibold))
+                    if selectedBackupClassFilter != "Toutes" {
+                        Button("Afficher toutes les classes (\(existingBackups.count))") {
+                            selectedBackupClassFilter = "Toutes"
+                            backupSearchQuery = ""
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .clipShape(Capsule())
+                    }
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 6) {
+                        ForEach(filteredBackups) { backup in
+                            let isChosen = (selectedBackup?.id == backup.id)
+                            Button {
+                                selectedBackup = backup
+                                applyBackupMetadata(backup)
+                                showBackupPickerPopover = false
+                            } label: {
+                                HStack(spacing: 10) {
+                                    Image(systemName: isChosen ? "checkmark.circle.fill" : "archivebox.fill")
+                                        .font(.system(size: 15, weight: .semibold))
+                                        .foregroundColor(isChosen ? .blue : .orange)
+
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(backup.evaluationTitle)
+                                            .font(.system(size: 13, weight: .semibold))
+                                            .foregroundColor(.primary)
+                                            .lineLimit(1)
+
+                                        HStack(spacing: 6) {
+                                            Text(backup.className)
+                                                .font(.system(size: 10.5, weight: .bold))
+                                                .padding(.horizontal, 6)
+                                                .padding(.vertical, 1.5)
+                                                .background(Color.blue.opacity(0.12))
+                                                .foregroundColor(.blue)
+                                                .clipShape(Capsule())
+
+                                            if let d = backup.date {
+                                                Text(Self.backupDisplayDateFormatter.string(from: d))
+                                                    .font(.system(size: 11))
+                                                    .foregroundColor(.secondary)
+                                            }
+                                        }
+                                    }
+
+                                    Spacer()
+
+                                    if !isChosen {
+                                        Image(systemName: "chevron.right")
+                                            .font(.system(size: 11, weight: .semibold))
+                                            .foregroundColor(.secondary.opacity(0.5))
+                                    }
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 8)
+                                .background(isChosen ? Color.blue.opacity(0.10) : Color.primary.opacity(0.04))
+                                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                        .stroke(isChosen ? Color.blue.opacity(0.35) : Color.clear, lineWidth: 1)
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(14)
+        .frame(width: 460, height: 370)
+    }
+
+    private func prepareAndOpenBackupPopover() {
+        backupSearchQuery = ""
+        if let clsId = selectedClassId,
+           let matchedClass = appState.classes.first(where: { $0.id == clsId }) {
+            selectedBackupClassFilter = matchedClass.name
+        } else {
+            selectedBackupClassFilter = "Toutes"
+        }
+        showBackupPickerPopover = true
     }
 
     // MARK: - Sélecteur Glissant de Pages par Copie
@@ -717,15 +1071,15 @@ public struct Step2LoadingView: View {
     }
 
     private func handleModeChange(_ newMode: LoadingMode) {
-        if newMode == .catchUpAbsents {
-            if let firstBackup = existingBackups.first {
-                self.selectedBackup = firstBackup
-                applyBackupMetadata(firstBackup)
-            }
-        } else {
+        if newMode == .newEvaluation {
             self.selectedBackup = nil
+            self.evalDate = Date()
             if let scan = selectedScan {
                 self.evalTitle = scan.cleanTitle.replacingOccurrences(of: ".pdf", with: "")
+                self.selectedClassId = detectClass(from: scan.name)
+            } else if let url = pdfURL {
+                self.evalTitle = url.deletingPathExtension().lastPathComponent
+                self.selectedClassId = detectClass(from: url.lastPathComponent)
             }
         }
     }
@@ -773,7 +1127,7 @@ public struct Step2LoadingView: View {
                 pagesPerCopy: pagesPerCopy,
                 isCatchUp: mode == .catchUpAbsents,
                 existingBackupFileName: selectedBackup?.fileName,
-                sourcePDFURL: selectedScan?.fileURL
+                sourcePDFURL: selectedScan?.fileURL ?? pdfURL
             )
 
             var copies: [StudentCopy] = []
