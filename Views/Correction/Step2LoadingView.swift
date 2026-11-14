@@ -231,6 +231,18 @@ public struct Step2LoadingView: View {
                 }
             }
         }
+        .onChange(of: appState.students.count) { _, _ in
+            guard selectedClassId == nil else { return }
+            if mode == .catchUpAbsents, let backup = selectedBackup {
+                applyBackupMetadata(backup)
+            } else if let name = selectedScan?.name ?? pdfURL?.lastPathComponent,
+                      let detected = detectClass(from: name) {
+                selectedClassId = detected
+                if let doc = loadedPDFDoc {
+                    autoSelectPagesPerCopy(for: doc)
+                }
+            }
+        }
         .task {
             await loadInitialScansAndBackups()
         }
