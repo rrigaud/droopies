@@ -41,6 +41,7 @@ public struct Step2LoadingView: View {
 
     @State private var pdfURL: URL? = nil
     @State private var loadedPDFDoc: PDFDocument? = nil
+    @State private var isPreparingPage: Bool = true
     @State private var isLoadingPDF: Bool = false
     @State private var pdfLoadingTask: Task<Void, Never>? = nil
     @State private var isExternalPickerPresented: Bool = false
@@ -138,8 +139,13 @@ public struct Step2LoadingView: View {
         return list
     }
 
+    private var isShowingLoadingOverlay: Bool {
+        isPreparingPage || isLoadingPDF
+    }
+
     /// Validation stricte : toutes les informations nécessaires doivent être complétées
     private var isReadyToProceed: Bool {
+        guard !isShowingLoadingOverlay else { return false }
         guard loadedPDFDoc != nil else { return false }
         guard pdfURL != nil else { return false }
         guard selectedClassId != nil else { return false }
@@ -151,20 +157,58 @@ public struct Step2LoadingView: View {
     }
 
     public var body: some View {
-        VStack(spacing: 10) {
-            // Bloc 1 : Rappel compact du fonctionnement
-            distributionInfoCard
+        ZStack {
+            VStack(spacing: 10) {
+                // Bloc 1 : Rappel compact du fonctionnement
+                distributionInfoCard
 
-            // Bloc 2 : Préparation de l'évaluation (Document, Mode en chips, Découpage, Métadonnées ou Archive)
-            evaluationToDistributeCard
+                // Bloc 2 : Préparation de l'évaluation (Document, Mode en chips, Découpage, Métadonnées ou Archive)
+                evaluationToDistributeCard
 
-            // Bloc 3 : Prévisualisation PDF plein écran (prend tout l'espace restant en bas)
-            pdfPreviewSection
+                // Bloc 3 : Prévisualisation PDF plein écran (prend tout l'espace restant en bas)
+                pdfPreviewSection
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 14)
+            .padding(.top, 6)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .blur(radius: isShowingLoadingOverlay ? 8 : 0)
+            .allowsHitTesting(!isShowingLoadingOverlay)
+            .accessibilityHidden(isShowingLoadingOverlay)
+
+            if isShowingLoadingOverlay {
+                Color.primary.opacity(0.04)
+                    .ignoresSafeArea()
+                    .contentShape(Rectangle())
+
+                VStack(spacing: 14) {
+                    ProgressView()
+                        .controlSize(.large)
+                        .tint(.blue)
+
+                    VStack(spacing: 4) {
+                        Text("Chargement de l'évaluation...")
+                            .font(.system(size: 14.5, weight: .bold, design: .rounded))
+                            .foregroundColor(.primary)
+
+                        Text("Préparation du document, des classes et des archives")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                }
+                .padding(.horizontal, 28)
+                .padding(.vertical, 22)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(Color.primary.opacity(0.10), lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.12), radius: 20, x: 0, y: 8)
+                .transition(.opacity.combined(with: .scale(scale: 0.96)))
+            }
         }
-        .padding(.horizontal, 16)
-        .padding(.bottom, 14)
-        .padding(.top, 6)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .animation(.easeInOut(duration: 0.22), value: isShowingLoadingOverlay)
         .onAppear {
             appState.canProceedDistributionStep1 = isReadyToProceed
         }
@@ -477,6 +521,7 @@ public struct Step2LoadingView: View {
                         Text("\(cls.name) (\(cls.studentCount) élèves)").tag(cls.id as String?)
                     }
                 }
+                .labelsHidden()
                 .pickerStyle(.menu)
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
@@ -912,24 +957,11 @@ public struct Step2LoadingView: View {
 
     private var pdfPreviewSection: some View {
         Group {
-            if isLoadingPDF {
-                VStack(spacing: 16) {
-                    ProgressView()
-                        .controlSize(.large)
-                        .tint(.blue)
-
-                    VStack(spacing: 4) {
-                        Text("Chargement de l'évaluation...")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.primary)
-
-                        Text("Préparation de l'affichage du document")
-                            .font(.system(size: 12))
-                            .foregroundColor(.secondary)
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .glassCard(cornerRadius: 14, strokeOpacity: 0.3)
+            if isShowingLoadingOverlay {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color.primary.opacity(0.02))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .glassCard(cornerRadius: 14, strokeOpacity: 0.3)
             } else if let doc = loadedPDFDoc {
                 VStack(spacing: 0) {
                     HStack {
@@ -1022,17 +1054,36 @@ public struct Step2LoadingView: View {
     }
 
     private func loadInitialScansAndBackups() async {
+        isPreparingPage = true
         isLoadingPDF = true
-        if let scans = try? await appState.storageManager.listScans() {
+
+        async let scansTask = appState.storageManager.listScans()
+        async let backupsTask = appState.storageManager.listExistingBackups()
+
+        let scans = try? await scansTask
+        let backups = try? await backupsTask
+
+        if let backups = backups {
+            self.existingBackups = backups
+            if mode == .catchUpAbsents, let first = backups.first {
+                self.selectedBackup = first
+                applyBackupMetadata(first)
+            }
+        }
+
+        if let scans = scans {
             self.availableScans = scans
             let corrected = self.correctedScans
             if let target = appState.targetScanForDistribution, let matched = scans.first(where: { $0.path == target.path || $0.rawFileName == target.rawFileName }) {
                 selectScan(matched)
                 appState.targetScanForDistribution = nil
+                await pdfLoadingTask?.value
             } else if let firstCorrected = corrected.first {
                 selectScan(firstCorrected)
+                await pdfLoadingTask?.value
             } else if let first = scans.first {
                 selectScan(first)
+                await pdfLoadingTask?.value
             } else {
                 isLoadingPDF = false
             }
@@ -1040,13 +1091,7 @@ public struct Step2LoadingView: View {
             isLoadingPDF = false
         }
 
-        if let backups = try? await appState.storageManager.listExistingBackups() {
-            self.existingBackups = backups
-            if mode == .catchUpAbsents, let first = backups.first {
-                self.selectedBackup = first
-                applyBackupMetadata(first)
-            }
-        }
+        isPreparingPage = false
     }
 
     private func selectScan(_ scan: StorageManager.ScanItem) {
