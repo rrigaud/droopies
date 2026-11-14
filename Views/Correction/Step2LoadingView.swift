@@ -178,6 +178,14 @@ public struct Step2LoadingView: View {
             guard isReadyToProceed else { return }
             proceedToIdentification()
         }
+        .onChange(of: showBackupPickerPopover) { _, isShown in
+            if !isShown && mode == .catchUpAbsents && selectedBackup == nil && !CommandLine.arguments.contains("-testCatchUp") {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                    mode = .newEvaluation
+                    handleModeChange(.newEvaluation)
+                }
+            }
+        }
         .task {
             await loadInitialScansAndBackups()
         }
@@ -369,7 +377,7 @@ public struct Step2LoadingView: View {
                     }
                     prepareAndOpenBackupPopover()
                 }
-                .popover(isPresented: $showBackupPickerPopover, arrowEdge: .bottom) {
+                .popover(isPresented: $showBackupPickerPopover, arrowEdge: .top) {
                     backupPickerPopoverContent
                 }
 
@@ -584,203 +592,226 @@ public struct Step2LoadingView: View {
     // MARK: - Popover de Sélection d'Archive Backup
 
     private var backupPickerPopoverContent: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // En-tête
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Compléter une distribution")
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                    Text("Sélectionnez l'archive `/Backup` cible pour fusionner ces copies")
-                        .font(.system(size: 11.5))
-                        .foregroundColor(.secondary)
-                }
+        Group {
+            if existingBackups.isEmpty {
+                VStack(spacing: 14) {
+                    Image(systemName: "archivebox")
+                        .font(.system(size: 32, weight: .medium))
+                        .foregroundColor(.orange.opacity(0.8))
 
-                Spacer()
+                    VStack(spacing: 6) {
+                        Text("Aucune évaluation archivée dans `/Backup`")
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .foregroundColor(.primary)
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
 
-                Text("\(filteredBackups.count)")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(Color.orange.opacity(0.14))
-                    .foregroundColor(.orange)
+                        Text("Distribuez d'abord une évaluation complète pour créer une archive réutilisable lors d'un rattrapage.")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Button("Fermer") {
+                        showBackupPickerPopover = false
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
                     .clipShape(Capsule())
-            }
+                }
+                .padding(.horizontal, 24)
+                .padding(.vertical, 22)
+                .frame(width: 350)
+                .frame(minHeight: 195, alignment: .center)
+            } else {
+                VStack(alignment: .leading, spacing: 12) {
+                    // En-tête
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Compléter une distribution")
+                                .font(.system(size: 14, weight: .bold, design: .rounded))
+                            Text("Sélectionnez l'archive `/Backup` cible pour fusionner ces copies")
+                                .font(.system(size: 11.5))
+                                .foregroundColor(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
 
-            // Barre de filtre : Recherche à gauche + Menu Classe à droite
-            HStack(spacing: 8) {
-                HStack(spacing: 6) {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundColor(.secondary)
-                        .font(.system(size: 12))
-                    TextField("Rechercher une archive...", text: $backupSearchQuery)
-                        .textFieldStyle(.plain)
-                        .font(.system(size: 12.5))
-                    if !backupSearchQuery.isEmpty {
-                        Button {
-                            backupSearchQuery = ""
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
+                        Spacer()
+
+                        Text("\(filteredBackups.count)")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Color.orange.opacity(0.14))
+                            .foregroundColor(.orange)
+                            .clipShape(Capsule())
+                    }
+
+                    // Barre de filtre : Recherche à gauche + Menu Classe à droite
+                    HStack(spacing: 8) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "magnifyingglass")
                                 .foregroundColor(.secondary)
                                 .font(.system(size: 12))
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(.horizontal, 9)
-                .padding(.vertical, 6)
-                .background(Color.primary.opacity(0.06))
-                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-
-                Menu {
-                    Button {
-                        selectedBackupClassFilter = "Toutes"
-                    } label: {
-                        HStack {
-                            Text("Toutes les classes (\(existingBackups.count))")
-                            if selectedBackupClassFilter == "Toutes" {
-                                Image(systemName: "checkmark")
+                            TextField("Rechercher une archive...", text: $backupSearchQuery)
+                                .textFieldStyle(.plain)
+                                .font(.system(size: 12.5))
+                            if !backupSearchQuery.isEmpty {
+                                Button {
+                                    backupSearchQuery = ""
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundColor(.secondary)
+                                        .font(.system(size: 12))
+                                }
+                                .buttonStyle(.plain)
                             }
                         }
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 6)
+                        .background(Color.primary.opacity(0.06))
+                        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+
+                        Menu {
+                            Button {
+                                selectedBackupClassFilter = "Toutes"
+                            } label: {
+                                HStack {
+                                    Text("Toutes les classes (\(existingBackups.count))")
+                                    if selectedBackupClassFilter == "Toutes" {
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+
+                            Divider()
+
+                            ForEach(availableBackupClasses, id: \.self) { clsName in
+                                Button {
+                                    selectedBackupClassFilter = clsName
+                                } label: {
+                                    HStack {
+                                        Text("\(clsName) (\(backupCountForClass(clsName)))")
+                                        if selectedBackupClassFilter == clsName {
+                                            Image(systemName: "checkmark")
+                                        }
+                                    }
+                                }
+                            }
+                        } label: {
+                            HStack(spacing: 5) {
+                                Image(systemName: "line.3.horizontal.decrease.circle")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(.blue)
+
+                                Text(selectedBackupClassFilter == "Toutes" ? "Toutes les classes" : selectedBackupClassFilter)
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(.primary)
+                                    .lineLimit(1)
+
+                                Image(systemName: "chevron.up.chevron.down")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(Color.primary.opacity(0.06))
+                            .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
                     }
 
                     Divider()
 
-                    ForEach(availableBackupClasses, id: \.self) { clsName in
-                        Button {
-                            selectedBackupClassFilter = clsName
-                        } label: {
-                            HStack {
-                                Text("\(clsName) (\(backupCountForClass(clsName)))")
-                                if selectedBackupClassFilter == clsName {
-                                    Image(systemName: "checkmark")
+                    // Liste des Backups filtrés
+                    if filteredBackups.isEmpty {
+                        VStack(spacing: 10) {
+                            Spacer()
+                            Image(systemName: "magnifyingglass")
+                                .font(.system(size: 26))
+                                .foregroundColor(.secondary.opacity(0.45))
+                            Text("Aucune archive trouvée")
+                                .font(.system(size: 13, weight: .semibold))
+                                .multilineTextAlignment(.center)
+                                .fixedSize(horizontal: false, vertical: true)
+                            if selectedBackupClassFilter != "Toutes" || !backupSearchQuery.isEmpty {
+                                Button("Afficher toutes les classes (\(existingBackups.count))") {
+                                    selectedBackupClassFilter = "Toutes"
+                                    backupSearchQuery = ""
                                 }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                                .clipShape(Capsule())
                             }
+                            Spacer()
                         }
-                    }
-                } label: {
-                    HStack(spacing: 5) {
-                        Image(systemName: "line.3.horizontal.decrease.circle")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(.blue)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        ScrollView {
+                            LazyVStack(spacing: 6) {
+                                ForEach(filteredBackups) { backup in
+                                    let isChosen = (selectedBackup?.id == backup.id)
+                                    Button {
+                                        selectedBackup = backup
+                                        applyBackupMetadata(backup)
+                                        showBackupPickerPopover = false
+                                    } label: {
+                                        HStack(spacing: 10) {
+                                            Image(systemName: isChosen ? "checkmark.circle.fill" : "archivebox.fill")
+                                                .font(.system(size: 15, weight: .semibold))
+                                                .foregroundColor(isChosen ? .blue : .orange)
 
-                        Text(selectedBackupClassFilter == "Toutes" ? "Toutes les classes" : selectedBackupClassFilter)
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .lineLimit(1)
+                                            VStack(alignment: .leading, spacing: 3) {
+                                                Text(backup.evaluationTitle)
+                                                    .font(.system(size: 13, weight: .semibold))
+                                                    .foregroundColor(.primary)
+                                                    .lineLimit(1)
 
-                        Image(systemName: "chevron.up.chevron.down")
-                            .font(.system(size: 9, weight: .bold))
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(Color.primary.opacity(0.06))
-                    .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
-            }
+                                                HStack(spacing: 6) {
+                                                    Text(backup.className)
+                                                        .font(.system(size: 10.5, weight: .bold))
+                                                        .padding(.horizontal, 6)
+                                                        .padding(.vertical, 1.5)
+                                                        .background(Color.blue.opacity(0.12))
+                                                        .foregroundColor(.blue)
+                                                        .clipShape(Capsule())
 
-            Divider()
+                                                    if let d = backup.date {
+                                                        Text(Self.backupDisplayDateFormatter.string(from: d))
+                                                            .font(.system(size: 11))
+                                                            .foregroundColor(.secondary)
+                                                    }
+                                                }
+                                            }
 
-            // Liste des Backups filtrés
-            if existingBackups.isEmpty {
-                VStack(spacing: 8) {
-                    Spacer()
-                    Image(systemName: "archivebox")
-                        .font(.system(size: 28))
-                        .foregroundColor(.secondary.opacity(0.5))
-                    Text("Aucune évaluation archivée dans `/Backup`")
-                        .font(.system(size: 13, weight: .semibold))
-                    Text("Distribuez d'abord une évaluation complète pour créer une archive.")
-                        .font(.system(size: 11.5))
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                    Spacer()
-                }
-                .frame(maxWidth: .infinity)
-            } else if filteredBackups.isEmpty {
-                VStack(spacing: 10) {
-                    Spacer()
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 26))
-                        .foregroundColor(.secondary.opacity(0.45))
-                    Text("Aucune archive trouvée")
-                        .font(.system(size: 13, weight: .semibold))
-                    if selectedBackupClassFilter != "Toutes" {
-                        Button("Afficher toutes les classes (\(existingBackups.count))") {
-                            selectedBackupClassFilter = "Toutes"
-                            backupSearchQuery = ""
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                        .clipShape(Capsule())
-                    }
-                    Spacer()
-                }
-                .frame(maxWidth: .infinity)
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 6) {
-                        ForEach(filteredBackups) { backup in
-                            let isChosen = (selectedBackup?.id == backup.id)
-                            Button {
-                                selectedBackup = backup
-                                applyBackupMetadata(backup)
-                                showBackupPickerPopover = false
-                            } label: {
-                                HStack(spacing: 10) {
-                                    Image(systemName: isChosen ? "checkmark.circle.fill" : "archivebox.fill")
-                                        .font(.system(size: 15, weight: .semibold))
-                                        .foregroundColor(isChosen ? .blue : .orange)
+                                            Spacer()
 
-                                    VStack(alignment: .leading, spacing: 3) {
-                                        Text(backup.evaluationTitle)
-                                            .font(.system(size: 13, weight: .semibold))
-                                            .foregroundColor(.primary)
-                                            .lineLimit(1)
-
-                                        HStack(spacing: 6) {
-                                            Text(backup.className)
-                                                .font(.system(size: 10.5, weight: .bold))
-                                                .padding(.horizontal, 6)
-                                                .padding(.vertical, 1.5)
-                                                .background(Color.blue.opacity(0.12))
-                                                .foregroundColor(.blue)
-                                                .clipShape(Capsule())
-
-                                            if let d = backup.date {
-                                                Text(Self.backupDisplayDateFormatter.string(from: d))
-                                                    .font(.system(size: 11))
-                                                    .foregroundColor(.secondary)
+                                            if !isChosen {
+                                                Image(systemName: "chevron.right")
+                                                    .font(.system(size: 11, weight: .semibold))
+                                                    .foregroundColor(.secondary.opacity(0.5))
                                             }
                                         }
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 8)
+                                        .background(isChosen ? Color.blue.opacity(0.10) : Color.primary.opacity(0.04))
+                                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                                .stroke(isChosen ? Color.blue.opacity(0.35) : Color.clear, lineWidth: 1)
+                                        )
                                     }
-
-                                    Spacer()
-
-                                    if !isChosen {
-                                        Image(systemName: "chevron.right")
-                                            .font(.system(size: 11, weight: .semibold))
-                                            .foregroundColor(.secondary.opacity(0.5))
-                                    }
+                                    .buttonStyle(.plain)
                                 }
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 8)
-                                .background(isChosen ? Color.blue.opacity(0.10) : Color.primary.opacity(0.04))
-                                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                        .stroke(isChosen ? Color.blue.opacity(0.35) : Color.clear, lineWidth: 1)
-                                )
                             }
-                            .buttonStyle(.plain)
                         }
                     }
                 }
+                .padding(14)
+                .frame(width: 460, height: 370)
             }
         }
-        .padding(14)
-        .frame(width: 460, height: 370)
     }
 
     private func prepareAndOpenBackupPopover() {
