@@ -142,6 +142,12 @@ public struct Step1CorrectionStudioView: View {
     // MARK: - État Atelier de Correction Intégré (Non-Modal)
     @State private var pdfURL: URL? = nil
     @State private var pdfDocument: PDFDocument? = nil
+    @State private var loadedScanName: String? = nil
+    @State private var isLoadingStudioPDF: Bool = false
+    @State private var showStudioLoadingOverlay: Bool = false
+    @State private var studioLoadingTask: Task<Void, Never>? = nil
+    @State private var studioLoadingDelayTask: Task<Void, Never>? = nil
+    @State private var studioLoadToken: UUID = UUID()
     @State private var currentPageIndex: Int = 0
     @State private var currentDrawing: PKDrawing = PKDrawing()
 
@@ -389,22 +395,59 @@ public struct Step1CorrectionStudioView: View {
 
     public var body: some View {
         ZStack {
-            if let activeScan = appState.activeCorrectionScan, let doc = pdfDocument {
-                // MARK: - Atelier de Correction Intégré (Non-modal)
-                activeGradingStudioView(scan: activeScan, document: doc)
-            } else if appState.activeCorrectionScan != nil {
-                // État de chargement bref de la copie
+            Group {
+                if let activeScan = appState.activeCorrectionScan, let doc = pdfDocument {
+                    // MARK: - Atelier de Correction Intégré (Non-modal)
+                    activeGradingStudioView(scan: activeScan, document: doc)
+                } else if appState.activeCorrectionScan != nil {
+                    // État de chargement initial lors d'une restauration de session
+                    VStack(spacing: 14) {
+                        ProgressView()
+                            .controlSize(.large)
+                        Text("Chargement de la copie...")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    // MARK: - Page d'Accueil : Mosaïque des Paquets de Copies
+                    correctionHomeDashboardView
+                }
+            }
+            .blur(radius: showStudioLoadingOverlay ? 8 : 0)
+            .allowsHitTesting(!isLoadingStudioPDF)
+
+            if showStudioLoadingOverlay {
+                Color.primary.opacity(0.04)
+                    .ignoresSafeArea()
+                    .contentShape(Rectangle())
+
                 VStack(spacing: 14) {
                     ProgressView()
                         .controlSize(.large)
-                    Text("Chargement de la copie...")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .tint(.blue)
+
+                    VStack(spacing: 4) {
+                        Text("Chargement de la copie...")
+                            .font(.system(size: 14.5, weight: .bold, design: .rounded))
+                            .foregroundColor(.primary)
+
+                        Text("Préparation du document et des annotations")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                // MARK: - Page d'Accueil : Mosaïque des Paquets de Copies
-                correctionHomeDashboardView
+                .padding(.horizontal, 28)
+                .padding(.vertical, 22)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(Color.primary.opacity(0.10), lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.12), radius: 20, x: 0, y: 8)
+                .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                .zIndex(40)
             }
 
             // Toast de confirmation d'importation
@@ -428,6 +471,7 @@ public struct Step1CorrectionStudioView: View {
                 .zIndex(50)
             }
         }
+        .animation(.easeInOut(duration: 0.2), value: showStudioLoadingOverlay)
         .task {
             let autoOpen = CommandLine.arguments.contains("-testOpenScan")
             let multiTabs = CommandLine.arguments.contains("-testMultipleTabs")
@@ -456,17 +500,28 @@ public struct Step1CorrectionStudioView: View {
             if CommandLine.arguments.contains("-testStampPopover") {
                 isStampPopoverPresented = true
             }
-            if let active = appState.activeCorrectionScan {
+            if let active = appState.activeCorrectionScan,
+               !isLoadingStudioPDF,
+               (loadedScanName != active.name || pdfDocument == nil) {
                 loadScanPDF(active)
             }
         }
         .onChange(of: appState.activeCorrectionScan) { oldScan, newScan in
             if oldScan?.name != newScan?.name {
-                saveCurrentDrawing()
                 if let newScan = newScan {
-                    loadScanPDF(newScan)
+                    if loadedScanName == newScan.name && pdfDocument != nil {
+                        return
+                    }
+                    saveCurrentDrawing(for: oldScan)
+                    loadScanPDF(newScan, activateAfterLoad: false)
                     triggerPageHUD()
                 } else {
+                    studioLoadingTask?.cancel()
+                    studioLoadingDelayTask?.cancel()
+                    isLoadingStudioPDF = false
+                    showStudioLoadingOverlay = false
+                    saveCurrentDrawing(for: oldScan)
+                    loadedScanName = nil
                     pdfDocument = nil
                     pdfURL = nil
                     appState.canUndoCorrection = false
@@ -1707,19 +1762,12 @@ public struct Step1CorrectionStudioView: View {
     }
 
     private func openScanInStudio(_ scan: StorageManager.ScanItem) {
-        saveCurrentDrawing()
-        if !appState.openCorrectionScans.contains(where: { $0.id == scan.id }) {
-            appState.openCorrectionScans.append(scan)
-        }
-        appState.activeCorrectionScan = scan
-        loadScanPDF(scan)
-        syncUndoRedoState()
-        triggerPageHUD()
+        loadScanPDF(scan, activateAfterLoad: true)
     }
 
-    private func loadScanPDF(_ scan: StorageManager.ScanItem) {
+    private func loadScanPDF(_ scan: StorageManager.ScanItem, activateAfterLoad: Bool = false) {
         let url = appState.storageManager.localURL(for: scan.path)
-        loadPDFFromURL(url)
+        loadPDFFromURL(url, targetScan: scan, activateAfterLoad: activateAfterLoad)
     }
 
     private func triggerPageHUD() {
@@ -1751,30 +1799,61 @@ public struct Step1CorrectionStudioView: View {
         }
     }
 
-    private func loadPDFFromURL(_ url: URL) {
-        let isAccessing = url.startAccessingSecurityScopedResource()
-        defer {
-            if isAccessing { url.stopAccessingSecurityScopedResource() }
+    private func loadPDFFromURL(_ url: URL, targetScan: StorageManager.ScanItem, activateAfterLoad: Bool) {
+        studioLoadingTask?.cancel()
+        studioLoadingDelayTask?.cancel()
+
+        let token = UUID()
+        studioLoadToken = token
+        isLoadingStudioPDF = true
+
+        // Filet de sécurité différé (150 ms) : aucun flash sur les PDF normaux, flou + spinner si document lourd
+        studioLoadingDelayTask = Task {
+            try? await Task.sleep(nanoseconds: 150_000_000)
+            guard !Task.isCancelled, studioLoadToken == token else { return }
+            withAnimation(.easeInOut(duration: 0.2)) {
+                showStudioLoadingOverlay = true
+            }
         }
 
-        if let doc = try? PDFEngine.shared.loadDocument(from: url) {
-            self.pdfURL = url
-            self.pdfDocument = doc
+        studioLoadingTask = Task {
+            let doc: PDFDocument? = await Task.detached(priority: .userInitiated) {
+                let isAccessing = url.startAccessingSecurityScopedResource()
+                defer {
+                    if isAccessing { url.stopAccessingSecurityScopedResource() }
+                }
+                return try? PDFEngine.shared.loadDocument(from: url)
+            }.value
 
-            let targetPage: Int
-            if let scan = appState.activeCorrectionScan {
-                let saved = appState.evaluationsMetadata[scan.rawFileName]?.lastViewedPage ?? 1
-                targetPage = max(0, min(doc.pageCount - 1, saved - 1))
-            } else {
-                targetPage = 0
+            guard !Task.isCancelled, studioLoadToken == token else { return }
+
+            studioLoadingDelayTask?.cancel()
+            showStudioLoadingOverlay = false
+            isLoadingStudioPDF = false
+
+            if activateAfterLoad {
+                saveCurrentDrawing()
+                if !appState.openCorrectionScans.contains(where: { $0.id == targetScan.id }) {
+                    appState.openCorrectionScans.append(targetScan)
+                }
             }
-            self.currentPageIndex = targetPage
 
-            if let scan = appState.activeCorrectionScan {
-                self.currentDrawing = scanDrawings[scan.name]?[targetPage] ?? PKDrawing()
-                appState.updateEvaluationProgress(for: scan.rawFileName, viewedPage: targetPage + 1, totalPages: doc.pageCount)
-            } else {
-                self.currentDrawing = PKDrawing()
+            if let doc = doc {
+                self.loadedScanName = targetScan.name
+                self.pdfURL = url
+                self.pdfDocument = doc
+
+                let saved = appState.evaluationsMetadata[targetScan.rawFileName]?.lastViewedPage ?? 1
+                let targetPage = max(0, min(doc.pageCount - 1, saved - 1))
+                self.currentPageIndex = targetPage
+                self.currentDrawing = scanDrawings[targetScan.name]?[targetPage] ?? PKDrawing()
+                appState.updateEvaluationProgress(for: targetScan.rawFileName, viewedPage: targetPage + 1, totalPages: doc.pageCount)
+            }
+
+            if activateAfterLoad {
+                appState.activeCorrectionScan = targetScan
+                syncUndoRedoState()
+                triggerPageHUD()
             }
         }
     }
@@ -1790,8 +1869,8 @@ public struct Step1CorrectionStudioView: View {
         triggerPageHUD()
     }
 
-    private func saveCurrentDrawing() {
-        guard let scan = appState.activeCorrectionScan else { return }
+    private func saveCurrentDrawing(for explicitScan: StorageManager.ScanItem? = nil) {
+        guard let scan = explicitScan ?? appState.activeCorrectionScan else { return }
         if scanDrawings[scan.name] == nil {
             scanDrawings[scan.name] = [:]
         }
